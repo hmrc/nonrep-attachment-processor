@@ -54,7 +54,7 @@ lazy val root = (project in file(".")).
       "ch.qos.logback"       %  "logback-core"             % logbackVersion,
       "com.typesafe.akka"    %% "akka-slf4j"               % akkaVersion,
       "org.slf4j"            %  "slf4j-api"                % "1.7.30",
-      "net.logstash.logback" %  "logstash-logback-encoder" % "6.1",
+      "net.logstash.logback" %  "logstash-logback-encoder" % "6.6",
 
       // Metrics
       "fr.davit"             %% "akka-http-metrics-prometheus" % metricsVersion,
@@ -67,7 +67,7 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka"    %% "akka-actor-testkit-typed" % akkaVersion     % Test,
       "com.typesafe.akka"    %% "akka-stream-testkit"      % akkaVersion     % Test,
       "org.scalatest"        %% "scalatest"                % "3.2.7"         % Test,
-      "org.scalamock"        %% "scalamock"                % "4.3.0"         % Test
+      "org.scalamock"        %% "scalamock"                % "5.1.0"         % Test
     ),
 
     assembly / assemblyJarName := s"$projectName.jar",
