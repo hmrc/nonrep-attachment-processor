@@ -1,7 +1,12 @@
 enablePlugins(GitVersioning)
 enablePlugins(BuildInfoPlugin)
 
-val awsSdkVersion = "2.16.49"
+val akkaHttpVersion = "10.2.4"
+val akkaVersion = "2.6.14"
+val awsSdkVersion = "2.16.+"
+val logbackVersion = "1.2.3"
+val metricsVersion = "1.5.1"
+val prometheusClientsVersion = "0.10.0"
 
 val projectName = "attachment-processor"
 
@@ -12,7 +17,7 @@ createVersionFile := {
   Files.write(Paths.get("version.txt"), version.value.getBytes(StandardCharsets.UTF_8))
 }
 
-lazy val IntegrationTest = config("it") extend(Test)
+lazy val IntegrationTest = config("it") extend Test
 
 lazy val root = (project in file(".")).
   configs(IntegrationTest).
@@ -33,14 +38,40 @@ lazy val root = (project in file(".")).
     ),
 
     libraryDependencies ++= Seq(
-      "org.scalatest" %% "scalatest" % "3.2.7" % Test,
+      // Akka
+      "com.typesafe.akka"    %% "akka-http"            % akkaHttpVersion,
+      "com.typesafe.akka"    %% "akka-http-xml"        % akkaHttpVersion,
+      "com.typesafe.akka"    %% "akka-http-spray-json" % akkaHttpVersion,
+      "com.typesafe.akka"    %% "akka-actor-typed"     % akkaVersion,
+      "com.typesafe.akka"    %% "akka-stream"          % akkaVersion,
+
       // AWS
-      "com.amazonaws" % "aws-java-sdk-s3" % awsSdkVersion,
-      "com.amazonaws" % "aws-java-sdk-glacier" % awsSdkVersion,
+      "software.amazon.awssdk" % "s3"      % awsSdkVersion,
+      "software.amazon.awssdk" % "glacier" % awsSdkVersion,
+
+      // Logging
+      "ch.qos.logback"       %  "logback-classic"          % logbackVersion,
+      "ch.qos.logback"       %  "logback-core"             % logbackVersion,
+      "com.typesafe.akka"    %% "akka-slf4j"               % akkaVersion,
+      "org.slf4j"            %  "slf4j-api"                % "1.7.30",
+      "net.logstash.logback" %  "logstash-logback-encoder" % "6.1",
+
+      // Metrics
+      "fr.davit"             %% "akka-http-metrics-prometheus" % metricsVersion,
+      "io.prometheus"        %  "simpleclient_common"          % prometheusClientsVersion,
+      "io.prometheus"        %  "simpleclient_dropwizard"      % prometheusClientsVersion,
+      "io.prometheus"        %  "simpleclient_hotspot"         % prometheusClientsVersion,
+
+      // Test dependencies
+      "com.typesafe.akka"    %% "akka-http-testkit"        % akkaHttpVersion % Test,
+      "com.typesafe.akka"    %% "akka-actor-testkit-typed" % akkaVersion     % Test,
+      "com.typesafe.akka"    %% "akka-stream-testkit"      % akkaVersion     % Test,
+      "org.scalatest"        %% "scalatest"                % "3.2.7"         % Test,
+      "org.scalamock"        %% "scalamock"                % "4.3.0"         % Test
     ),
 
-    assemblyJarName in assembly := s"$projectName.jar",
-    assemblyMergeStrategy in assembly := {
+    assembly / assemblyJarName := s"$projectName.jar",
+    assembly / assemblyMergeStrategy := {
       case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
       case PathList("META-INF", "BCKEY.DSA") => MergeStrategy.discard
       case "reference.conf" => MergeStrategy.concat
@@ -49,7 +80,7 @@ lazy val root = (project in file(".")).
 
   )
 
-scalacOptions ++= Seq("-deprecation", "-feature")
-testOptions in Test += Tests.Argument("-oF")
-fork in Test := true
-envVars in Test := Map("WORKING_DIR" -> "/tmp/unit-tests")
+Compile / scalacOptions ++= Seq("-deprecation", "-feature")
+Test / testOptions += Tests.Argument("-oF")
+Test / fork := true
+Test / envVars := Map("WORKING_DIR" -> "/tmp/unit-tests")
