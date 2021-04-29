@@ -13,13 +13,15 @@ import scala.concurrent.ExecutionContext
 
 class Routes()(implicit val system: ActorSystem, ec: ExecutionContext) {
 
+  import io.circe.generic.auto._
+  import io.circe.syntax._
 
   lazy val log = Logging.withMarker(system, classOf[Routes])
 
   val exceptionHandler = ExceptionHandler {
     case x => {
       log.error(x, s"Internal server error, caused by ${x.getCause}")
-      complete(HttpResponse(500, entity = "Internal NRS Signing API error"))
+      complete(HttpResponse(500, entity = "Internal error"))
     }
   }
 
@@ -33,15 +35,18 @@ class Routes()(implicit val system: ActorSystem, ec: ExecutionContext) {
       pathPrefix("attachment-processor") {
         pathPrefix("ping") {
           get {
-            complete(HttpResponse(200, entity = "pong"))
+            complete(HttpResponse(StatusCodes.OK, entity = "PONG!"))
+          }
+        } ~ pathPrefix("version") {
+          pathEndOrSingleSlash {
+            get {
+              completeAsJson(StatusCodes.OK, BuildVersion(version = BuildInfo.version).asJson.noSpaces)
+            }
           }
         }
-      }
-      ~ pathPrefix("version") {
-        pathEndOrSingleSlash {
-          get {
-            completeAsJson(StatusCodes.OK, BuildVersion(version = BuildInfo.version).asJson.noSpaces)
-          }
+      } ~ pathPrefix("ping") {
+        get {
+          complete(HttpResponse(StatusCodes.OK, entity = "PONG!"))
         }
       }
     }

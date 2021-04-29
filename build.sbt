@@ -1,13 +1,12 @@
 enablePlugins(GitVersioning)
-enablePlugins(BuildInfoPlugin)
 
 val akkaHttpVersion = "10.2.4"
 val akkaVersion = "2.6.14"
 val awsSdkVersion = "2.16.+"
 val logbackVersion = "1.2.3"
 val metricsVersion = "1.5.1"
-val circeVersion = "0.13.0"
 val prometheusClientsVersion = "0.10.0"
+val circeVersion = "0.12.3"
 
 val projectName = "attachment-processor"
 
@@ -31,7 +30,7 @@ lazy val root = (project in file(".")).
       scalaVersion := "2.13.5"
     )),
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
-    buildInfoPackage := "uk.gov.hmrc.nonrep",
+    buildInfoPackage := "uk.gov.hmrc.nonrep.attachment",
     name := projectName,
 
     resolvers ++= Seq(
@@ -47,11 +46,7 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka"    %% "akka-actor-typed"     % akkaVersion,
       "com.typesafe.akka"    %% "akka-stream"          % akkaVersion,
 
-      // Circe
-      "io.circe" %% "circe-core" % circeVersion,
-      "io.circe" %% "circe-generic" % circeVersion,
-      "io.circe" %% "circe-parser" % circeVersion,
-      "io.circe" %% "circe-optics" % circeVersion,
+      "de.heikoseeberger" % "akka-http-circe_2.13" % "1.36.0",
 
       // AWS
       "software.amazon.awssdk" % "s3"      % awsSdkVersion,
@@ -77,6 +72,12 @@ lazy val root = (project in file(".")).
       "org.scalatest"        %% "scalatest"                % "3.2.7"         % Test,
       "org.scalamock"        %% "scalamock"                % "5.1.0"         % Test
     ),
+
+    libraryDependencies ++= Seq(
+      "io.circe" %% "circe-core",
+      "io.circe" %% "circe-generic",
+      "io.circe" %% "circe-parser"
+    ).map(_ % circeVersion),
 
     assembly / assemblyJarName := s"$projectName.jar",
     assembly / assemblyMergeStrategy := {
