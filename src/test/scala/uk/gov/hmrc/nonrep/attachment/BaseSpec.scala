@@ -1,4 +1,4 @@
-package uk.gov.hmrc.nonrep.attachmentProcessor
+package uk.gov.hmrc.nonrep.attachment
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec

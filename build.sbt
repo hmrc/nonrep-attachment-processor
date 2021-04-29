@@ -6,6 +6,7 @@ val akkaVersion = "2.6.14"
 val awsSdkVersion = "2.16.+"
 val logbackVersion = "1.2.3"
 val metricsVersion = "1.5.1"
+val circeVersion = "0.13.0"
 val prometheusClientsVersion = "0.10.0"
 
 val projectName = "attachment-processor"
@@ -21,6 +22,7 @@ lazy val IntegrationTest = config("it") extend Test
 
 lazy val root = (project in file(".")).
   configs(IntegrationTest).
+  enablePlugins(BuildInfoPlugin).
   settings(
     Defaults.itSettings,
     inThisBuild(List(
@@ -44,6 +46,12 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka"    %% "akka-http-spray-json" % akkaHttpVersion,
       "com.typesafe.akka"    %% "akka-actor-typed"     % akkaVersion,
       "com.typesafe.akka"    %% "akka-stream"          % akkaVersion,
+
+      // Circe
+      "io.circe" %% "circe-core" % circeVersion,
+      "io.circe" %% "circe-generic" % circeVersion,
+      "io.circe" %% "circe-parser" % circeVersion,
+      "io.circe" %% "circe-optics" % circeVersion,
 
       // AWS
       "software.amazon.awssdk" % "s3"      % awsSdkVersion,
