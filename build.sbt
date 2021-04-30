@@ -1,5 +1,4 @@
 enablePlugins(GitVersioning)
-enablePlugins(BuildInfoPlugin)
 
 val akkaHttpVersion = "10.2.4"
 val akkaVersion = "2.6.14"
@@ -7,6 +6,7 @@ val awsSdkVersion = "2.16.+"
 val logbackVersion = "1.2.3"
 val metricsVersion = "1.5.1"
 val prometheusClientsVersion = "0.10.0"
+val circeVersion = "0.12.3"
 
 val projectName = "attachment-processor"
 
@@ -21,6 +21,7 @@ lazy val IntegrationTest = config("it") extend Test
 
 lazy val root = (project in file(".")).
   configs(IntegrationTest).
+  enablePlugins(BuildInfoPlugin).
   settings(
     Defaults.itSettings,
     inThisBuild(List(
@@ -29,7 +30,7 @@ lazy val root = (project in file(".")).
       scalaVersion := "2.13.5"
     )),
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
-    buildInfoPackage := "uk.gov.hmrc.nonrep",
+    buildInfoPackage := "uk.gov.hmrc.nonrep.attachment",
     name := projectName,
 
     resolvers ++= Seq(
@@ -45,6 +46,8 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka"    %% "akka-actor-typed"     % akkaVersion,
       "com.typesafe.akka"    %% "akka-stream"          % akkaVersion,
 
+      "de.heikoseeberger" % "akka-http-circe_2.13" % "1.36.0",
+
       // AWS
       "software.amazon.awssdk" % "s3"      % awsSdkVersion,
       "software.amazon.awssdk" % "glacier" % awsSdkVersion,
@@ -54,7 +57,7 @@ lazy val root = (project in file(".")).
       "ch.qos.logback"       %  "logback-core"             % logbackVersion,
       "com.typesafe.akka"    %% "akka-slf4j"               % akkaVersion,
       "org.slf4j"            %  "slf4j-api"                % "1.7.30",
-      "net.logstash.logback" %  "logstash-logback-encoder" % "6.1",
+      "net.logstash.logback" %  "logstash-logback-encoder" % "6.6",
 
       // Metrics
       "fr.davit"             %% "akka-http-metrics-prometheus" % metricsVersion,
@@ -67,8 +70,14 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka"    %% "akka-actor-testkit-typed" % akkaVersion     % Test,
       "com.typesafe.akka"    %% "akka-stream-testkit"      % akkaVersion     % Test,
       "org.scalatest"        %% "scalatest"                % "3.2.7"         % Test,
-      "org.scalamock"        %% "scalamock"                % "4.3.0"         % Test
+      "org.scalamock"        %% "scalamock"                % "5.1.0"         % Test
     ),
+
+    libraryDependencies ++= Seq(
+      "io.circe" %% "circe-core",
+      "io.circe" %% "circe-generic",
+      "io.circe" %% "circe-parser"
+    ).map(_ % circeVersion),
 
     assembly / assemblyJarName := s"$projectName.jar",
     assembly / assemblyMergeStrategy := {
