@@ -1,27 +1,28 @@
 package uk.gov.hmrc.nonrep.attachment
+package server
 
-import akka.actor.ActorSystem
-import akka.event.Logging
+import akka.actor.typed.ActorSystem
+import akka.http.scaladsl.model.StatusCodes.InternalServerError
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.server.Directives.{handleExceptions, pathEndOrSingleSlash, pathPrefix, _}
+import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.directives.MethodDirectives.get
-import akka.http.scaladsl.server.directives.RouteDirectives.complete
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
-import uk.gov.hmrc.nonrep.attachment.model.BuildVersion
+import fr.davit.akka.http.metrics.core.scaladsl.server.HttpMetricsDirectives.pathLabeled
 
-import scala.concurrent.ExecutionContext
+object Routes {
+  def apply()(implicit system: ActorSystem[_], config: ServiceConfig) = new Routes()
+}
 
-class Routes()(implicit val system: ActorSystem, ec: ExecutionContext) {
+class Routes()(implicit val system: ActorSystem[_], config: ServiceConfig) {
 
   import io.circe.generic.auto._
   import io.circe.syntax._
 
-  lazy val log = Logging.withMarker(system, classOf[Routes])
-
+  val log = system.log
   val exceptionHandler = ExceptionHandler {
     case x => {
-      log.error(x, s"Internal server error, caused by ${x.getCause}")
-      complete(HttpResponse(500, entity = "Internal error"))
+      log.error("Internal server error", x)
+      complete(HttpResponse(InternalServerError, entity = "Internal NRS attachment-processor API error"))
     }
   }
 
@@ -30,21 +31,20 @@ class Routes()(implicit val system: ActorSystem, ec: ExecutionContext) {
       httpCode,
       entity = HttpEntity(ContentTypes.`application/json`, json)))
 
-  lazy val routes: Route =
+  lazy val serviceRoutes: Route =
     handleExceptions(exceptionHandler) {
       pathPrefix("attachment-processor") {
-        pathPrefix("ping") {
+        pathLabeled("ping") {
           get {
             complete(HttpResponse(StatusCodes.OK, entity = "PONG!"))
           }
-        } ~ pathPrefix("version") {
+        } ~ pathLabeled("version") {
           pathEndOrSingleSlash {
             get {
-              completeAsJson(StatusCodes.OK, BuildVersion(version = BuildInfo.version).asJson.noSpaces)
-            }
+              completeAsJson(StatusCodes.OK, BuildVersion(version = BuildInfo.version).asJson.noSpaces)            }
           }
         }
-      } ~ pathPrefix("ping") {
+      } ~ pathLabeled("ping") {
         get {
           complete(HttpResponse(StatusCodes.OK, entity = "PONG!"))
         }
