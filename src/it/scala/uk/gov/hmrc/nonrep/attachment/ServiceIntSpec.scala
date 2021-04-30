@@ -39,7 +39,7 @@ class ServiceIntSpec extends AnyWordSpec with Matchers with ScalatestRouteTest w
     }
   }
 
-  "attachment service service" should {
+  "attachment-processor service" should {
 
     "return version information for GET request to service /version endpoint" in {
       val responseFuture: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = s"$hostUrl/${config.appName}/version"))
