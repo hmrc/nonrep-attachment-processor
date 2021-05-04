@@ -6,7 +6,6 @@ val awsSdkVersion = "2.16.+"
 val logbackVersion = "1.2.3"
 val metricsVersion = "1.5.1"
 val prometheusClientsVersion = "0.10.0"
-val circeVersion = "0.12.3"
 
 val projectName = "attachment-processor"
 
@@ -30,7 +29,7 @@ lazy val root = (project in file(".")).
       scalaVersion := "2.13.5"
     )),
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
-    buildInfoPackage := "uk.gov.hmrc.nonrep.attachment",
+    buildInfoPackage := "uk.gov.hmrc.nonrep",
     name := projectName,
 
     resolvers ++= Seq(
@@ -45,8 +44,6 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka"    %% "akka-http-spray-json" % akkaHttpVersion,
       "com.typesafe.akka"    %% "akka-actor-typed"     % akkaVersion,
       "com.typesafe.akka"    %% "akka-stream"          % akkaVersion,
-
-      "de.heikoseeberger" % "akka-http-circe_2.13" % "1.36.0",
 
       // AWS
       "software.amazon.awssdk" % "s3"      % awsSdkVersion,
@@ -72,12 +69,6 @@ lazy val root = (project in file(".")).
       "org.scalatest"        %% "scalatest"                % "3.2.7"         % Test,
       "org.scalamock"        %% "scalamock"                % "5.1.0"         % Test
     ),
-
-    libraryDependencies ++= Seq(
-      "io.circe" %% "circe-core",
-      "io.circe" %% "circe-generic",
-      "io.circe" %% "circe-parser"
-    ).map(_ % circeVersion),
 
     assembly / assemblyJarName := s"$projectName.jar",
     assembly / assemblyMergeStrategy := {
