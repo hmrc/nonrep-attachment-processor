@@ -4,17 +4,15 @@ import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.typed.scaladsl.adapter._
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
-import akka.http.scaladsl.testkit.ScalatestRouteTest
 import org.scalatest.Inside
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.matchers.should.Matchers
 import org.scalatest.time.{Millis, Span}
-import org.scalatest.wordspec.AnyWordSpec
+import uk.gov.hmrc.nonrep.BuildInfo
 import uk.gov.hmrc.nonrep.attachment.server.{NonrepMicroservice, Routes, ServiceConfig}
+import uk.gov.hmrc.nonrep.attachment.utils.JsonFormats._
 
 import scala.concurrent.Future
 
-class ServiceIntSpec extends AnyWordSpec with Matchers with ScalatestRouteTest with ScalaFutures with Inside {
+class ServiceIntSpec extends BaseSpec with Inside {
   import TestServices._
 
   var server: NonrepMicroservice = null
@@ -46,9 +44,7 @@ class ServiceIntSpec extends AnyWordSpec with Matchers with ScalatestRouteTest w
       whenReady(responseFuture) { res =>
         res.status shouldBe StatusCodes.OK
         whenReady(entityToString(res.entity)) { body =>
-          println(s"**** body: $body")
-          //          body shouldBe BuildInfo.version
-          //TODO: get this working
+          body shouldBe buildVersionJsonFormat.write(BuildVersion(version = BuildInfo.version)).toString
         }
       }
     }
@@ -58,7 +54,7 @@ class ServiceIntSpec extends AnyWordSpec with Matchers with ScalatestRouteTest w
       whenReady(responseFuture) { res =>
         res.status shouldBe StatusCodes.OK
         whenReady(entityToString(res.entity)) { body =>
-          body shouldBe "PONG!"
+          body shouldBe "pong"
         }
       }
     }
@@ -68,7 +64,7 @@ class ServiceIntSpec extends AnyWordSpec with Matchers with ScalatestRouteTest w
       whenReady(responseFuture) { res =>
         res.status shouldBe StatusCodes.OK
         whenReady(entityToString(res.entity)) { body =>
-          body shouldBe "PONG!"
+          body shouldBe "pong"
         }
       }
     }
