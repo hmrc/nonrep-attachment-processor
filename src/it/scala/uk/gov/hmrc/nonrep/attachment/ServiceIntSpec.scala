@@ -69,5 +69,80 @@ class ServiceIntSpec extends BaseSpec with Inside {
       }
     }
 
+    "return jvm metrics" in {
+      val responseFuture: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = s"$hostUrl/metrics"))
+      whenReady(responseFuture) { res =>
+        res.status shouldBe StatusCodes.OK
+        whenReady(entityToString(res.entity)) { body =>
+          body
+            .split('\n')
+            .filter(_.startsWith("# TYPE ")) should contain allElementsOf Seq(
+            "# TYPE jvm_memory_objects_pending_finalization gauge",
+            "# TYPE jvm_memory_bytes_used gauge",
+            "# TYPE jvm_memory_bytes_committed gauge",
+            "# TYPE jvm_memory_bytes_max gauge",
+            "# TYPE jvm_memory_bytes_init gauge",
+            "# TYPE jvm_memory_pool_bytes_used gauge",
+            "# TYPE jvm_memory_pool_bytes_committed gauge",
+            "# TYPE jvm_memory_pool_bytes_max gauge",
+            "# TYPE jvm_memory_pool_bytes_init gauge",
+            "# TYPE jvm_memory_pool_collection_used_bytes gauge",
+            "# TYPE jvm_memory_pool_collection_committed_bytes gauge",
+            "# TYPE jvm_memory_pool_collection_max_bytes gauge",
+            "# TYPE jvm_memory_pool_collection_init_bytes gauge",
+            "# TYPE jvm_gc_collection_seconds summary",
+            "# TYPE jvm_memory_heap_committed gauge",
+            "# TYPE jvm_memory_non_heap_used gauge",
+            "# TYPE jvm_memory_pools_Compressed_Class_Space_usage gauge",
+            "# TYPE jvm_threads_waiting_count gauge",
+            "# TYPE jvm_memory_total_committed gauge",
+            "# TYPE jvm_memory_heap_usage gauge",
+            "# TYPE jvm_attribute_uptime gauge",
+            "# TYPE jvm_memory_total_used gauge",
+            "# TYPE jvm_threads_timed_waiting_count gauge",
+            "# TYPE jvm_memory_heap_used gauge",
+            "# TYPE jvm_memory_non_heap_committed gauge",
+            "# TYPE jvm_memory_non_heap_usage gauge",
+            "# TYPE jvm_memory_heap_init gauge",
+            "# TYPE jvm_memory_pools_Metaspace_usage gauge",
+            "# TYPE jvm_threads_count gauge",
+            "# TYPE jvm_threads_new_count gauge",
+            "# TYPE jvm_memory_non_heap_init gauge",
+            "# TYPE jvm_memory_total_max gauge",
+            "# TYPE jvm_memory_pools_CodeHeap__non_nmethods__usage gauge",
+            "# TYPE jvm_memory_pools_CodeHeap__profiled_nmethods__usage gauge",
+            "# TYPE jvm_threads_runnable_count gauge",
+            "# TYPE jvm_threads_terminated_count gauge",
+            "# TYPE jvm_memory_heap_max gauge",
+            "# TYPE jvm_memory_non_heap_max gauge",
+            "# TYPE jvm_memory_total_init gauge",
+            "# TYPE jvm_threads_daemon_count gauge",
+            "# TYPE jvm_memory_pools_CodeHeap__non_profiled_nmethods__usage gauge",
+            "# TYPE jvm_threads_blocked_count gauge",
+            "# TYPE jvm_buffer_pool_used_bytes gauge",
+            "# TYPE jvm_buffer_pool_capacity_bytes gauge",
+            "# TYPE jvm_buffer_pool_used_buffers gauge",
+            "# TYPE jvm_classes_loaded gauge",
+            "# TYPE jvm_classes_loaded_total counter",
+            "# TYPE jvm_classes_unloaded_total counter",
+            "# TYPE jvm_memory_pool_allocated_bytes_total counter",
+            "# TYPE jvm_threads_current gauge",
+            "# TYPE jvm_threads_daemon gauge",
+            "# TYPE jvm_threads_peak gauge",
+            "# TYPE jvm_threads_started_total counter",
+            "# TYPE jvm_threads_deadlocked gauge",
+            "# TYPE jvm_threads_deadlocked_monitor gauge",
+            "# TYPE jvm_threads_state gauge",
+            "# TYPE process_cpu_seconds_total counter",
+            "# TYPE process_start_time_seconds gauge",
+            "# TYPE process_open_fds gauge",
+            "# TYPE process_max_fds gauge",
+            "# TYPE process_virtual_memory_bytes gauge",
+            "# TYPE process_resident_memory_bytes gauge",
+            "# TYPE jvm_info gauge"
+          )
+        }
+      }
+    }
   }
 }

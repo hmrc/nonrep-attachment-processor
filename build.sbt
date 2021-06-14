@@ -4,8 +4,9 @@ val akkaHttpVersion = "10.2.4"
 val akkaVersion = "2.6.14"
 val awsSdkVersion = "2.16.+"
 val logbackVersion = "1.2.3"
-val metricsVersion = "1.5.1"
-val prometheusClientsVersion = "0.10.0"
+val metricsVersion = "1.6.0"
+val jvmMetricsVersion = "3.0.2"
+val prometheusClientsVersion = "0.11.0"
 
 val projectName = "attachment-processor"
 
@@ -58,6 +59,7 @@ lazy val root = (project in file(".")).
 
       // Metrics
       "fr.davit"             %% "akka-http-metrics-prometheus" % metricsVersion,
+      "com.codahale.metrics" %  "metrics-jvm"                  % jvmMetricsVersion,
       "io.prometheus"        %  "simpleclient_common"          % prometheusClientsVersion,
       "io.prometheus"        %  "simpleclient_dropwizard"      % prometheusClientsVersion,
       "io.prometheus"        %  "simpleclient_hotspot"         % prometheusClientsVersion,
