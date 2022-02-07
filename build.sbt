@@ -1,12 +1,12 @@
 enablePlugins(GitVersioning)
 
-val akkaHttpVersion = "10.2.4"
-val akkaVersion = "2.6.14"
-val awsSdkVersion = "2.16.+"
-val logbackVersion = "1.2.3"
+val akkaHttpVersion = "10.2.7"
+val akkaVersion = "2.6.18"
+val awsSdkVersion = "2.17.+"
+val logbackVersion = "1.2.10"
 val metricsVersion = "1.6.0"
 val jvmMetricsVersion = "3.0.2"
-val prometheusClientsVersion = "0.11.0"
+val prometheusClientsVersion = "0.15.0"
 
 val projectName = "attachment-processor"
 
@@ -68,8 +68,8 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka"    %% "akka-http-testkit"        % akkaHttpVersion % Test,
       "com.typesafe.akka"    %% "akka-actor-testkit-typed" % akkaVersion     % Test,
       "com.typesafe.akka"    %% "akka-stream-testkit"      % akkaVersion     % Test,
-      "org.scalatest"        %% "scalatest"                % "3.2.7"         % Test,
-      "org.scalamock"        %% "scalamock"                % "5.1.0"         % Test
+      "org.scalatest"        %% "scalatest"                % "3.2.11"         % Test,
+      "org.scalamock"        %% "scalamock"                % "5.2.0"         % Test
     ),
 
     assembly / assemblyJarName := s"$projectName.jar",
