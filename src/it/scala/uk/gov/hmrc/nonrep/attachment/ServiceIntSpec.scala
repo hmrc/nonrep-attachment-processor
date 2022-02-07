@@ -119,7 +119,6 @@ class ServiceIntSpec extends BaseSpec with Inside {
             "# TYPE jvm_buffer_pool_used_bytes gauge",
             "# TYPE jvm_buffer_pool_capacity_bytes gauge",
             "# TYPE jvm_buffer_pool_used_buffers gauge",
-            "# TYPE jvm_classes_loaded gauge",
             "# TYPE jvm_classes_loaded_total counter",
             "# TYPE jvm_classes_unloaded_total counter",
             "# TYPE jvm_memory_pool_allocated_bytes_total counter",
