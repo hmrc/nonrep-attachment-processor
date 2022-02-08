@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="jsonConsoleAppender" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"appname":"attachment-processor", "env":"${ENV}"}</customFields>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="jsonConsoleAppender" />
+    </root>
+
+    <property name="LOG_LEVEL" value="${log.level:-INFO}" />
+
+    <logger name="uk.gov" level="${LOG_LEVEL}" />
+
+</configuration>

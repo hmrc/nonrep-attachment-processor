@@ -46,6 +46,8 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka"    %% "akka-actor-typed"     % akkaVersion,
       "com.typesafe.akka"    %% "akka-stream"          % akkaVersion,
 
+      "com.lightbend.akka" %% "akka-stream-alpakka-sqs" % "3.0.4",
+
       // AWS
       "software.amazon.awssdk" % "s3"      % awsSdkVersion,
       "software.amazon.awssdk" % "glacier" % awsSdkVersion,
