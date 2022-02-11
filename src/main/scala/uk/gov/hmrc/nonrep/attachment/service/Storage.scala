@@ -20,7 +20,7 @@ import scala.concurrent.{ExecutionContext, Future}
  * It's an interim object before the final one is delivered
  */
 trait Storage[A] {
-  def downloadAttachment: Flow[A, EitherErr[A], NotUsed]
+  def downloadAttachment(): Flow[A, EitherErr[A], NotUsed]
 
   def s3Source(attachment: A): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed]
 }

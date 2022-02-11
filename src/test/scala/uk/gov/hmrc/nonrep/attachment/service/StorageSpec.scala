@@ -19,7 +19,7 @@ class StorageSpec extends BaseSpec {
       val source = TestSource.probe[AttachmentInfo]
       val sink = TestSink.probe[EitherErr[AttachmentInfo]]
 
-      val (pub, sub) = source.via(storage.downloadAttachment).toMat(sink)(Keep.both).run()
+      val (pub, sub) = source.via(storage.downloadAttachment()).toMat(sink)(Keep.both).run()
       pub.sendNext(attachment).sendComplete()
       val result = sub
         .request(1)
@@ -41,7 +41,7 @@ class StorageSpec extends BaseSpec {
       val source = TestSource.probe[AttachmentInfo]
       val sink = TestSink.probe[EitherErr[AttachmentInfo]]
 
-      val (pub, sub) = source.via(storage.downloadAttachment).toMat(sink)(Keep.both).run()
+      val (pub, sub) = source.via(storage.downloadAttachment()).toMat(sink)(Keep.both).run()
       pub.sendNext(attachment).sendComplete()
       val result = sub
         .request(1)

@@ -4,7 +4,7 @@ package server
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
-import uk.gov.hmrc.nonrep.attachment.service.Processor
+import uk.gov.hmrc.nonrep.attachment.service.{Processor, StorageService}
 
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
@@ -49,6 +49,7 @@ object Main {
     implicit val system = ActorSystem[Nothing](rootBehavior, s"NrsServer-${config.appName}")
     implicit val ec: ExecutionContext = system.executionContext
 
+    implicit val storage: StorageService = new StorageService()
     val attachmentsProcessor = new Processor().execute
 
   }

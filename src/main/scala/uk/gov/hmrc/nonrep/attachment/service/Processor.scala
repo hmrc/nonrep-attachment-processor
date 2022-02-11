@@ -24,7 +24,7 @@ class Processor()(implicit val system: ActorSystem[_],
 
   val parseMessages: Flow[Message, AttachmentInfo, NotUsed] = Queue.parseMessages
 
-  val downloadFromS3: Flow[AttachmentInfo, EitherErr[AttachmentInfo], NotUsed] = storage.downloadAttachment
+  val downloadFromS3: Flow[AttachmentInfo, EitherErr[AttachmentInfo], NotUsed] = storage.downloadAttachment()
 
   val applicationSink = Sink.seq[EitherErr[AttachmentInfo]]
 
