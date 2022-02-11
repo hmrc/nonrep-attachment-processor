@@ -1,29 +1,42 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
+import akka.NotUsed
 import akka.actor.typed.ActorSystem
 import akka.stream.ClosedShape
-import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Sink}
+import akka.stream.scaladsl.{Flow, GraphDSL, RunnableGraph, Sink, Source}
+import software.amazon.awssdk.services.sqs.model.Message
 
 import scala.concurrent.ExecutionContext
 
-class Processor()(implicit val system: ActorSystem[_], val ec: ExecutionContext) {
+object Processor {
+  def apply()(implicit system: ActorSystem[_],
+              ec: ExecutionContext,
+              storage: Storage[AttachmentInfo]) = new Processor()
+}
 
-  val sqsMessages = Queue.getMessages
+class Processor()(implicit val system: ActorSystem[_],
+                  ec: ExecutionContext,
+                  storage: Storage[AttachmentInfo]) {
 
-  val parseMessages = Queue.parseMessages
 
-  val applicationSink = Sink.seq[AttachmentInfo]
+  val sqsMessages: Source[Message, NotUsed] = Queue.getMessages
+
+  val parseMessages: Flow[Message, AttachmentInfo, NotUsed] = Queue.parseMessages
+
+  val downloadFromS3: Flow[AttachmentInfo, EitherErr[AttachmentInfo], NotUsed] = storage.downloadAttachment
+
+  val applicationSink = Sink.seq[EitherErr[AttachmentInfo]]
 
   val execute = RunnableGraph.fromGraph(GraphDSL.createGraph(applicationSink) {
-    implicit builder => sink =>
-    import GraphDSL.Implicits._
+    implicit builder =>
+      sink =>
+        import GraphDSL.Implicits._
 
-    sqsMessages ~> parseMessages ~> sink
+        sqsMessages ~> parseMessages ~> downloadFromS3 ~> sink
 
-    ClosedShape
+        ClosedShape
   })
-
 
 
 }
