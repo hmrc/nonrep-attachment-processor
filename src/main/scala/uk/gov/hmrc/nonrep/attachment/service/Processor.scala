@@ -7,7 +7,7 @@ import akka.stream.ClosedShape
 import akka.stream.scaladsl.{Flow, GraphDSL, RunnableGraph, Sink, Source}
 import software.amazon.awssdk.services.sqs.model.Message
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 object Processor {
   def apply()(implicit system: ActorSystem[_],
@@ -26,7 +26,7 @@ class Processor()(implicit val system: ActorSystem[_],
 
   val downloadFromS3: Flow[AttachmentInfo, EitherErr[AttachmentInfo], NotUsed] = storage.downloadAttachment()
 
-  val applicationSink = Sink.seq[EitherErr[AttachmentInfo]]
+  val applicationSink: Sink[EitherErr[AttachmentInfo], Future[Seq[EitherErr[AttachmentInfo]]]] = Sink.seq[EitherErr[AttachmentInfo]]
 
   val execute = RunnableGraph.fromGraph(GraphDSL.createGraph(applicationSink) {
     implicit builder =>

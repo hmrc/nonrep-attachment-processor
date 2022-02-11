@@ -11,6 +11,6 @@ package object attachment {
   type EitherErr[T] = Either[ErrorMessage, T]
 
   case class ErrorMessage(message: String, code: StatusCode = StatusCodes.BadRequest, error: Option[Throwable] = None)
-  
+
   case class AttachmentInfo(key: String, content: Option[ByteString] = None)
 }
