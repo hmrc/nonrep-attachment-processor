@@ -6,31 +6,46 @@ import akka.actor.typed.ActorSystem
 import akka.stream.ClosedShape
 import akka.stream.scaladsl.{Flow, GraphDSL, RunnableGraph, Sink, Source}
 import software.amazon.awssdk.services.sqs.model.Message
+import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
-import scala.concurrent.{ExecutionContext, Future}
+trait Processor[A] {
+  def storage: Storage
 
-object Processor {
-  def apply()(implicit system: ActorSystem[_],
-              ec: ExecutionContext,
-              storage: Storage[AttachmentInfo]) = new Processor()
+  def zipper: Zipper
+
+  def queue: Queue
+
+  def sign: Sign
+
+  def applicationSink: Sink[EitherErr[AttachmentContent], A]
 }
 
-class Processor()(implicit val system: ActorSystem[_],
-                  ec: ExecutionContext,
-                  storage: Storage[AttachmentInfo]) {
+object Processor {
+  def apply[A](applicationSink: Sink[EitherErr[AttachmentContent], A])(implicit system: ActorSystem[_],
+                                                                       config: ServiceConfig) = new ProcessorService(applicationSink)
+}
 
+class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentContent], A])(implicit val system: ActorSystem[_],
+                                                                                      config: ServiceConfig) extends Processor[A] {
 
-  val sqsMessages: Source[Message, NotUsed] = Queue.getMessages
+  override def storage: Storage = new StorageService()
 
-  val parseMessages: Flow[Message, AttachmentInfo, NotUsed] = Queue.parseMessages
+  override def zipper: Zipper = new ZipperService()
 
-  val downloadFromS3: Flow[AttachmentInfo, EitherErr[AttachmentInfo], NotUsed] = storage.downloadAttachment()
+  override def queue: Queue = new QueueService()
 
-  val applicationSink: Sink[EitherErr[AttachmentInfo], Future[Seq[EitherErr[AttachmentInfo]]]] = Sink.seq[EitherErr[AttachmentInfo]]
+  override def sign: Sign = Sign
+
+  val sqsMessages: Source[Message, NotUsed] = queue.getMessages
+
+  val parseMessages: Flow[Message, AttachmentInfo, NotUsed] = queue.parseMessages
+
+  val downloadFromS3: Flow[AttachmentInfo, EitherErr[AttachmentContent], NotUsed] = storage.downloadAttachment()
 
   val execute = RunnableGraph.fromGraph(GraphDSL.createGraph(applicationSink) {
     implicit builder =>
       sink =>
+
         import GraphDSL.Implicits._
 
         sqsMessages ~> parseMessages ~> downloadFromS3 ~> sink
