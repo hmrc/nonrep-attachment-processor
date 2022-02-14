@@ -5,6 +5,4 @@ import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-trait BaseSpec extends AnyWordSpec with ScalaFutures with ScalatestRouteTest with Matchers {
-
-}
+trait BaseSpec extends AnyWordSpec with ScalaFutures with ScalatestRouteTest with Matchers

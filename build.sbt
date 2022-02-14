@@ -47,6 +47,7 @@ lazy val root = (project in file(".")).
       "com.typesafe.akka"    %% "akka-stream"          % akkaVersion,
 
       "com.lightbend.akka" %% "akka-stream-alpakka-sqs" % "3.0.4",
+      "com.lightbend.akka" %% "akka-stream-alpakka-s3" % "3.0.4",
 
       // AWS
       "software.amazon.awssdk" % "s3"      % awsSdkVersion,
@@ -66,12 +67,13 @@ lazy val root = (project in file(".")).
       "io.prometheus"        %  "simpleclient_dropwizard"      % prometheusClientsVersion,
       "io.prometheus"        %  "simpleclient_hotspot"         % prometheusClientsVersion,
 
+
       // Test dependencies
       "com.typesafe.akka"    %% "akka-http-testkit"        % akkaHttpVersion % Test,
       "com.typesafe.akka"    %% "akka-actor-testkit-typed" % akkaVersion     % Test,
       "com.typesafe.akka"    %% "akka-stream-testkit"      % akkaVersion     % Test,
-      "org.scalatest"        %% "scalatest"                % "3.2.11"         % Test,
-      "org.scalamock"        %% "scalamock"                % "5.2.0"         % Test
+      "org.scalatest"        %% "scalatest"                % "3.2.11"        % Test,
+      "org.mockito"          %% "mockito-scala-scalatest"  % "1.17.0"        % Test
     ),
 
     assembly / assemblyJarName := s"$projectName.jar",

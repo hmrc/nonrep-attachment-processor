@@ -1,29 +1,57 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
+import akka.NotUsed
 import akka.actor.typed.ActorSystem
 import akka.stream.ClosedShape
-import akka.stream.scaladsl.{GraphDSL, RunnableGraph, Sink}
+import akka.stream.scaladsl.{Flow, GraphDSL, RunnableGraph, Sink, Source}
+import software.amazon.awssdk.services.sqs.model.Message
+import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
-import scala.concurrent.ExecutionContext
+trait Processor[A] {
+  def storage: Storage
 
-class Processor()(implicit val system: ActorSystem[_], val ec: ExecutionContext) {
+  def zipper: Zipper
 
-  val sqsMessages = Queue.getMessages
+  def queue: Queue
 
-  val parseMessages = Queue.parseMessages
+  def sign: Sign
 
-  val applicationSink = Sink.seq[AttachmentInfo]
+  def applicationSink: Sink[EitherErr[AttachmentContent], A]
+}
+
+object Processor {
+  def apply[A](applicationSink: Sink[EitherErr[AttachmentContent], A])(implicit system: ActorSystem[_],
+                                                                       config: ServiceConfig) = new ProcessorService(applicationSink)
+}
+
+class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentContent], A])(implicit val system: ActorSystem[_],
+                                                                                      config: ServiceConfig) extends Processor[A] {
+
+  override def storage: Storage = new StorageService()
+
+  override def zipper: Zipper = new ZipperService()
+
+  override def queue: Queue = new QueueService()
+
+  override def sign: Sign = Sign
+
+  val sqsMessages: Source[Message, NotUsed] = queue.getMessages
+
+  val parseMessages: Flow[Message, AttachmentInfo, NotUsed] = queue.parseMessages
+
+  val downloadFromS3: Flow[AttachmentInfo, EitherErr[AttachmentContent], NotUsed] = storage.downloadAttachment()
 
   val execute = RunnableGraph.fromGraph(GraphDSL.createGraph(applicationSink) {
-    implicit builder => sink =>
-    import GraphDSL.Implicits._
+    implicit builder =>
+      sink =>
 
-    sqsMessages ~> parseMessages ~> sink
+        import GraphDSL.Implicits._
 
-    ClosedShape
+        sqsMessages ~> parseMessages ~> downloadFromS3 ~> sink
+
+        ClosedShape
   })
-
 
 
 }

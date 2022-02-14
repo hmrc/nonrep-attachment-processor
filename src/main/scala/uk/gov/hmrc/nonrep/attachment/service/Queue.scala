@@ -8,14 +8,26 @@ import software.amazon.awssdk.services.sqs.model.Message
 /**
  * It's an interim object before the final interface is delivered
  */
-object Queue {
+
+trait Queue {
+  def getMessages: Source[Message, NotUsed]
+
+  def parseMessages: Flow[Message, AttachmentInfo, NotUsed]
+
+  def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed]
+}
+
+class QueueService extends Queue {
 
   // make sure that SQS async client is created with important parameters taken from service config
 
-  def getMessages: Source[Message, NotUsed] = ???
+  /*
+   * all these implementations are likely to be replaced
+   */
+  override def getMessages: Source[Message, NotUsed] = Source.empty
 
-  def parseMessages: Flow[Message, AttachmentInfo, NotUsed] = ???
+  override def parseMessages: Flow[Message, AttachmentInfo, NotUsed] = Flow.fromFunction((m: Message) => AttachmentInfo(m.messageId(), ""))
 
-  private def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed] = ???
+  override def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed] = Flow.fromFunction((_: AttachmentInfo) => true)
 
 }

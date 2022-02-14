@@ -1,12 +1,14 @@
 package uk.gov.hmrc.nonrep.attachment
 package server
 
+import akka.Done
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
+import akka.stream.scaladsl.Sink
 import uk.gov.hmrc.nonrep.attachment.service.Processor
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 object NonrepMicroservice {
@@ -14,6 +16,7 @@ object NonrepMicroservice {
 }
 
 class NonrepMicroservice(routes: Routes)(implicit val system: ActorSystem[_], config: ServiceConfig) {
+
   import system.executionContext
 
   val serverBinding = Http().newServerAt("0.0.0.0", config.port).bind(routes.serviceRoutes)
@@ -47,9 +50,18 @@ object Main {
     }
 
     implicit val system = ActorSystem[Nothing](rootBehavior, s"NrsServer-${config.appName}")
-    implicit val ec: ExecutionContext = system.executionContext
 
-    val attachmentsProcessor = new Processor().execute
+    val applicationSink: Sink[EitherErr[AttachmentContent], Future[Done]] = Sink.foreach[EitherErr[AttachmentContent]] {
+      _.fold(
+        {
+          case ErrorMessage(message, WARN) => system.log.warn(message)
+          case ErrorMessage(message, ERROR) => system.log.error(message)
+        },
+        attachment => system.log.info(s"Successful processing of attachment ${attachment.info.key}")
+      )
+    }
+    //TODO: enable method run after the implementation is complete
+    Processor(applicationSink).execute /*.run()*/
 
   }
 }
