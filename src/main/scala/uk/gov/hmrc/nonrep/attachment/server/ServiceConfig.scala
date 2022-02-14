@@ -18,13 +18,6 @@ class ServiceConfig(val servicePort: Int = 8000) {
     if (configFile.exists()) ConfigFactory.parseFile(configFile)
     else ConfigFactory.load("application.conf")
 
-  private val clientsConfig: Config = config.getConfig(s"$appName.clients-config")
-  private val clients = clientsConfig.root().keySet().asScala
-
-  val clientsDataMappings: Map[String, ClientData] = clients.map { c =>
-    c -> ClientData(clientsConfig.getString(s"$c.businessId"), c, clientsConfig.getInt(s"$c.retentionPeriod"))
-  }.toMap
-
   override def toString =
     s"""
     appName: $appName
