@@ -14,16 +14,15 @@ class ServiceConfig(val servicePort: Int = 8000) {
 
   val attachmentsBucket = s"$env-nonrep-attachment-data"
 
-  val settings = SqsSourceSettings()
-    .withWaitTime(20.seconds)
-    .withMaxBufferSize(100)
-    .withMaxBatchSize(10)
-    .withCloseOnEmptyReceive(false)
-    .withVisibilityTimeout(10.seconds)
+//TODO test the below in a unit tests for queue
 
-  val batchSettings =
-    SqsPublishBatchSettings()
-      .withConcurrentRequests(1)
+  lazy val sqsTopicArn: String = sys.env.getOrElse("ATTACHMENT_SQS", throw new RuntimeException(s"could not find value for ATTACHMENT_SQS in ${sys.env.mkString(",")}"))
+  private val systemParams = config.getObject(s"$appName.system-params").toConfig
+  val maxBufferSize = systemParams.getInt("maxBufferSize")
+  val waitTime = systemParams.getInt("waitTime")
+  val maxBatchSize = systemParams.getInt("maxBatchSize")
+
+
 
   private val configFile = new java.io.File(s"/etc/config/CONFIG_FILE")
 
