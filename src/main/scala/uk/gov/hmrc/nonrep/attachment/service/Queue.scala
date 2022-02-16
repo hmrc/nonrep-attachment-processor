@@ -17,9 +17,18 @@ import scala.language.postfixOps
  * It's an interim object before the final interface is delivered
  */
 
-trait Queue {
+trait Queue [A] {
 
-  def getMessages: Source[Message, NotUsed] = {
+  def getMessages:Source[Message, NotUsed]
+
+  def parseMessages: Flow[Message, AttachmentInfo, NotUsed]
+
+  def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed]
+}
+
+class QueueService extends Queue {
+
+  private def getMessages: Source[Message, NotUsed] = {
     val supervisionStrategy: Supervision.Decider = Supervision.stoppingDecider
     val sourceSettings = SqsSourceSettings()
       .withWaitTime(10 seconds)
@@ -37,40 +46,33 @@ trait Queue {
     )(() => sqsSource)
   }
 
-  def parseMessages: Flow[Message, AttachmentInfo, NotUsed]
+  private def getFlow: Flow[Message, AttachmentInfo, NotUsed] = {
 
-  def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed]
-}
+    def processMessage(message: Message): Future[Event] = {
+      val event = Json.parse(message.body()).as[Event]
+      println(s"Processing event => $event")
+      Future.successful(event)
+    }
 
-class QueueService extends Queue {
+    Flow[Message].mapAsyncUnordered(8) {
+      message =>
+        for {
+          _ <- processMessage(message)
+          _ <- Future.successful(MessageAction.delete(message))
+        } yield ()
+    }
+  }
 
-//  private def getFlow: Flow[Message, AttachmentInfo, NotUsed] = {
-//
-//    def processMessage(message: Message): Future[Event] = {
-//      val event = Json.parse(message.body()).as[Event]
-//      println(s"Processing event => $event")
-//      Future.successful(event)
-//    }
-//
-//    Flow[Message].mapAsyncUnordered(8) {
-//      message =>
-//        for {
-//          _ <- processMessage(message)
-//          _ <- Future.successful(MessageAction.delete(message))
-//        } yield ()
-//    }
-//  }
-//
-//  getMessages
-//    .via(getFlow)
-//    .runWith(Sink.ignore)
+  getMessages
+    .via(getFlow)
+    .runWith(Sink.ignore)
 
   // make sure that SQS async client is created with important parameters taken from service config
 
   /*
    * all these implementations are likely to be replaced
    */
-//  override def getMessages: Source[Message, NotUsed] = Source.empty
+  override def getMessages: Source[Message, NotUsed] = Source.empty
 
   override def parseMessages: Flow[Message, AttachmentInfo, NotUsed] = Flow.fromFunction((m: Message) => AttachmentInfo(m.messageId(), ""))
 
