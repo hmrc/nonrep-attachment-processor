@@ -21,4 +21,7 @@ package object attachment {
   case class AttachmentContent(info: AttachmentInfo, content: ByteString)
 
   case class ZipContent(info: AttachmentInfo, files: Seq[(String, Array[Byte])])
+
+  type SQSMessageParser = (String, String) => Option[List[AttachmentInfo]]
+
 }

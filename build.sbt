@@ -7,6 +7,7 @@ val logbackVersion = "1.2.10"
 val metricsVersion = "1.6.0"
 val jvmMetricsVersion = "3.0.2"
 val prometheusClientsVersion = "0.15.0"
+val sprayVersion = "1.3.6"
 
 val projectName = "attachment-processor"
 
@@ -66,6 +67,7 @@ lazy val root = (project in file(".")).
       "io.prometheus"        %  "simpleclient_common"          % prometheusClientsVersion,
       "io.prometheus"        %  "simpleclient_dropwizard"      % prometheusClientsVersion,
       "io.prometheus"        %  "simpleclient_hotspot"         % prometheusClientsVersion,
+      "io.spray"             %% "spray-json"                   % sprayVersion,
 
 
       // Test dependencies

@@ -35,6 +35,7 @@ class ServiceConfig(val servicePort: Int = 8000) {
     appName: $appName
     port: $servicePort
     env: $env
+    sqsTopicArn: $sqsTopicArn
     attachmentsBucket: $attachmentsBucket
     configFile: ${config.toString}"""
 
