@@ -35,7 +35,7 @@ class StorageSpec extends BaseSpec {
     }
   }
 
-  "Storage service on happy path" should {
+  "Storage service for failure scenarios" should {
     import TestServices.failure._
 
     "report when downloading file from S3 fails" in {

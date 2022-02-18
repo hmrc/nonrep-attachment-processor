@@ -13,6 +13,7 @@ class ProcessorSpec extends BaseSpec {
     val processor = new ProcessorService(testApplicationSink) {
       override def storage: Storage = storageService
       override def queue: Queue = queueService
+      override def sign: Sign = signService
     }
 
     "process attachments" in {
@@ -28,7 +29,6 @@ class ProcessorSpec extends BaseSpec {
 
       result.isRight shouldBe true
       result.toOption.get.info.key shouldBe attachmentId
-      result.toOption.get.content.toArray[Byte] shouldBe file
     }
   }
 
@@ -48,5 +48,22 @@ class ProcessorSpec extends BaseSpec {
       result.left.toOption.get.severity shouldBe WARN
       result.left.toOption.get.message shouldBe s"Error getting attachment 738bcba6-7f9e-11ec-8768-3f8498104f38 from S3 ${config.attachmentsBucket}"
     }
+
+    "report a warning for signing failure" in {
+      val processor = new ProcessorService(testApplicationSink) {
+        override def storage: Storage = success.storageService
+        override def queue: Queue = success.queueService
+        override def sign: Sign = failure.signService
+      }
+
+      val result = processor.execute.run()
+        .request(1)
+        .expectNext()
+
+      result.isLeft shouldBe true
+      result.left.toOption.get.severity shouldBe WARN
+      result.left.toOption.get.message shouldBe s"Response status 500 Internal Server Error from signatures service ${config.signaturesServiceHost}"
+    }
+
   }
 }

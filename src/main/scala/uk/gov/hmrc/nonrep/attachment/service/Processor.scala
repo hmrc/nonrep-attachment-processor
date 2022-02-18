@@ -17,6 +17,8 @@ trait Processor[A] {
 
   def sign: Sign
 
+  def zip: Zipper
+
   def applicationSink: Sink[EitherErr[AttachmentContent], A]
 }
 
@@ -34,24 +36,30 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentContent]
 
   override def queue: Queue = new QueueService()
 
-  override def sign: Sign = Sign
+  override def sign: Sign = new SignService()
 
-  val sqsMessages: Source[Message, NotUsed] = queue.getMessages
+  override def zip: Zipper = new ZipperService()
 
-  val parseMessages: Flow[Message, AttachmentInfo, NotUsed] = queue.parseMessages
+  val messages: Source[Message, NotUsed] = queue.getMessages
 
-  val downloadFromS3: Flow[AttachmentInfo, EitherErr[AttachmentContent], NotUsed] = storage.downloadAttachment()
+  val parsing: Flow[Message, AttachmentInfo, NotUsed] = queue.parseMessages
+
+  val downloading: Flow[AttachmentInfo, EitherErr[AttachmentContent], NotUsed] = storage.downloadAttachment()
+
+  val unpacking: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] = zip.unzip()
+
+  val repacking: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] = zip.zip()
+
+  val signing: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = sign.signing()
 
   val execute = RunnableGraph.fromGraph(GraphDSL.createGraph(applicationSink) {
     implicit builder =>
       sink =>
-
         import GraphDSL.Implicits._
 
-        sqsMessages ~> parseMessages ~> downloadFromS3 ~> sink
+        messages ~> parsing ~> downloading ~> unpacking ~> signing ~> repacking ~> sink
 
         ClosedShape
   })
-
 
 }

@@ -67,7 +67,6 @@ lazy val root = (project in file(".")).
       "io.prometheus"        %  "simpleclient_dropwizard"      % prometheusClientsVersion,
       "io.prometheus"        %  "simpleclient_hotspot"         % prometheusClientsVersion,
 
-
       // Test dependencies
       "com.typesafe.akka"    %% "akka-http-testkit"        % akkaHttpVersion % Test,
       "com.typesafe.akka"    %% "akka-actor-testkit-typed" % akkaVersion     % Test,

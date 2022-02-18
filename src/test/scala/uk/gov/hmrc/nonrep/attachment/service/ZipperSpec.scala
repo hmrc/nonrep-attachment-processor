@@ -19,7 +19,7 @@ class ZipperSpec extends BaseSpec {
     "create a zip archive from content given" in {
       val attachmentId = UUID.randomUUID().toString
       val attachment = (attachmentId, Array.fill[Byte](1000)(Byte.MaxValue))
-      val metadata = ("metadata.json", s"{attachmentId = $attachmentId}".getBytes("utf-8"))
+      val metadata = (METADATA_FILE, s"{attachmentId = $attachmentId}".getBytes("utf-8"))
       val messageId = UUID.randomUUID().toString
       val info = AttachmentInfo(messageId, attachmentId)
       val zipContent = ZipContent(info, Seq(metadata, attachment))
@@ -38,7 +38,7 @@ class ZipperSpec extends BaseSpec {
 
       val zip = new ZipInputStream(new ByteArrayInputStream(result.toOption.get.content.toArray[Byte]))
       val entries = LazyList.continually(zip.getNextEntry).takeWhile(_ != null).filter(!_.isDirectory).map(_.getName)
-      entries.filter(_ == "metadata.json").headOption should not be empty
+      entries.filter(_ == METADATA_FILE).headOption should not be empty
       entries.filter(_ == attachmentId).headOption should not be empty
     }
 
@@ -62,8 +62,8 @@ class ZipperSpec extends BaseSpec {
       result.toOption.get.info.key shouldBe attachmentId
       result.toOption.get.info.message shouldBe messageId
       result.toOption.get.files.size shouldBe 2
-      result.toOption.get.files.filter(_._1 == "metadata.json").isEmpty shouldBe false
-      result.toOption.get.files.filter(_._1 == attachmentId).isEmpty shouldBe false
+      result.toOption.get.files.filter(_._1 == METADATA_FILE).isEmpty shouldBe false
+      result.toOption.get.files.filter(_._1 == ATTACHMENT_FILE).isEmpty shouldBe false
     }
 
     "fail on extracting non-zip archive" in {
