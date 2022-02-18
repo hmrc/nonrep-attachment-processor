@@ -24,4 +24,5 @@ package object attachment {
 
   type SQSMessageParser = (String, String) => Option[List[AttachmentInfo]]
 
+ val queueUrl = "https://sqs.eu-west-2.amazonaws.com/20304005294/MyQueue"  //example to be changed
 }

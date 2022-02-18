@@ -3,7 +3,7 @@ package service
 
 import akka.NotUsed
 import akka.actor.typed.ActorSystem
-import akka.stream.{ActorAttributes, RestartSettings, Supervision}
+import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.alpakka.sqs.scaladsl.{SqsPublishFlow, SqsSource}
 import akka.stream.alpakka.sqs.{MessageAction, SqsSourceSettings}
 import akka.stream.scaladsl.Source.single
@@ -46,35 +46,23 @@ class QueueService()(implicit val config: ServiceConfig,
     .withWaitTime(10 seconds)
     .withMaxBufferSize(150)
     .withMaxBatchSize(10)
-  private def getMessages: Source[Message, NotUsed] = {
-    RestartSource.onFailuresWithBackoff(
-      minBackoff = 300.millis,
-      maxBackoff = 5.seconds,
-      randomFactor = 0.25
-    )(() => sqsSource)
-  }
-    def processMessage:SQSMessageParser = (attachmentInfo, json) => {
+
+  def processMessage:SQSMessageParser = (attachmentInfo, json) => { //read from sqs queue
       Source {
         val messages: Future[immutable.Seq[Message]] =
           SqsSource(
             queueUrl,
-            SqsSourceSettings().withCloseOnEmptyReceive(true).withWaitTime(10.millis)
+            SqsSourceSettings().withCloseOnEmptyReceive(true).withWaitTime(20.millis)
           ).runWith(Sink.seq)
       }
       Flow[Message].map {
         Source
         .single(SendMessageRequest.builder().messageBody("ATTACHMENT_SQS").build())
-          .via(SqsPublishFlow(queueUrl))
+          .via(Flow(queueUrl("")))
           .runWith(Sink.head)
       }
     }
-//        val messages = jsonStringToMap(json)
-       
-//      val event = Json.parse(message.body()).as[Event]
-//    }
-//    Flow[Message].map{
-//
-//  message => message.}
+
 
 
   // make sure that SQS async client is created with important parameters taken from service config
@@ -90,3 +78,4 @@ class QueueService()(implicit val config: ServiceConfig,
   override def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed] = Flow.fromFunction((_: AttachmentInfo) => true)
 
 }
+
