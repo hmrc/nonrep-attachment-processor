@@ -31,12 +31,13 @@ object TestServices {
   def entityToString(entity: ResponseEntity)(implicit ec: ExecutionContext): Future[String] =
     entity.dataBytes.runFold(ByteString(""))(_ ++ _).map(_.utf8String)
 
+  val testAttachmentId = "738bcba6-7f9e-11ec-8768-3f8498104f38"
   val sampleAttachment: Array[Byte] =
-    Files.readAllBytes(new File(getClass.getClassLoader.getResource("738bcba6-7f9e-11ec-8768-3f8498104f38.zip").getFile).toPath)
+    Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.zip").getFile).toPath)
   val sampleAttachmentContent: Array[Byte] =
-    Files.readAllBytes(new File(getClass.getClassLoader.getResource("738bcba6-7f9e-11ec-8768-3f8498104f38").getFile).toPath)
+    Files.readAllBytes(new File(getClass.getClassLoader.getResource(testAttachmentId).getFile).toPath)
   val sampleSignedAttachmentContent: Array[Byte] =
-    Files.readAllBytes(new File(getClass.getClassLoader.getResource("738bcba6-7f9e-11ec-8768-3f8498104f38.p7m").getFile).toPath)
+    Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.p7m").getFile).toPath)
 
   val testApplicationSink = TestSink.probe[EitherErr[AttachmentContent]](typedSystem.classicSystem)
 
@@ -48,12 +49,14 @@ object TestServices {
     /*
     For queue service - this may be considered an interim solution
      */
-    val queueService: Queue = new Queue(){
+    val queueService: Queue = new Queue() {
       override def getMessages: Source[Message, NotUsed] = Source.single(Message.builder().messageId(UUID.randomUUID().toString).build())
+
       override def parseMessages: Flow[Message, AttachmentInfo, NotUsed] = Flow[Message].map {
-        message => AttachmentInfo(message.messageId(), "738bcba6-7f9e-11ec-8768-3f8498104f38")
+        message => AttachmentInfo(message.messageId(), testAttachmentId)
       }
-      override def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed] = Flow[AttachmentInfo].map{ _ => true }
+
+      override def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed] = Flow[AttachmentInfo].map { _ => true }
     }
 
     val signService: Sign = new SignService() {

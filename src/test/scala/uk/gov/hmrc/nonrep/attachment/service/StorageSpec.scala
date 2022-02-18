@@ -8,6 +8,7 @@ import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
 
 class StorageSpec extends BaseSpec {
+
   import TestServices._
 
   "Storage service on happy path" should {
@@ -15,9 +16,8 @@ class StorageSpec extends BaseSpec {
 
     "download file from S3" in {
       val messageId = UUID.randomUUID().toString
-      val attachmentId = "738bcba6-7f9e-11ec-8768-3f8498104f38"
       val attachmentContent = ByteString(sampleAttachment)
-      val attachment = AttachmentInfo(messageId, attachmentId)
+      val attachment = AttachmentInfo(messageId, testAttachmentId)
 
       val source = TestSource.probe[AttachmentInfo]
       val sink = TestSink.probe[EitherErr[AttachmentContent]]
@@ -29,7 +29,7 @@ class StorageSpec extends BaseSpec {
         .expectNext()
 
       result.isRight shouldBe true
-      result.toOption.get.info.key shouldBe attachmentId
+      result.toOption.get.info.key shouldBe attachment.key
       result.toOption.get.info.message shouldBe messageId
       result.toOption.get.content shouldBe attachmentContent
     }
@@ -40,7 +40,7 @@ class StorageSpec extends BaseSpec {
 
     "report when downloading file from S3 fails" in {
       val messageId = UUID.randomUUID().toString
-      val attachment = AttachmentInfo(messageId, "738bcba6-7f9e-11ec-8768-3f8498104f38")
+      val attachment = AttachmentInfo(messageId, testAttachmentId)
 
       val source = TestSource.probe[AttachmentInfo]
       val sink = TestSink.probe[EitherErr[AttachmentContent]]

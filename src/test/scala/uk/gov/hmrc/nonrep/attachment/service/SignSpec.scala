@@ -1,15 +1,13 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import java.io.File
-import java.nio.file.Files
 import java.util.UUID
 
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import akka.util.ByteString
 
 class SignSpec extends BaseSpec {
+
   import TestServices._
 
   "Sign service" should {
@@ -17,9 +15,8 @@ class SignSpec extends BaseSpec {
 
     "send attachment for signing with selected profile" in {
       val messageId = UUID.randomUUID().toString
-      val attachmentId = "738bcba6-7f9e-11ec-8768-3f8498104f38"
 
-      val attachmentInfo = AttachmentInfo(messageId, attachmentId)
+      val attachmentInfo = AttachmentInfo(messageId, testAttachmentId)
       val zip = Right(ZipContent(attachmentInfo, Seq((ATTACHMENT_FILE, sampleAttachmentContent))))
 
       val source = TestSource.probe[EitherErr[ZipContent]]
@@ -31,7 +28,7 @@ class SignSpec extends BaseSpec {
         .expectNext()
 
       result.isRight shouldBe true
-      result.toOption.get.info.key shouldBe attachmentId
+      result.toOption.get.info.key shouldBe attachmentInfo.key
       result.toOption.get.info.message shouldBe messageId
       result.toOption.get.files.filter(_._1 == ATTACHMENT_FILE).head._2 shouldBe sampleAttachmentContent
       result.toOption.get.files.filter(_._1 == SIGNED_ATTACHMENT_FILE).head._2 shouldBe sampleSignedAttachmentContent
@@ -39,9 +36,8 @@ class SignSpec extends BaseSpec {
 
     "fail on incorrect attachment bundle" in {
       val messageId = UUID.randomUUID().toString
-      val attachmentId = "738bcba6-7f9e-11ec-8768-3f8498104f38"
 
-      val attachmentInfo = AttachmentInfo(messageId, attachmentId)
+      val attachmentInfo = AttachmentInfo(messageId, testAttachmentId)
       val zip = Right(ZipContent(attachmentInfo, Seq(("xxx", sampleAttachmentContent))))
 
       val source = TestSource.probe[EitherErr[ZipContent]]
@@ -72,9 +68,8 @@ class SignSpec extends BaseSpec {
     "return sign error messages with WARN severity" in {
       import TestServices.failure._
       val messageId = UUID.randomUUID().toString
-      val attachmentId = "738bcba6-7f9e-11ec-8768-3f8498104f38"
 
-      val attachmentInfo = AttachmentInfo(messageId, attachmentId)
+      val attachmentInfo = AttachmentInfo(messageId, testAttachmentId)
       val zip = Right(ZipContent(attachmentInfo, Seq((ATTACHMENT_FILE, sampleAttachmentContent))))
 
       val source = TestSource.probe[EitherErr[ZipContent]]

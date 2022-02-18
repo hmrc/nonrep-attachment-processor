@@ -53,7 +53,7 @@ class SignService()(implicit val config: ServiceConfig,
 
   val createRequest: Flow[EitherErr[ZipContent], (HttpRequest, EitherErr[ZipContent]), NotUsed] =
     Flow[EitherErr[ZipContent]].map { zip =>
-      zip.filterOrElse(_.files.filter(_._1 == ATTACHMENT_FILE).headOption.isDefined, ErrorMessage(s"Invalid attachment bundle for $zip")).fold(
+      zip.filterOrElse(_.files.exists(_._1 == ATTACHMENT_FILE), ErrorMessage(s"Invalid attachment bundle for $zip")).fold(
         error => (HttpRequest(), Left(error)),
         content => {
           val headers = List(RawHeader(TransactionIdHeader, content.info.key))
