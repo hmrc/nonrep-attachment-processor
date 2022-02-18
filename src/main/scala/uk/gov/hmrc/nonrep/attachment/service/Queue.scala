@@ -43,12 +43,11 @@ class QueueService()(implicit val config: ServiceConfig,
 
   val supervisionStrategy: Supervision.Decider = Supervision.stoppingDecider
   val sourceSettings = SqsSourceSettings()
-    .withWaitTime(10 seconds)
-    .withMaxBufferSize(150)
-    .withMaxBatchSize(10)
+    .withWaitTime(config.waitTime seconds)
+    .withMaxBufferSize(config.maxBufferSize)
+    .withMaxBatchSize(config.maxBatchSize)
 
-  def processMessage:SQSMessageParser = (attachmentInfo, json) => { //read from sqs queue
-      Source {
+  def  Source() {
         val messages: Future[immutable.Seq[Message]] =
           SqsSource(
             queueUrl,
@@ -57,11 +56,11 @@ class QueueService()(implicit val config: ServiceConfig,
       }
       Flow[Message].map {
         Source
-        .single(SendMessageRequest.builder().messageBody("ATTACHMENT_SQS").build())
+        .single(SendMessageRequest.builder().messageBody("ATTACHMENT_SQS").build()) //supposed to publish messages
           .via(Flow(queueUrl("")))
           .runWith(Sink.head)
       }
-    }
+
 
 
 
