@@ -19,7 +19,7 @@ class ZipperSpec extends BaseSpec {
     "create a zip archive from content given" in {
       val attachmentId = UUID.randomUUID().toString
       val attachment = (attachmentId, Array.fill[Byte](1000)(Byte.MaxValue))
-      val metadata = (METADATA_FILE, s"{attachmentId = $attachmentId}".getBytes("utf-8"))
+      val metadata = (METADATA_FILE, sampleAttachmentMetadata)
       val messageId = UUID.randomUUID().toString
       val info = AttachmentInfo(messageId, attachmentId)
       val zipContent = ZipContent(info, Seq(metadata, attachment))

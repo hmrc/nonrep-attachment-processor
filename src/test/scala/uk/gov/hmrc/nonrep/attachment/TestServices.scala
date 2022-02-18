@@ -32,6 +32,8 @@ object TestServices {
     entity.dataBytes.runFold(ByteString(""))(_ ++ _).map(_.utf8String)
 
   val testAttachmentId = "738bcba6-7f9e-11ec-8768-3f8498104f38"
+  val sampleAttachmentMetadata: Array[Byte] =
+    Files.readAllBytes(new File(getClass.getClassLoader.getResource(METADATA_FILE).getFile).toPath)
   val sampleAttachment: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.zip").getFile).toPath)
   val sampleAttachmentContent: Array[Byte] =
