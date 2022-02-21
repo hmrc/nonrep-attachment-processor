@@ -48,5 +48,8 @@ class ProcessorSpec extends BaseSpec {
       result.left.toOption.get.severity shouldBe WARN
       result.left.toOption.get.message shouldBe s"Error getting attachment 738bcba6-7f9e-11ec-8768-3f8498104f38 from S3 ${config.attachmentsBucket}"
     }
+    "failure to access queue service, could be network issue or anything" should {
+
+    }
   }
 }

@@ -1,6 +1,9 @@
 package uk.gov.hmrc.nonrep
 
 import akka.util.ByteString
+import com.fasterxml.jackson.core.`type`.TypeReference
+import com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES
+import com.fasterxml.jackson.databind.ObjectMapper
 
 package object attachment {
 

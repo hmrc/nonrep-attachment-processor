@@ -3,28 +3,27 @@ package service
 
 import akka.NotUsed
 import akka.actor.typed.ActorSystem
+import akka.http.scaladsl.marshallers.sprayjson.SprayJsonEntityStreamingSupport.json
 import akka.stream.{ActorAttributes, Supervision}
-import akka.stream.alpakka.sqs.scaladsl.{SqsPublishFlow, SqsSource}
-import akka.stream.alpakka.sqs.{MessageAction, SqsSourceSettings}
-import akka.stream.scaladsl.Source.single
-import akka.stream.scaladsl.{Flow, RestartSource, Sink, Source}
-import com.github.matsluni.akkahttpspi.AkkaHttpClient
+import akka.stream.alpakka.sqs.scaladsl.SqsSource
+import akka.stream.alpakka.sqs.SqsSourceSettings
+import akka.stream.scaladsl.{Flow, Source}
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model.{Message, SendMessageRequest}
+import software.amazon.awssdk.services.sqs.model.Message
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
-import scala.collection.immutable
-import scala.concurrent.Future
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
+import scala.util.Try
 
 /**
  * It's an interim object before the final interface is delivered
  */
 
 trait Queue {
+  self: JSONUtils =>
 
   def getMessages:Source[Message, NotUsed]
 
@@ -47,23 +46,6 @@ class QueueService()(implicit val config: ServiceConfig,
     .withMaxBufferSize(config.maxBufferSize)
     .withMaxBatchSize(config.maxBatchSize)
 
-  def  Source() {
-        val messages: Future[immutable.Seq[Message]] =
-          SqsSource(
-            queueUrl,
-            SqsSourceSettings().withCloseOnEmptyReceive(true).withWaitTime(20.millis)
-          ).runWith(Sink.seq)
-      }
-      Flow[Message].map {
-        Source
-        .single(SendMessageRequest.builder().messageBody("ATTACHMENT_SQS").build()) //supposed to publish messages
-          .via(Flow(queueUrl("")))
-          .runWith(Sink.head)
-      }
-
-
-
-
   // make sure that SQS async client is created with important parameters taken from service config
 
   /*
@@ -71,7 +53,25 @@ class QueueService()(implicit val config: ServiceConfig,
    */
   override def getMessages: Source[Message, NotUsed] = SqsSource(config.sqsTopicArn, sourceSettings)
 
-  override def parseMessages: Flow[Message, AttachmentInfo, NotUsed] = Flow.fromFunction((m: Message) => AttachmentInfo(m.messageId(), ""))
+  override def parseMessages: Flow[Message, AttachmentInfo, NotUsed] = Flow[Message].map { message =>
+    import uk.gov.hmrc.nonrep.attachment.utils.JSONUtils
+
+    Try {
+      val message = jsonStringToMap(json)
+      message.get("Records") match {
+        case Some(records: List[Any]) =>
+          val s3 = records.map(_.asInstanceOf[Map[String, Any]]).map(_ ("s3").asInstanceOf[Map[String, Any]])
+          val keys = s3.map(_ ("object").asInstanceOf[Map[String, Any]]).map(_ ("key").toString())
+          val buckets = s3.map(_ ("bucket").asInstanceOf[Map[String, Any]]).map(_ ("name").toString())
+          Some(buckets.zip(keys).map {
+            case (bucket, key) => Flow(message, bucket, key.s3)
+          })
+        case _ => None
+      }
+    }.fold(_ => None, f => f)
+    //possibly here you'll have parsing message.body as Json
+    AttachmentInfo(message.messageId(), /* here you have to extract s3 object key from message body*/)
+  } ((m: Message) => AttachmentInfo(m.messageId(), ""))
     .withAttributes(ActorAttributes.supervisionStrategy(supervisionStrategy))
 
   override def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed] = Flow.fromFunction((_: AttachmentInfo) => true)

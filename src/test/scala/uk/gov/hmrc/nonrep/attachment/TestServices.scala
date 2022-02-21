@@ -32,6 +32,8 @@ object TestServices {
   val sampleAttachment: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource("738bcba6-7f9e-11ec-8768-3f8498104f38.zip").getFile).toPath)
 
+  val queueUrl = "https://sqs.eu-west-2.amazonaws.com/20304005294/MyQueue"
+
   val testApplicationSink = TestSink.probe[EitherErr[AttachmentContent]](typedSystem.classicSystem)
 
   object success {
