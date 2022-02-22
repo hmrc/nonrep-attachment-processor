@@ -23,8 +23,6 @@ import scala.util.Try
  */
 
 trait Queue {
-  self: JSONUtils =>
-
   def getMessages:Source[Message, NotUsed]
 
   def parseMessages: Flow[Message, AttachmentInfo, NotUsed]
@@ -54,24 +52,22 @@ class QueueService()(implicit val config: ServiceConfig,
   override def getMessages: Source[Message, NotUsed] = SqsSource(config.sqsTopicArn, sourceSettings)
 
   override def parseMessages: Flow[Message, AttachmentInfo, NotUsed] = Flow[Message].map { message =>
-    import uk.gov.hmrc.nonrep.attachment.utils.JSONUtils
-
     Try {
       val message = jsonStringToMap(json)
-      message.get("Records") match {
+      m.get("Records") match {
         case Some(records: List[Any]) =>
           val s3 = records.map(_.asInstanceOf[Map[String, Any]]).map(_ ("s3").asInstanceOf[Map[String, Any]])
           val keys = s3.map(_ ("object").asInstanceOf[Map[String, Any]]).map(_ ("key").toString())
           val buckets = s3.map(_ ("bucket").asInstanceOf[Map[String, Any]]).map(_ ("name").toString())
           Some(buckets.zip(keys).map {
-            case (bucket, key) => Flow(message, bucket, key.s3)
+            case (bucket, key) => Flow(AttachmentInfo(m.messageId(), "s3"))
           })
         case _ => None
       }
     }.fold(_ => None, f => f)
     //possibly here you'll have parsing message.body as Json
-    AttachmentInfo(message.messageId(), /* here you have to extract s3 object key from message body*/)
-  } ((m: Message) => AttachmentInfo(m.messageId(), ""))
+    AttachmentInfo(message.messageId(),"key"/* here you have to extract s3 object key from message body*/)
+  } ((m: Message) => AttachmentInfo(m.messageId(), "s3"))
     .withAttributes(ActorAttributes.supervisionStrategy(supervisionStrategy))
 
   override def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed] = Flow.fromFunction((_: AttachmentInfo) => true)
