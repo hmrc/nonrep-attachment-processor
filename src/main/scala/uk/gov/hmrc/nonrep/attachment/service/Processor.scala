@@ -40,9 +40,9 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentContent]
 
   override def zip: Zipper = new ZipperService()
 
-  val messages: Source[Message, NotUsed] = queue.getMessages
+  val messages: Source[Message, NotUsed] = queue.readQueueMessages
 
-  val parsing: Flow[Message, AttachmentInfo, NotUsed] = queue.parseMessages
+  val parsing: Flow[Message, AttachmentInfo, NotUsed] = queue.parseSQSMessages
 
   val downloading: Flow[AttachmentInfo, EitherErr[AttachmentContent], NotUsed] = storage.downloadAttachment()
 

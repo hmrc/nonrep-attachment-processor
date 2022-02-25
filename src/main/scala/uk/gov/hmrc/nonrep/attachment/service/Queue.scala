@@ -1,9 +1,11 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
+import akka.NotUsed
+import akka.stream.scaladsl.{Flow, Source}
 import software.amazon.awssdk.regions.Region.EU_WEST_2
 import software.amazon.awssdk.services.sqs.SqsClient
-import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, ReceiveMessageRequest}
+import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, Message, ReceiveMessageRequest}
 import uk.gov.hmrc.nonrep.attachment
 import uk.gov.hmrc.nonrep.attachment.model.{ProcessingBundle, SQSMessage}
 import uk.gov.hmrc.nonrep.attachment.utils.JSONUtils
@@ -18,9 +20,15 @@ trait Queue {
 
   def sqsDeleteClient: SqsClient
 
+  def readQueueMessages: Source[Message, NotUsed]
+
+  def parseSQSMessages: Flow[Message, AttachmentInfo, NotUsed]
+
+  def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed]
+
   class QueueService extends Queue {
 
-    override def readQueue: ReadQueueMessages = (sqs, limit) =>
+    override def readQueueMessages: ReadQueueMessages = (sqs, limit) =>
       Try {
         val response =
           sqsReadClient.receiveMessage(ReceiveMessageRequest.builder().queueUrl(sqs).maxNumberOfMessages(limit).build())

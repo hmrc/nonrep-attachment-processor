@@ -47,6 +47,8 @@ class ServiceConfig(val servicePort: Int = 8000) {
     appName: $appName
     port: $servicePort
     sqs: $sqs
+    sqsReadingRate: $sqsReadingRate
+    processingLimit: $processingLimit
     env: $env
     attachmentsBucket: $attachmentsBucket
     configFile: ${config.toString}"""
