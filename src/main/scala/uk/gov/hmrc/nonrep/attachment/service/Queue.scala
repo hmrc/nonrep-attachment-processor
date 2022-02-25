@@ -54,13 +54,13 @@ class QueueService()(implicit val config: ServiceConfig,
   override def parseMessages: Flow[Message, AttachmentInfo, NotUsed] = Flow[Message].map { message =>
     Try {
       val message = jsonStringToMap(json)
-      m.get("Records") match {
+      message.get("Records") match {
         case Some(records: List[Any]) =>
           val s3 = records.map(_.asInstanceOf[Map[String, Any]]).map(_ ("s3").asInstanceOf[Map[String, Any]])
           val keys = s3.map(_ ("object").asInstanceOf[Map[String, Any]]).map(_ ("key").toString())
           val buckets = s3.map(_ ("bucket").asInstanceOf[Map[String, Any]]).map(_ ("name").toString())
           Some(buckets.zip(keys).map {
-            case (bucket, key) => Flow(AttachmentInfo(m.messageId(), "s3"))
+            case(_, _) => Flow(AttachmentInfo(message,(),"s3"))
           })
         case _ => None
       }
