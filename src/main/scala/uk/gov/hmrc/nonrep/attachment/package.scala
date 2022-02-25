@@ -1,6 +1,7 @@
 package uk.gov.hmrc.nonrep
 
 import akka.util.ByteString
+import uk.gov.hmrc.nonrep.attachment.model.{ProcessingBundle, SQSMessage}
 
 package object attachment {
 
@@ -18,9 +19,11 @@ package object attachment {
 
   case class ClientData(businessId: String, notableEvent: String, retentionPeriod: Int)
 
-  type EitherErr[T] = Either[ErrorMessage, T]
-
   case class ErrorMessage(message: String, severity: Severity = ERROR)
+  type EitherErr[T] = Either[ErrorMessage, T]
+  type ReadQueueMessages = (String, Int) => EitherErr[List[SQSMessage]]
+  type DeleteMessageFromQueue = (String, String) => EitherErr[String]
+  type SQSMessageParser = (String, String) => Option[List[ProcessingBundle]]
 
   case class AttachmentInfo(message: String, key: String)
 
