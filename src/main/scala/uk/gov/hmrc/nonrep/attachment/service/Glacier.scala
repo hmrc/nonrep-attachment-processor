@@ -122,11 +122,14 @@ object ChecksumUtils {
 
   @tailrec
   private def sha256TreeHash(sha256Hashes: Seq[Array[Byte]]): Array[Byte] =
-  /*
-   * Consumes a sequence of SHA 256 hashes.
-   * For the first call in the recursive chain, each hash can be considered as a leaf node of a merkle tree.
-   * We don't need the whole merkle tree structure, simply the hashed value held in the root node.
-   */
+    /*
+     * Consumes a sequence of SHA 256 hashes to produce a single concatenated hash.
+     * One way to do this would be to create a merkle tree structure.
+     * A merkle tree is a binary tree where each branch node contains the concatenation of the hash of its children.
+     * We don't need the whole merkle tree structure, simply the hash value held in the root node.
+     * For the first call in the recursive chain, each hash in the sequence is equivalent to a leaf node of a merkle tree.
+     * Each recursive step moves us up the implied tree towards the root node.
+     */
     if (sha256Hashes.tail.isEmpty) {
       // If there is only a single hash then this is the root hash of the merkle tree so we use it
       sha256Hashes.head
