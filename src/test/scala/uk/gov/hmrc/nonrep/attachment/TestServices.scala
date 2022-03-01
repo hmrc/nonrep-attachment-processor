@@ -52,9 +52,9 @@ object TestServices {
     For queue service - this may be considered an interim solution
      */
     val queueService: Queue = new Queue() {
-      override def getMessages: Source[Message, NotUsed] = Source.single(Message.builder().messageId(UUID.randomUUID().toString).build())
+      override def readQueueMessages: Source[Message, NotUsed] = Source.single(Message.builder().messageId(UUID.randomUUID().toString).build())
 
-      override def parseMessages: Flow[Message, AttachmentInfo, NotUsed] = Flow[Message].map {
+      override def parseSQSMessage: Flow[Message, AttachmentInfo, NotUsed] = Flow[Message].map {
         message => AttachmentInfo(message.messageId(), testAttachmentId)
       }
 
