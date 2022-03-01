@@ -19,7 +19,9 @@ class NonrepMicroservice(routes: Routes)(implicit val system: ActorSystem[_], co
 
   import system.executionContext
 
-  val serverBinding = Http().newServerAt("0.0.0.0", config.port).bind(routes.serviceRoutes)
+  val serverBinding: Future[Http.ServerBinding] =
+    Http().newServerAt("0.0.0.0", config.port).bind(routes.serviceRoutes)
+
   serverBinding.onComplete {
     case Success(binding) =>
       val address = binding.localAddress
@@ -49,15 +51,16 @@ object Main {
       Behaviors.empty
     }
 
-    implicit val system = ActorSystem[Nothing](rootBehavior, s"NrsServer-${config.appName}")
+    implicit val system: ActorSystem[Nothing] = ActorSystem[Nothing](rootBehavior, s"NrsServer-${config.appName}")
 
-    val applicationSink: Sink[EitherErr[AttachmentContent], Future[Done]] = Sink.foreach[EitherErr[AttachmentContent]] {
+    val applicationSink: Sink[EitherErr[ArchivedAttachmentContent], Future[Done]] = Sink.foreach[EitherErr[ArchivedAttachmentContent]] {
       _.fold(
         {
           case ErrorMessage(message, WARN) => system.log.warn(message)
           case ErrorMessage(message, ERROR) => system.log.error(message)
         },
-        attachment => system.log.info(s"Successful processing of attachment ${attachment.info.key}")
+        uploadedAttachmentContent =>
+          system.log.info(s"Successful processing of attachment ${uploadedAttachmentContent.attachmentContent.info.key}")
       )
     }
     //TODO: enable method run after the implementation is complete

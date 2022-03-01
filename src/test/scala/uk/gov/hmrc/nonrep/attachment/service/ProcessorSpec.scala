@@ -1,7 +1,7 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import akka.util.ByteString
+import akka.stream.testkit.TestSubscriber
 
 class ProcessorSpec extends BaseSpec {
 
@@ -10,26 +10,22 @@ class ProcessorSpec extends BaseSpec {
   "attachments processor for happy path" should {
     import TestServices.success._
 
-    val processor = new ProcessorService(testApplicationSink) {
-      override def storage: Storage = storageService
+    val processor: ProcessorService[TestSubscriber.Probe[EitherErr[ArchivedAttachmentContent]]] =
+      new ProcessorService(testApplicationSink) {
+        override def storage: Storage = storageService
 
-      override def queue: Queue = queueService
+        override def queue: Queue = queueService
 
-      override def sign: Sign = signService
+        override def sign: Sign = signService
+
+        override def glacier: Glacier = glacierService
     }
 
     "process attachments" in {
-      val file = ByteString(sampleAttachment)
+      val result = processor.execute.run().request(1).expectNext().toOption.get
 
-      /*
-      This test will change with every new processing step added
-       */
-      val result = processor.execute.run()
-        .request(1)
-        .expectNext()
-
-      result.isRight shouldBe true
-      result.toOption.get.info.key shouldBe testAttachmentId
+      result.attachmentContent.info.key shouldBe testAttachmentId
+      result.archiveId shouldBe archiveId
     }
   }
 
@@ -68,6 +64,5 @@ class ProcessorSpec extends BaseSpec {
       result.left.toOption.get.severity shouldBe WARN
       result.left.toOption.get.message shouldBe s"Response status 500 Internal Server Error from signatures service ${config.signaturesServiceHost}"
     }
-
   }
 }

@@ -1,28 +1,29 @@
 package uk.gov.hmrc.nonrep.attachment
 
-import java.io.File
-import java.nio.file.Files
-import java.util.UUID
-
 import akka.NotUsed
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.{InternalServerError, OK}
 import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, ResponseEntity}
 import akka.stream.alpakka.s3.ObjectMetadata
-import akka.stream.scaladsl.{Flow, Source}
+import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.stream.testkit.TestSubscriber
 import akka.stream.testkit.scaladsl.TestSink
 import akka.util.ByteString
+import software.amazon.awssdk.services.glacier.model.UploadArchiveResponse
 import software.amazon.awssdk.services.sqs.model.Message
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import uk.gov.hmrc.nonrep.attachment.service._
 
+import java.io.File
+import java.nio.file.Files
+import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 object TestServices {
 
-  lazy val testKit = ActorTestKit()
+  lazy val testKit: ActorTestKit = ActorTestKit()
 
   implicit val typedSystem: ActorSystem[_] = testKit.internalSystem
   implicit val ec: ExecutionContext = typedSystem.executionContext
@@ -32,6 +33,7 @@ object TestServices {
     entity.dataBytes.runFold(ByteString(""))(_ ++ _).map(_.utf8String)
 
   val testAttachmentId = "738bcba6-7f9e-11ec-8768-3f8498104f38"
+  val archiveId = "archiveId"
   val sampleAttachmentMetadata: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(METADATA_FILE).getFile).toPath)
   val sampleAttachment: Array[Byte] =
@@ -41,7 +43,8 @@ object TestServices {
   val sampleSignedAttachmentContent: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.p7m").getFile).toPath)
 
-  val testApplicationSink = TestSink.probe[EitherErr[AttachmentContent]](typedSystem.classicSystem)
+  val testApplicationSink: Sink[EitherErr[ArchivedAttachmentContent], TestSubscriber.Probe[EitherErr[ArchivedAttachmentContent]]] =
+    TestSink.probe[EitherErr[ArchivedAttachmentContent]](typedSystem.classicSystem)
 
   object success {
     val storageService: Storage = new StorageService() {
@@ -66,6 +69,11 @@ object TestServices {
         Flow[(HttpRequest, EitherErr[ZipContent])].map {
           case (_, request) => (Try(HttpResponse(OK, entity = HttpEntity(sampleSignedAttachmentContent))), request)
         }
+    }
+
+    val glacierService: Glacier = new GlacierService() {
+      override def eventuallyArchive(content: AttachmentContent): Future[UploadArchiveResponse] =
+        Future successful UploadArchiveResponse.builder().archiveId(archiveId).build()
     }
   }
 

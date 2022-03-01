@@ -16,12 +16,12 @@ import java.util.Collections.emptyList
 import java.util.concurrent.CompletableFuture.completedFuture
 import scala.concurrent.{ExecutionContext, Future}
 
-class GlacierSpec extends BaseSpec {
+class GlacierServiceSpec extends BaseSpec {
   import TestServices._
 
   private val glacierAsyncClient = mock[GlacierAsyncClient]
 
-  private val glacier = new Glacier() {
+  private val glacierService: GlacierService = new GlacierService() {
     override val client: GlacierAsyncClient = glacierAsyncClient
   }
 
@@ -29,7 +29,7 @@ class GlacierSpec extends BaseSpec {
 
   private def future(result: Object) = new Returns(completedFuture(result))
 
-  "eventuallyUploadAttachment" should {
+  "eventuallyCreateVaultIfNecessaryAndUpload" should {
     val archiveId = "archiveId"
     val content = AttachmentContent(AttachmentInfo("messageId", testAttachmentId), ByteString(sampleAttachment))
 
@@ -41,12 +41,12 @@ class GlacierSpec extends BaseSpec {
         .contentLength(content.bytes.length.toLong)
         .build()
 
-    "upload an attachment to Glacier" when {
+    "archive an attachment in Glacier" when {
       "the glacier client call succeeds" in {
-        when(glacier.client.uploadArchive(ArgumentMatchers.eq(uploadArchiveRequest), any[AsyncRequestBody]()))
+        when(glacierService.client.uploadArchive(ArgumentMatchers.eq(uploadArchiveRequest), any[AsyncRequestBody]()))
           .thenAnswer(future(UploadArchiveResponse.builder().archiveId(archiveId).build))
 
-        glacier.eventuallyUploadAttachment(content).futureValue.toOption.get shouldBe archiveId
+        glacierService.eventuallyCreateVaultIfNecessaryAndArchive(content).futureValue.toOption.get shouldBe archiveId
       }
     }
 
@@ -57,7 +57,7 @@ class GlacierSpec extends BaseSpec {
             .uploadArchive(ArgumentMatchers.eq(uploadArchiveRequest), any[AsyncRequestBody]))
             .thenAnswer(future(new RuntimeException("boom!")))
 
-        glacier.eventuallyUploadAttachment(content).futureValue match {
+        glacierService.eventuallyCreateVaultIfNecessaryAndArchive(content).futureValue match {
           case Left(error) => error.message shouldBe s"Error uploading attachment $content to glacier vaultName"
           case Right(_) => fail("expected error message")
         }
@@ -66,12 +66,12 @@ class GlacierSpec extends BaseSpec {
 
     "create a glacier vault" when {
       "the vault does not exist" in {
-        val glacierWithoutVault = new Glacier() {
+        val glacierServiceWithoutVault = new GlacierService() {
           override val client: GlacierAsyncClient = glacierAsyncClient
 
           private var vaultExists = false
 
-          override def eventuallyUpload(content: AttachmentContent)(implicit executor: ExecutionContext): Future[UploadArchiveResponse] =
+          override def eventuallyArchive(content: AttachmentContent): Future[UploadArchiveResponse] =
             if (vaultExists) {
               Future successful UploadArchiveResponse.builder().archiveId(archiveId).build()
             } else {
@@ -86,7 +86,7 @@ class GlacierSpec extends BaseSpec {
             .thenAnswer(future(ListVaultsResponse.builder().vaultList(emptyList[DescribeVaultOutput]()).build()))
         when(glacierAsyncClient.createVault(any[CreateVaultRequest])).thenAnswer(future(CreateVaultRequest.builder().build()))
 
-        glacierWithoutVault.eventuallyUploadAttachment(content).futureValue.toOption.get shouldBe archiveId
+        glacierServiceWithoutVault.eventuallyCreateVaultIfNecessaryAndArchive(content).futureValue.toOption.get shouldBe archiveId
 
         verify(glacierAsyncClient.setVaultNotifications(any[SetVaultNotificationsRequest]))
       }

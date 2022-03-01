@@ -1,6 +1,11 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
+import akka.NotUsed
+import akka.actor.typed.ActorSystem
+import akka.stream.ActorAttributes
+import akka.stream.Supervision.stoppingDecider
+import akka.stream.scaladsl.Flow
 import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.services.glacier.GlacierAsyncClient
@@ -14,16 +19,47 @@ import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 
-class Glacier() {
+trait Glacier {
+  def archive: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachmentContent], NotUsed]
+}
+
+class GlacierService()(implicit val system: ActorSystem[_]) extends Glacier {
   private [service] val client: GlacierAsyncClient =
     GlacierAsyncClient.builder().httpClient(NettyNioAsyncHttpClient.create()).build()
+  //TODO: is this the best httpClient? We need to specify because there are multiple options.
 
-  // to do - what are the correct values?
+  //TODO: what are the correct values?
   private val vaultName = "vaultName"
   private val snsTopic = "snsTopic"
   private val event = "event"
 
-  protected def eventuallyUpload(content: AttachmentContent)(implicit executor: ExecutionContext): Future[UploadArchiveResponse] =
+  implicit val ec: ExecutionContext = system.executionContext
+
+  override val archive: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachmentContent], NotUsed] =
+    Flow[EitherErr[AttachmentContent]].mapAsyncUnordered(8) {
+      case Right(attachmentContent) =>
+        eventuallyCreateVaultIfNecessaryAndArchive(attachmentContent).map { attachmentIdOrError: EitherErr[String] =>
+          attachmentIdOrError.map(attachmentId => ArchivedAttachmentContent(attachmentId, attachmentContent))
+        }
+      case Left(e) =>
+        Future successful Left(e)
+    }.withAttributes(ActorAttributes.supervisionStrategy(stoppingDecider))
+  //TODO: determine whether restartingDecider or stoppingDecider is more appropriate for keeping stream alive
+
+  private[service] def eventuallyCreateVaultIfNecessaryAndArchive(content: AttachmentContent): Future[EitherErr[String]] =
+    eventuallyArchive(content).map{ uploadResponse =>
+      Right(uploadResponse.archiveId())
+    }.recoverWith[EitherErr[String]] {
+      case _: ResourceNotFoundException =>
+        for {
+          _ <- eventuallyCreateVaultIfItDoesNotExist()
+          uploadResponse <- eventuallyCreateVaultIfNecessaryAndArchive(content)
+        } yield uploadResponse
+      case _ =>
+        Future successful Left(ErrorMessage(s"Error uploading attachment $content to glacier $vaultName"))
+    }
+
+  private[service] def eventuallyArchive(content: AttachmentContent): Future[UploadArchiveResponse] =
     client
       .uploadArchive(
         UploadArchiveRequest
@@ -35,30 +71,16 @@ class Glacier() {
         AsyncRequestBody.fromBytes(content.bytes))
       .toScala
 
-  def eventuallyUploadAttachment(content: AttachmentContent)(implicit executor: ExecutionContext): Future[EitherErr[String]] =
-    eventuallyUpload(content).map{ uploadResponse =>
-      Right(uploadResponse.archiveId())
-    }.recoverWith[EitherErr[String]] {
-      case _: ResourceNotFoundException =>
-        for {
-          _ <- eventuallyCreateVaultIfItDoesNotExist()
-          uploadResponse <- eventuallyUploadAttachment(content)
-        } yield uploadResponse
-      case _ =>
-        Future successful Left(ErrorMessage(s"Error uploading attachment $content to glacier $vaultName"))
-    }
-
-  private[service] def eventuallyCreateVaultIfItDoesNotExist()(implicit executor: ExecutionContext) = {
-    def vaultEventuallyExists()(implicit executor: ExecutionContext) =
+  private[service] def eventuallyCreateVaultIfItDoesNotExist() = {
+    def vaultEventuallyExists() =
       client.listVaults(ListVaultsRequest.builder().build()).toScala.map { listVaultsResponse =>
         listVaultsResponse.vaultList().asScala.toSeq.exists(_.vaultName == vaultName)
       }
 
-    def eventuallyCreateVault()(implicit executor: ExecutionContext) =
+    def eventuallyCreateVault() =
       client.createVault(CreateVaultRequest.builder().vaultName(vaultName).build()).toScala
 
-    // TODO: what topic and event should we use?
-    def eventuallySetVaultNotifications()(implicit executor: ExecutionContext) =
+    def eventuallySetVaultNotifications() =
       client.setVaultNotifications(
         SetVaultNotificationsRequest
           .builder()
