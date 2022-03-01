@@ -1,17 +1,15 @@
 package uk.gov.hmrc.nonrep.attachment
 package server
 
-import java.net.URI
-
 import com.typesafe.config.{Config, ConfigFactory}
 
-import scala.jdk.CollectionConverters._
+import java.net.URI
 
 class ServiceConfig(val servicePort: Int = 8000) {
 
   val appName = "attachment-processor"
-  val port: Int = sys.env.get("REST_PORT").map(_.toInt).getOrElse(servicePort)
-  val env: String = sys.env.get("ENV").getOrElse("local")
+  val port: Int = sys.env.get("REST_PORT").fold(servicePort)(_.toInt)
+  val env: String = sys.env.getOrElse("ENV", "local")
 
   val attachmentsBucket = s"$env-nonrep-attachment-data"
 
