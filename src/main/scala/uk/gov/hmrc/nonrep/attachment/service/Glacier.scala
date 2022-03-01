@@ -47,21 +47,7 @@ class GlacierService()(implicit val system: ActorSystem[_]) extends Glacier {
   //TODO: determine whether restartingDecider or stoppingDecider is more appropriate for keeping stream alive
 
   private[service] def eventuallyCreateVaultIfNecessaryAndArchive(content: AttachmentContent): Future[EitherErr[String]] =
-    eventuallyArchive(content).map{ uploadResponse =>
-      Right(uploadResponse.archiveId())
-    }.recoverWith[EitherErr[String]] {
-      case _: ResourceNotFoundException =>
-        for {
-          _ <- eventuallyCreateVaultIfItDoesNotExist()
-          uploadResponse <- eventuallyCreateVaultIfNecessaryAndArchive(content)
-        } yield uploadResponse
-      case _ =>
-        Future successful Left(ErrorMessage(s"Error uploading attachment $content to glacier $vaultName"))
-    }
-
-  private[service] def eventuallyArchive(content: AttachmentContent): Future[UploadArchiveResponse] =
-    client
-      .uploadArchive(
+    eventuallyArchive(
         UploadArchiveRequest
           .builder()
           .vaultName(vaultName)
@@ -69,7 +55,20 @@ class GlacierService()(implicit val system: ActorSystem[_]) extends Glacier {
           .contentLength(content.bytes.length.toLong)
           .build(),
         AsyncRequestBody.fromBytes(content.bytes))
-      .toScala
+      .map(uploadResponse =>Right(uploadResponse.archiveId()))
+      .recoverWith[EitherErr[String]] {
+        case _: ResourceNotFoundException =>
+          for {
+            _ <- eventuallyCreateVaultIfItDoesNotExist()
+            uploadResponse <- eventuallyCreateVaultIfNecessaryAndArchive(content)
+          } yield uploadResponse
+        case _ =>
+          Future successful Left(ErrorMessage(s"Error uploading attachment $content to glacier $vaultName"))
+    }
+
+  private[service] def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
+                                         asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
+    client.uploadArchive(uploadArchiveRequest, asyncRequestBody).toScala
 
   private[service] def eventuallyCreateVaultIfItDoesNotExist() = {
     def vaultEventuallyExists() =

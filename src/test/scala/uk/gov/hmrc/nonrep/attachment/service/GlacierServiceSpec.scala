@@ -71,7 +71,8 @@ class GlacierServiceSpec extends BaseSpec {
 
           private var vaultExists = false
 
-          override def eventuallyArchive(content: AttachmentContent): Future[UploadArchiveResponse] =
+          override def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
+                                         asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
             if (vaultExists) {
               Future successful UploadArchiveResponse.builder().archiveId(archiveId).build()
             } else {

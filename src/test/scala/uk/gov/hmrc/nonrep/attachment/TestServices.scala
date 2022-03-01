@@ -10,7 +10,8 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.testkit.TestSubscriber
 import akka.stream.testkit.scaladsl.TestSink
 import akka.util.ByteString
-import software.amazon.awssdk.services.glacier.model.UploadArchiveResponse
+import software.amazon.awssdk.core.async.AsyncRequestBody
+import software.amazon.awssdk.services.glacier.model.{UploadArchiveRequest, UploadArchiveResponse}
 import software.amazon.awssdk.services.sqs.model.Message
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import uk.gov.hmrc.nonrep.attachment.service._
@@ -72,7 +73,8 @@ object TestServices {
     }
 
     val glacierService: Glacier = new GlacierService() {
-      override def eventuallyArchive(content: AttachmentContent): Future[UploadArchiveResponse] =
+      override def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
+                                     asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
         Future successful UploadArchiveResponse.builder().archiveId(archiveId).build()
     }
   }
