@@ -12,13 +12,13 @@ class ProcessorSpec extends BaseSpec {
 
     val processor: ProcessorService[TestSubscriber.Probe[EitherErr[ArchivedAttachmentContent]]] =
       new ProcessorService(testApplicationSink) {
-        override def storage: Storage = storageService
+        override lazy val storage: Storage = storageService
 
-        override def queue: Queue = queueService
+        override lazy val queue: Queue = queueService
 
-        override def sign: Sign = signService
+        override lazy val sign: Sign = signService
 
-        override def glacier: Glacier = glacierService
+        override lazy val glacier: Glacier = glacierService
     }
 
     "process attachments" in {
@@ -33,9 +33,9 @@ class ProcessorSpec extends BaseSpec {
 
     "report a warning when an attachment cannot be downloaded from s3" in {
       val processor = new ProcessorService(testApplicationSink) {
-        override def storage: Storage = failure.storageService
+        override lazy val storage: Storage = failure.storageService
 
-        override def queue: Queue = success.queueService
+        override lazy val queue: Queue = success.queueService
       }
 
       val result = processor.execute.run()
@@ -49,11 +49,11 @@ class ProcessorSpec extends BaseSpec {
 
     "report a warning for signing failure" in {
       val processor = new ProcessorService(testApplicationSink) {
-        override def storage: Storage = success.storageService
+        override lazy val storage: Storage = success.storageService
 
-        override def queue: Queue = success.queueService
+        override lazy val queue: Queue = success.queueService
 
-        override def sign: Sign = failure.signService
+        override lazy val sign: Sign = failure.signService
       }
 
       val result = processor.execute.run()
@@ -63,6 +63,21 @@ class ProcessorSpec extends BaseSpec {
       result.isLeft shouldBe true
       result.left.toOption.get.severity shouldBe WARN
       result.left.toOption.get.message shouldBe s"Response status 500 Internal Server Error from signatures service ${config.signaturesServiceHost}"
+    }
+
+    "report an error for a glacier failure" in {
+      val processor = new ProcessorService(testApplicationSink) {
+        override lazy val storage: Storage = success.storageService
+        override lazy val queue: Queue = success.queueService
+        override lazy val sign: Sign = success.signService
+        override lazy val glacier: Glacier = failure.glacierService
+      }
+
+      val result = processor.execute.run().request(1).expectNext()
+
+      result.isLeft shouldBe true
+      result.left.toOption.get.severity shouldBe ERROR
+      result.left.toOption.get.message.startsWith("Error uploading attachment") shouldBe true
     }
   }
 }

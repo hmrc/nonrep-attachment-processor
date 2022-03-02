@@ -90,7 +90,11 @@ object TestServices {
           case (_, request) => (Try(HttpResponse(InternalServerError)), request)
         }
     }
-
+    val glacierService: GlacierService = new GlacierService() {
+      override def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
+                                     asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
+        Future failed new RuntimeException("boom!")
+    }
   }
 
 }

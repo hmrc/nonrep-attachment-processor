@@ -32,15 +32,15 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[ArchivedAttachment
                          (implicit val system: ActorSystem[_], config: ServiceConfig)
   extends Processor[A] {
 
-  override def storage: Storage = new StorageService()
+  override lazy val storage: Storage = new StorageService()
 
-  override def queue: Queue = new QueueService()
+  override lazy val queue: Queue = new QueueService()
 
-  override def sign: Sign = new SignService()
+  override lazy val sign: Sign = new SignService()
 
-  override def zip: Zipper = new ZipperService()
+  override lazy val zip: Zipper = new ZipperService()
 
-  override def glacier: Glacier = new GlacierService()
+  override lazy val glacier: Glacier = new GlacierService()
 
   val messages: Source[Message, NotUsed] = queue.getMessages
 

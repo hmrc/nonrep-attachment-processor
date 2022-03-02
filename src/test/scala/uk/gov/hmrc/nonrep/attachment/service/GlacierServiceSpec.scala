@@ -22,7 +22,7 @@ class GlacierServiceSpec extends BaseSpec {
   private val glacierAsyncClient = mock[GlacierAsyncClient]
 
   private val glacierService: GlacierService = new GlacierService() {
-    override val client: GlacierAsyncClient = glacierAsyncClient
+    override lazy val client: GlacierAsyncClient = glacierAsyncClient
   }
 
   private implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
@@ -67,7 +67,7 @@ class GlacierServiceSpec extends BaseSpec {
     "create a glacier vault" when {
       "the vault does not exist" in {
         val glacierServiceWithoutVault = new GlacierService() {
-          override val client: GlacierAsyncClient = glacierAsyncClient
+          override lazy val client: GlacierAsyncClient = glacierAsyncClient
 
           private var vaultExists = false
 

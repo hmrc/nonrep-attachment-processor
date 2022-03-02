@@ -7,7 +7,6 @@ import akka.stream.ActorAttributes
 import akka.stream.Supervision.stoppingDecider
 import akka.stream.scaladsl.Flow
 import software.amazon.awssdk.core.async.AsyncRequestBody
-import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.services.glacier.GlacierAsyncClient
 import software.amazon.awssdk.services.glacier.model._
 import uk.gov.hmrc.nonrep.attachment.service.ChecksumUtils.sha256TreeHashHex
@@ -20,13 +19,11 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 
 trait Glacier {
-  def archive: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachmentContent], NotUsed]
+  val archive: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachmentContent], NotUsed]
 }
 
 class GlacierService()(implicit val system: ActorSystem[_]) extends Glacier {
-  private [service] val client: GlacierAsyncClient =
-    GlacierAsyncClient.builder().httpClient(NettyNioAsyncHttpClient.create()).build()
-  //TODO: is this the best httpClient? We need to specify because there are multiple options.
+  private [service] lazy val client: GlacierAsyncClient = GlacierAsyncClient.builder().build()
 
   //TODO: what are the correct values?
   private val vaultName = "vaultName"
@@ -45,6 +42,11 @@ class GlacierService()(implicit val system: ActorSystem[_]) extends Glacier {
         Future successful Left(e)
     }.withAttributes(ActorAttributes.supervisionStrategy(stoppingDecider))
   //TODO: determine whether restartingDecider or stoppingDecider is more appropriate for keeping stream alive
+  //presumably this would depend on the type of error we've encountered
+  //e.g. message level vs resource (glacier/network) errors, and is it transient or persistent?
+  //there is also backoffWithRetry but that too can be very wasteful given a general error e.g. network outage.
+  //see discussion here for example
+  //https://blog.colinbreck.com/backoff-and-retry-error-handling-for-akka-streams/
 
   private[service] def eventuallyCreateVaultIfNecessaryAndArchive(content: AttachmentContent): Future[EitherErr[String]] =
     eventuallyArchive(
