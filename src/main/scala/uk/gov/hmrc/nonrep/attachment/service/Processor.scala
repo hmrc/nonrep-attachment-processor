@@ -40,7 +40,7 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[ArchivedAttachment
 
   override lazy val zip: Zipper = new ZipperService()
 
-  override lazy val glacier: Glacier = new GlacierService()
+  override lazy val glacier: Glacier = new GlacierService(config.glacierNotificationsSnsTopicArn, config.env)
 
   val messages: Source[Message, NotUsed] = queue.getMessages
 

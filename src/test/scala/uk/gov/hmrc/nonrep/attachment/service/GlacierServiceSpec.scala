@@ -1,6 +1,7 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
+import akka.http.javadsl.model.DateTime.now
 import akka.util.ByteString
 import org.mockito.ArgumentMatchers
 import org.mockito.ArgumentMatchers.any
@@ -21,7 +22,9 @@ class GlacierServiceSpec extends BaseSpec {
 
   private val glacierAsyncClient = mock[GlacierAsyncClient]
 
-  private val glacierService: GlacierService = new GlacierService() {
+  private val glacierService: GlacierService = glacierService("local")
+
+  private def glacierService(environment: String) = new GlacierService("", environment) {
     override lazy val client: GlacierAsyncClient = glacierAsyncClient
   }
 
@@ -31,12 +34,13 @@ class GlacierServiceSpec extends BaseSpec {
 
   "eventuallyCreateVaultIfNecessaryAndUpload" should {
     val archiveId = "archiveId"
+    val expectedVaultName = s"local-vat-return-${now().year()}"
     val content = AttachmentContent(AttachmentInfo("messageId", testAttachmentId), ByteString(sampleAttachment))
 
     val uploadArchiveRequest =
       UploadArchiveRequest
         .builder()
-        .vaultName("vaultName")
+        .vaultName(expectedVaultName)
         .checksum(sha256TreeHashHex(content.bytes))
         .contentLength(content.bytes.length.toLong)
         .build()
@@ -58,15 +62,15 @@ class GlacierServiceSpec extends BaseSpec {
             .thenAnswer(future(new RuntimeException("boom!")))
 
         glacierService.eventuallyCreateVaultIfNecessaryAndArchive(content).futureValue match {
-          case Left(error) => error.message shouldBe s"Error uploading attachment $content to glacier vaultName"
-          case Right(_) => fail("expected error message")
+          case Left(error) => error.message shouldBe s"Error uploading attachment $content to glacier $expectedVaultName"
+          case Right(_) => fail("an error was expected")
         }
       }
     }
 
     "create a glacier vault" when {
       "the vault does not exist" in {
-        val glacierServiceWithoutVault = new GlacierService() {
+        val glacierServiceWithoutVault = new GlacierService("glacierNotificationsSnsTopicArn", "local") {
           override lazy val client: GlacierAsyncClient = glacierAsyncClient
 
           private var vaultExists = false
@@ -90,6 +94,34 @@ class GlacierServiceSpec extends BaseSpec {
         glacierServiceWithoutVault.eventuallyCreateVaultIfNecessaryAndArchive(content).futureValue.toOption.get shouldBe archiveId
 
         verify(glacierAsyncClient.setVaultNotifications(any[SetVaultNotificationsRequest]))
+      }
+    }
+  }
+
+  "vaultName" should {
+    "return a vault name without a prefix" when {
+      val vaultNameWithNoPrefix = s"vat-return-${now().year()}"
+
+      "running in dev" in {
+        glacierService("dev").vaultName shouldBe vaultNameWithNoPrefix
+      }
+
+      "running in qa" in {
+        glacierService("qa").vaultName shouldBe vaultNameWithNoPrefix
+      }
+
+      "running in staging" in {
+        glacierService("staging").vaultName shouldBe vaultNameWithNoPrefix
+      }
+
+      "running in production" in {
+        glacierService("production").vaultName shouldBe vaultNameWithNoPrefix
+      }
+    }
+
+    "return a vault name with the environment name as prefix" when {
+      "running in another environment" in {
+        glacierService("sandbox1").vaultName shouldBe s"sandbox1-vat-return-${now().year()}"
       }
     }
   }

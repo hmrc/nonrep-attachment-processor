@@ -72,7 +72,7 @@ object TestServices {
         }
     }
 
-    val glacierService: Glacier = new GlacierService() {
+    val glacierService: Glacier = new GlacierService("", "") {
       override def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
                                      asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
         Future successful UploadArchiveResponse.builder().archiveId(archiveId).build()
@@ -90,7 +90,7 @@ object TestServices {
           case (_, request) => (Try(HttpResponse(InternalServerError)), request)
         }
     }
-    val glacierService: GlacierService = new GlacierService() {
+    val glacierService: GlacierService = new GlacierService("", "") {
       override def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
                                      asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
         Future failed new RuntimeException("boom!")

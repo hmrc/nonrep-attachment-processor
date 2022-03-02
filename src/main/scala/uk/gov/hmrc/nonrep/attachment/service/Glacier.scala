@@ -13,6 +13,7 @@ import uk.gov.hmrc.nonrep.attachment.service.ChecksumUtils.sha256TreeHashHex
 
 import java.lang.Integer.toHexString
 import java.security.MessageDigest.getInstance
+import java.time.LocalDate.now
 import scala.annotation.tailrec
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ExecutionContext, Future}
@@ -22,13 +23,14 @@ trait Glacier {
   val archive: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachmentContent], NotUsed]
 }
 
-class GlacierService()(implicit val system: ActorSystem[_]) extends Glacier {
+class GlacierService(glacierNotificationsSnsTopicArn: String, environment: String)
+                    (implicit val system: ActorSystem[_]) extends Glacier {
+
   private [service] lazy val client: GlacierAsyncClient = GlacierAsyncClient.builder().build()
 
-  //TODO: what are the correct values?
-  private val vaultName = "vaultName"
-  private val snsTopic = "snsTopic"
-  private val event = "event"
+  private val environmentalVaultNamePrefix =
+    if (Set("dev", "qa", "staging", "production").contains(environment)) ""
+    else s"$environment-"
 
   implicit val ec: ExecutionContext = system.executionContext
 
@@ -72,6 +74,9 @@ class GlacierService()(implicit val system: ActorSystem[_]) extends Glacier {
                                          asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
     client.uploadArchive(uploadArchiveRequest, asyncRequestBody).toScala
 
+  //TODO: this functionality must be kept in sync with sign service.
+  // This includes the configured value of glacierNotificationsSnsTopicArn and the event name "ArchiveRetrievalCompleted".
+  // As an alternative consider adding a microservice to handle interactions with Glacier and deferring to that.
   private[service] def eventuallyCreateVaultIfItDoesNotExist() = {
     def vaultEventuallyExists() =
       client.listVaults(ListVaultsRequest.builder().build()).toScala.map { listVaultsResponse =>
@@ -86,7 +91,8 @@ class GlacierService()(implicit val system: ActorSystem[_]) extends Glacier {
         SetVaultNotificationsRequest
           .builder()
           .vaultName(vaultName)
-          .vaultNotificationConfig(VaultNotificationConfig.builder().snsTopic(snsTopic).events(event).build)
+          .vaultNotificationConfig(
+            VaultNotificationConfig.builder().snsTopic(glacierNotificationsSnsTopicArn).events("ArchiveRetrievalCompleted").build)
           .build
       ).toScala
 
@@ -101,6 +107,8 @@ class GlacierService()(implicit val system: ActorSystem[_]) extends Glacier {
       case e => Left(ErrorMessage(s"Error creating glacier vault $vaultName: ${e.getMessage}"))
     }
   }
+
+  private[service] def vaultName = s"${environmentalVaultNamePrefix}vat-return-${now().getYear}"
 }
 
 object ChecksumUtils {
