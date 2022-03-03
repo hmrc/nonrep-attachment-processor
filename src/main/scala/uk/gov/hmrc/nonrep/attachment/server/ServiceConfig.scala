@@ -1,17 +1,22 @@
 package uk.gov.hmrc.nonrep.attachment
 package server
 
-import java.net.URI
-
 import com.typesafe.config.{Config, ConfigFactory}
 
-import scala.jdk.CollectionConverters._
+import java.net.URI
 
 class ServiceConfig(val servicePort: Int = 8000) {
 
   val appName = "attachment-processor"
-  val port: Int = sys.env.get("REST_PORT").map(_.toInt).getOrElse(servicePort)
-  val env: String = sys.env.get("ENV").getOrElse("local")
+  val port: Int = sys.env.get("REST_PORT").fold(servicePort)(_.toInt)
+  val env: String = sys.env.getOrElse("ENV", "local")
+  val glacierNotificationsSnsTopicArn: String = if (env == "local") "local" else glacierSNSSystemProperty
+
+  private[server] def glacierSNSSystemProperty =
+      sys.env.getOrElse(
+        "GLACIER_SNS",
+        throw new IllegalStateException(
+          "System property GLACIER_SNS is not set. This is required by the service to create a Glacier vault when necessary."))
 
   val attachmentsBucket = s"$env-nonrep-attachment-data"
 

@@ -24,7 +24,11 @@ package object attachment {
 
   case class AttachmentInfo(message: String, key: String)
 
-  case class AttachmentContent(info: AttachmentInfo, content: ByteString)
+  case class AttachmentContent(info: AttachmentInfo, content: ByteString) {
+    val bytes: Array[Byte] = content.toArray
+  }
+
+  case class ArchivedAttachment(attachmentInfo: AttachmentInfo, archiveId: String, vaultName: String)
 
   case class ZipContent(info: AttachmentInfo, files: Seq[(String, Attachment)])
 }
