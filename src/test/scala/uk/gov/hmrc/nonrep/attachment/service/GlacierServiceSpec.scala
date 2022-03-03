@@ -34,13 +34,13 @@ class GlacierServiceSpec extends BaseSpec {
 
   "eventuallyCreateVaultIfNecessaryAndUpload" should {
     val archiveId = "archiveId"
-    val expectedVaultName = s"local-vat-return-${now().year()}"
+    val vaultName = s"local-vat-return-${now().year()}"
     val content = AttachmentContent(AttachmentInfo("messageId", testAttachmentId), ByteString(sampleAttachment))
 
     val uploadArchiveRequest =
       UploadArchiveRequest
         .builder()
-        .vaultName(expectedVaultName)
+        .vaultName(vaultName)
         .checksum(sha256TreeHashHex(content.bytes))
         .contentLength(content.bytes.length.toLong)
         .build()
@@ -50,7 +50,7 @@ class GlacierServiceSpec extends BaseSpec {
         when(glacierService.client.uploadArchive(ArgumentMatchers.eq(uploadArchiveRequest), any[AsyncRequestBody]()))
           .thenAnswer(future(UploadArchiveResponse.builder().archiveId(archiveId).build))
 
-        glacierService.eventuallyCreateVaultIfNecessaryAndArchive(content).futureValue.toOption.get shouldBe archiveId
+        glacierService.eventuallyCreateVaultIfNecessaryAndArchive(content, vaultName).futureValue.toOption.get shouldBe archiveId
       }
     }
 
@@ -61,8 +61,8 @@ class GlacierServiceSpec extends BaseSpec {
             .uploadArchive(ArgumentMatchers.eq(uploadArchiveRequest), any[AsyncRequestBody]))
             .thenAnswer(future(new RuntimeException("boom!")))
 
-        glacierService.eventuallyCreateVaultIfNecessaryAndArchive(content).futureValue match {
-          case Left(error) => error.message shouldBe s"Error uploading attachment $content to glacier $expectedVaultName"
+        glacierService.eventuallyCreateVaultIfNecessaryAndArchive(content, vaultName).futureValue match {
+          case Left(error) => error.message shouldBe s"Error uploading attachment $content to glacier $vaultName"
           case Right(_) => fail("an error was expected")
         }
       }
@@ -91,37 +91,37 @@ class GlacierServiceSpec extends BaseSpec {
             .thenAnswer(future(ListVaultsResponse.builder().vaultList(emptyList[DescribeVaultOutput]()).build()))
         when(glacierAsyncClient.createVault(any[CreateVaultRequest])).thenAnswer(future(CreateVaultRequest.builder().build()))
 
-        glacierServiceWithoutVault.eventuallyCreateVaultIfNecessaryAndArchive(content).futureValue.toOption.get shouldBe archiveId
+        glacierServiceWithoutVault.eventuallyCreateVaultIfNecessaryAndArchive(content, vaultName).futureValue.toOption.get shouldBe archiveId
 
         verify(glacierAsyncClient.setVaultNotifications(any[SetVaultNotificationsRequest]))
       }
     }
   }
 
-  "vaultName" should {
+  "datedVaultName" should {
     "return a vault name without a prefix" when {
       val vaultNameWithNoPrefix = s"vat-return-${now().year()}"
 
       "running in dev" in {
-        glacierService("dev").vaultName shouldBe vaultNameWithNoPrefix
+        glacierService("dev").datedVaultName shouldBe vaultNameWithNoPrefix
       }
 
       "running in qa" in {
-        glacierService("qa").vaultName shouldBe vaultNameWithNoPrefix
+        glacierService("qa").datedVaultName shouldBe vaultNameWithNoPrefix
       }
 
       "running in staging" in {
-        glacierService("staging").vaultName shouldBe vaultNameWithNoPrefix
+        glacierService("staging").datedVaultName shouldBe vaultNameWithNoPrefix
       }
 
       "running in production" in {
-        glacierService("production").vaultName shouldBe vaultNameWithNoPrefix
+        glacierService("production").datedVaultName shouldBe vaultNameWithNoPrefix
       }
     }
 
     "return a vault name with the environment name as prefix" when {
       "running in another environment" in {
-        glacierService("sandbox1").vaultName shouldBe s"sandbox1-vat-return-${now().year()}"
+        glacierService("sandbox1").datedVaultName shouldBe s"sandbox1-vat-return-${now().year()}"
       }
     }
   }

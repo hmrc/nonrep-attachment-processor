@@ -20,15 +20,15 @@ trait Processor[A] {
 
   def glacier: Glacier
 
-  def applicationSink: Sink[EitherErr[ArchivedAttachmentContent], A]
+  def applicationSink: Sink[EitherErr[ArchivedAttachment], A]
 }
 
 object Processor {
-  def apply[A](applicationSink: Sink[EitherErr[ArchivedAttachmentContent], A])
+  def apply[A](applicationSink: Sink[EitherErr[ArchivedAttachment], A])
               (implicit system: ActorSystem[_], config: ServiceConfig) = new ProcessorService(applicationSink)
 }
 
-class ProcessorService[A](val applicationSink: Sink[EitherErr[ArchivedAttachmentContent], A])
+class ProcessorService[A](val applicationSink: Sink[EitherErr[ArchivedAttachment], A])
                          (implicit val system: ActorSystem[_], config: ServiceConfig)
   extends Processor[A] {
 
@@ -54,7 +54,7 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[ArchivedAttachment
 
   val signing: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = sign.signing()
 
-  val archiving: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachmentContent], NotUsed] = glacier.archive
+  val archiving: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacier.archive
 
   val execute: RunnableGraph[A] = fromGraph(GraphDSL.createGraph(applicationSink) {
     implicit builder =>

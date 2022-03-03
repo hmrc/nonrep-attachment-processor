@@ -44,8 +44,8 @@ object TestServices {
   val sampleSignedAttachmentContent: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.p7m").getFile).toPath)
 
-  val testApplicationSink: Sink[EitherErr[ArchivedAttachmentContent], TestSubscriber.Probe[EitherErr[ArchivedAttachmentContent]]] =
-    TestSink.probe[EitherErr[ArchivedAttachmentContent]](typedSystem.classicSystem)
+  val testApplicationSink: Sink[EitherErr[ArchivedAttachment], TestSubscriber.Probe[EitherErr[ArchivedAttachment]]] =
+    TestSink.probe[EitherErr[ArchivedAttachment]](typedSystem.classicSystem)
 
   object success {
     val storageService: Storage = new StorageService() {

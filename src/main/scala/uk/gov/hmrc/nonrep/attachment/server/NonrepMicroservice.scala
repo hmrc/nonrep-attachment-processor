@@ -53,14 +53,14 @@ object Main {
 
     implicit val system: ActorSystem[Nothing] = ActorSystem[Nothing](rootBehavior, s"NrsServer-${config.appName}")
 
-    val applicationSink: Sink[EitherErr[ArchivedAttachmentContent], Future[Done]] = Sink.foreach[EitherErr[ArchivedAttachmentContent]] {
+    val applicationSink: Sink[EitherErr[ArchivedAttachment], Future[Done]] = Sink.foreach[EitherErr[ArchivedAttachment]] {
       _.fold(
         {
           case ErrorMessage(message, WARN) => system.log.warn(message)
           case ErrorMessage(message, ERROR) => system.log.error(message)
         },
         uploadedAttachmentContent =>
-          system.log.info(s"Successful processing of attachment ${uploadedAttachmentContent.attachmentContent.info.key}")
+          system.log.info(s"Successful processing of attachment ${uploadedAttachmentContent.attachmentInfo.key}")
       )
     }
     //TODO: enable method run after the implementation is complete

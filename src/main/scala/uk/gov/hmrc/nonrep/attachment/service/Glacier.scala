@@ -20,7 +20,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters._
 
 trait Glacier {
-  val archive: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachmentContent], NotUsed]
+  val archive: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed]
 }
 
 class GlacierService(glacierNotificationsSnsTopicArn: String, environment: String)
@@ -34,11 +34,11 @@ class GlacierService(glacierNotificationsSnsTopicArn: String, environment: Strin
 
   implicit val ec: ExecutionContext = system.executionContext
 
-  override val archive: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachmentContent], NotUsed] =
+  override val archive: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] =
     Flow[EitherErr[AttachmentContent]].mapAsyncUnordered(8) {
       case Right(attachmentContent) =>
-        eventuallyCreateVaultIfNecessaryAndArchive(attachmentContent).map { attachmentIdOrError: EitherErr[String] =>
-          attachmentIdOrError.map(attachmentId => ArchivedAttachmentContent(attachmentId, attachmentContent))
+        eventuallyCreateVaultIfNecessaryAndArchive(attachmentContent, datedVaultName).map { archiveIdOrError: EitherErr[String] =>
+          archiveIdOrError.map(archiveId => ArchivedAttachment(attachmentContent.info, archiveId, datedVaultName))
         }
       case Left(e) =>
         Future successful Left(e)
@@ -50,7 +50,7 @@ class GlacierService(glacierNotificationsSnsTopicArn: String, environment: Strin
   //see discussion here for example
   //https://blog.colinbreck.com/backoff-and-retry-error-handling-for-akka-streams/
 
-  private[service] def eventuallyCreateVaultIfNecessaryAndArchive(content: AttachmentContent): Future[EitherErr[String]] =
+  private[service] def eventuallyCreateVaultIfNecessaryAndArchive(content: AttachmentContent, vaultName: String): Future[EitherErr[String]] =
     eventuallyArchive(
         UploadArchiveRequest
           .builder()
@@ -59,12 +59,12 @@ class GlacierService(glacierNotificationsSnsTopicArn: String, environment: Strin
           .contentLength(content.bytes.length.toLong)
           .build(),
         AsyncRequestBody.fromBytes(content.bytes))
-      .map(uploadResponse =>Right(uploadResponse.archiveId()))
+      .map(uploadResponse => Right(uploadResponse.archiveId()))
       .recoverWith[EitherErr[String]] {
         case _: ResourceNotFoundException =>
           for {
-            _ <- eventuallyCreateVaultIfItDoesNotExist()
-            uploadResponse <- eventuallyCreateVaultIfNecessaryAndArchive(content)
+            _ <- eventuallyCreateVaultIfItDoesNotExist(vaultName)
+            uploadResponse <- eventuallyCreateVaultIfNecessaryAndArchive(content, vaultName)
           } yield uploadResponse
         case _ =>
           Future successful Left(ErrorMessage(s"Error uploading attachment $content to glacier $vaultName"))
@@ -77,7 +77,7 @@ class GlacierService(glacierNotificationsSnsTopicArn: String, environment: Strin
   //TODO: this functionality must be kept in sync with sign service.
   // This includes the configured value of glacierNotificationsSnsTopicArn and the event name "ArchiveRetrievalCompleted".
   // As an alternative consider adding a microservice to handle interactions with Glacier and deferring to that.
-  private[service] def eventuallyCreateVaultIfItDoesNotExist() = {
+  private[service] def eventuallyCreateVaultIfItDoesNotExist(vaultName: String) = {
     def vaultEventuallyExists() =
       client.listVaults(ListVaultsRequest.builder().build()).toScala.map { listVaultsResponse =>
         listVaultsResponse.vaultList().asScala.toSeq.exists(_.vaultName == vaultName)
@@ -108,7 +108,7 @@ class GlacierService(glacierNotificationsSnsTopicArn: String, environment: Strin
     }
   }
 
-  private[service] def vaultName = s"${environmentalVaultNamePrefix}vat-return-${now().getYear}"
+  private[service] def datedVaultName = s"${environmentalVaultNamePrefix}vat-return-${now().getYear}"
 }
 
 object ChecksumUtils {
