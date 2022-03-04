@@ -22,9 +22,19 @@ package object attachment {
 
   case class ErrorMessage(message: String, severity: Severity = ERROR)
 
-  case class AttachmentInfo(message: String, key: String)
+  case class AttachmentInfo(messageId: String, attachmentId: String)
 
   case class AttachmentContent(info: AttachmentInfo, content: ByteString)
 
   case class ZipContent(info: AttachmentInfo, files: Seq[(String, Attachment)])
+
+  case class ProcessingBundle(
+                               handle: String,
+                               bucket: String,
+                               key: String,
+                               payload: Option[Array[Byte]] = None,
+                               metadata: Option[Array[Byte]] = None,
+                               signedPayload: Option[Array[Byte]] = None,
+                               signedMetadata: Option[Array[Byte]] = None)
+
 }

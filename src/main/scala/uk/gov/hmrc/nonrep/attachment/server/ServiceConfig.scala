@@ -28,11 +28,22 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val signaturesServicePort: Int = signaturesServiceUri.getPort
   val signingProfile: String = signaturesParams.getString("signing-profile")
 
+  lazy val sqsTopicArn: String = sys.env.getOrElse("ATTACHMENT_SQS", throw new RuntimeException(s"could not find value for ATTACHMENT_SQS in ${sys.env.mkString(",")}"))
+  private val systemParams = config.getObject(s"$appName.system-params").toConfig
+  val maxBufferSize = systemParams.getInt("maxBufferSize")
+  val waitTime = systemParams.getInt("waitTime")
+  val maxBatchSize = systemParams.getInt("maxBatchSize")
+//  val sourceSettings = (maxBufferSize, waitTime, maxBatchSize)
+
   override def toString =
     s"""
     appName: $appName
     port: $servicePort
     env: $env
+    sqsTopicArn: $sqsTopicArn
+    maxBatchSize: $maxBatchSize
+    waitTime: $waitTime
+    maxBufferSize: $maxBufferSize
     attachmentsBucket: $attachmentsBucket
     configFile: ${config.toString}"""
 
