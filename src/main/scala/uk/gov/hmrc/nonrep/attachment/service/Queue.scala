@@ -1,13 +1,25 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import akka.NotUsed
+import akka.actor.CoordinatedShutdown
+import akka.actor.typed.ActorSystem
+import akka.stream.ActorAttributes
+import akka.stream.Supervision.stoppingDecider
+import akka.stream.alpakka.sqs.{MessageAction, SqsSourceSettings}
+import akka.stream.alpakka.sqs.scaladsl.SqsSource
 import akka.stream.scaladsl.{Flow, Source}
-import software.amazon.awssdk.services.sqs.model.Message
+import akka.util.Timeout
+import akka.{Done, NotUsed}
+import software.amazon.awssdk.regions.Region.EU_WEST_2
+import software.amazon.awssdk.services.sqs.SqsAsyncClient
+import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, Message}
+import spray.json.DefaultJsonProtocol._
+import spray.json._
+import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
-/**
- * It's an interim object before the final interface is delivered
- */
+import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
+import scala.jdk.FutureConverters.CompletionStageOps
 
 trait Queue {
   def getMessages: Source[Message, NotUsed]
@@ -17,17 +29,49 @@ trait Queue {
   def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed]
 }
 
-class QueueService extends Queue {
+class QueueService()(implicit val config: ServiceConfig,
+                     implicit val system: ActorSystem[_]) extends Queue {
 
-  // make sure that SQS async client is created with important parameters taken from service config
+  implicit val ec = system.executionContext
 
-  /*
-   * all these implementations are likely to be replaced
-   */
-  override def getMessages: Source[Message, NotUsed] = Source.empty
+  private [service] implicit lazy val client: SqsAsyncClient = SqsAsyncClient.builder().region(EU_WEST_2).build()
 
-  override def parseMessages: Flow[Message, AttachmentInfo, NotUsed] = Flow.fromFunction((m: Message) => AttachmentInfo(m.messageId(), ""))
+  CoordinatedShutdown(system).addTask(CoordinatedShutdown.PhaseBeforeServiceUnbind, "close SQS client") { () =>
+    implicit val timeout = Timeout(5.seconds)
+    Future {
+      client.close()
+      Done
+    }
+  }
 
-  override def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed] = Flow.fromFunction((_: AttachmentInfo) => true)
+  val settings = SqsSourceSettings()
+    .withWaitTime(10.seconds)
+    .withMaxBufferSize(10)
+    .withMaxBatchSize(10)
+    .withCloseOnEmptyReceive(false)
+    .withWaitTimeSeconds(20)
+
+  override def getMessages: Source[Message, NotUsed] = SqsSource(config.queueUrl, settings)
+
+  override def parseMessages: Flow[Message, AttachmentInfo, NotUsed] =
+    Flow[Message].map { message =>
+      val messageId = message.messageId()
+
+      val attachmentId = message
+        .body()
+        .parseJson
+        .asJsObject.fields("Records").convertTo[List[JsValue]].head
+        .asJsObject.fields("s3")
+        .asJsObject.fields("object")
+        .asJsObject.fields("key").convertTo[String]
+
+      AttachmentInfo(messageId, attachmentId)
+    }
+
+  override def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed] =
+    Flow[AttachmentInfo].mapAsyncUnordered(8){ info =>
+      val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(info.message).build()
+      client.deleteMessage(request).asScala.map(_ => true)
+    }.withAttributes(ActorAttributes.supervisionStrategy(stoppingDecider))
 
 }

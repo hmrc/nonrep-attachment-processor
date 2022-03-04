@@ -33,6 +33,8 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val signaturesServicePort: Int = signaturesServiceUri.getPort
   val signingProfile: String = signaturesParams.getString("signing-profile")
 
+  val queueUrl = s"https://sqs.eu-west-2.amazonaws.com/205520045207/$env-nonrep-attachment-queue"
+
   override def toString =
     s"""
     appName: $appName
