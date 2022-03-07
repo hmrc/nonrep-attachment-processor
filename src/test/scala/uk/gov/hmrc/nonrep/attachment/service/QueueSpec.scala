@@ -7,10 +7,12 @@ import akka.stream.alpakka.sqs.scaladsl.{SqsAckFlow, SqsAckSink, SqsSource}
 import akka.stream.scaladsl.Sink
 import org.mockito.ArgumentMatchers.any
 import org.mockito.MockitoSugar.{spy, verify}
+import software.amazon.awssdk.regions.Region.EU_WEST_2
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, SendMessageRequest}
 import uk.gov.hmrc.nonrep.attachment.BaseSpec
 import uk.gov.hmrc.nonrep.attachment.TestServices.config.env
+import uk.gov.hmrc.nonrep.attachment.TestServices.success.queueService.getMessages
 
 import scala.concurrent.duration.DurationInt
 
@@ -20,7 +22,7 @@ class QueueSpec extends BaseSpec {
 
  val queue = new QueueService
   val queueUrl: String = s"https://sqs.eu-west-2.amazonaws.com/205520045207/$env-nonrep-attachment-queue"
-  implicit val awsSqsClient: SqsAsyncClient = spy(sqsClient)
+  implicit val awsSqsClient: SqsAsyncClient = spy(SqsAsyncClient.builder().region(EU_WEST_2).build())
 
   def sendMessage(message: String)
 
@@ -39,7 +41,8 @@ class QueueSpec extends BaseSpec {
     }
 
   "get message from queue using queue url" in {
-    val future = SqsSource(queueUrl, sqsSourceSettings: SqsSourceSettings)
+
+    val future: Any = SqsSource(queueUrl, sqsSourceSettings: SqsSourceSettings)
       .take(1)
       .via(SqsAckFlow(queueUrl))
       .runWith(Sink.head)
@@ -52,7 +55,7 @@ class QueueSpec extends BaseSpec {
   }
 
   "deleting message from queue threw runtime exception" in {
-    sendMessage("alpakka-2")
+    sendMessage("sqs message")
     val future = SqsSource(queueUrl, sqsSourceSettings)
       .take(1)
       .map(MessageAction.Delete(_))
@@ -63,6 +66,3 @@ class QueueSpec extends BaseSpec {
       any[DeleteMessageRequest])
     }
 }
-// object sqsSourceSettings {
-//   def apply: Any = ???
-// }
