@@ -62,7 +62,7 @@ object TestServices {
         message => AttachmentInfo(message.messageId(), testAttachmentId)
       }
 
-      override def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed] = Flow[AttachmentInfo].map { _ => true }
+      override def deleteMessage(): Flow[AttachmentInfo, Boolean, NotUsed] = Flow[AttachmentInfo].map { _ => true }
     }
 
     val signService: Sign = new SignService() {

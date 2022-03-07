@@ -17,7 +17,7 @@ import spray.json.DefaultJsonProtocol._
 import spray.json._
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration.DurationInt
 import scala.jdk.FutureConverters.CompletionStageOps
 
@@ -26,27 +26,27 @@ trait Queue {
 
   def parseMessages: Flow[Message, AttachmentInfo, NotUsed]
 
-  def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed]
+  def deleteMessage(): Flow[AttachmentInfo, Boolean, NotUsed]
 }
 
 class QueueService()(implicit val config: ServiceConfig,
                      implicit val system: ActorSystem[_]) extends Queue {
 
-  implicit val ec = system.executionContext
+  implicit val ec: ExecutionContextExecutor = system.executionContext
 
   private [service] implicit lazy val client: SqsAsyncClient = SqsAsyncClient.builder().region(EU_WEST_2).build()
 
   CoordinatedShutdown(system).addTask(CoordinatedShutdown.PhaseBeforeServiceUnbind, "close SQS client") { () =>
-    implicit val timeout = Timeout(5.seconds)
+    implicit val timeout: Timeout = Timeout(5.seconds)
     Future {
       client.close()
       Done
     }
   }
 
-  val settings = SqsSourceSettings()
+  val settings: SqsSourceSettings = SqsSourceSettings()
     .withWaitTime(10.seconds)
-    .withMaxBufferSize(10)
+    .withMaxBufferSize(100)
     .withMaxBatchSize(10)
     .withCloseOnEmptyReceive(false)
     .withWaitTimeSeconds(20)
@@ -68,7 +68,7 @@ class QueueService()(implicit val config: ServiceConfig,
       AttachmentInfo(messageId, attachmentId)
     }
 
-  override def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed] =
+  override def deleteMessage(): Flow[AttachmentInfo, Boolean, NotUsed] =
     Flow[AttachmentInfo].mapAsyncUnordered(8){ info =>
       val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(info.message).build()
       client.deleteMessage(request).asScala.map(_ => true)
