@@ -34,11 +34,11 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val signingProfile: String = signaturesParams.getString("signing-profile")
 
   private val systemParams = config.getObject(s"$appName.system-params").toConfig
-  val waitTime = systemParams.getInt("waitTime")
-  val maxBufferSize = systemParams.getInt("maxBufferSize")
-  val maxBatchSize = systemParams.getInt("maxBatchSize")
-  val closeOnEmptyReceive = systemParams.getBoolean("false")
-  val waitTimeSeconds = systemParams.getInt("waitTimeSeconds")
+  val waitTime: Int = systemParams.getInt("waitTime")
+  val maxBufferSize: Int = systemParams.getInt("maxBufferSize")
+  val maxBatchSize: Int = systemParams.getInt("maxBatchSize")
+  val closeOnEmptyReceive: Boolean = systemParams.getBoolean("false")
+  val waitTimeSeconds: Int = systemParams.getInt("waitTimeSeconds")
 
   val queueUrl = s"https://sqs.eu-west-2.amazonaws.com/205520045207/$env-nonrep-attachment-queue"
 
