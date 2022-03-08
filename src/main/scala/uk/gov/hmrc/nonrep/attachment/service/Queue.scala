@@ -22,6 +22,8 @@ import scala.concurrent.duration.DurationInt
 import scala.jdk.FutureConverters.CompletionStageOps
 
 trait Queue {
+  def settings: SqsSourceSettings
+
   def getMessages: Source[Message, NotUsed]
 
   def parseMessages: Flow[Message, AttachmentInfo, NotUsed]
@@ -44,12 +46,11 @@ class QueueService()(implicit val config: ServiceConfig,
     }
   }
 
-  val settings: SqsSourceSettings = SqsSourceSettings()
-    .withWaitTime(10.seconds)
-    .withMaxBufferSize(100)
-    .withMaxBatchSize(10)
-    .withCloseOnEmptyReceive(false)
-    .withWaitTimeSeconds(20)
+  override val settings: SqsSourceSettings = SqsSourceSettings()
+    .withMaxBufferSize(config.maxBufferSize)
+    .withMaxBatchSize(config.maxBatchSize)
+    .withCloseOnEmptyReceive(config.closeOnEmptyReceive)
+    .withWaitTimeSeconds(config.waitTimeSeconds)
 
   override def getMessages: Source[Message, NotUsed] = SqsSource(config.queueUrl, settings)
 
@@ -64,6 +65,7 @@ class QueueService()(implicit val config: ServiceConfig,
         .asJsObject.fields("s3")
         .asJsObject.fields("object")
         .asJsObject.fields("key").convertTo[String]
+        .replaceFirst(".zip", "")
 
       AttachmentInfo(messageId, attachmentId)
     }
