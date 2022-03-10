@@ -21,12 +21,11 @@ object RequestsSigner {
     }
   }
 
-  def createSignedRequest(
-                           method: HttpMethod,
-                           uri: URI,
-                           path: String,
-                           body: String,
-                           params: Aws4SignerParams): HttpRequest = {
+  def createSignedRequest(method: HttpMethod,
+                          uri: URI,
+                          path: String,
+                          body: String,
+                          params: Aws4SignerParams): HttpRequest = {
 
     import scala.jdk.CollectionConverters._
 

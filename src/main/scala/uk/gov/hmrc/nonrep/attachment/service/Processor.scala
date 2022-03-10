@@ -20,15 +20,17 @@ trait Processor[A] {
 
   def glacier: Glacier
 
-  def applicationSink: Sink[EitherErr[ArchivedAttachment], A]
+  def update: Update
+
+  def applicationSink: Sink[EitherErr[AttachmentInfo], A]
 }
 
 object Processor {
-  def apply[A](applicationSink: Sink[EitherErr[ArchivedAttachment], A])
+  def apply[A](applicationSink: Sink[EitherErr[AttachmentInfo], A])
               (implicit system: ActorSystem[_], config: ServiceConfig) = new ProcessorService(applicationSink)
 }
 
-class ProcessorService[A](val applicationSink: Sink[EitherErr[ArchivedAttachment], A])
+class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A])
                          (implicit val system: ActorSystem[_], config: ServiceConfig)
   extends Processor[A] {
 
@@ -40,7 +42,9 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[ArchivedAttachment
 
   override lazy val zip: Zipper = new ZipperService()
 
-  override lazy val glacier: Glacier = new GlacierService(config.glacierNotificationsSnsTopicArn, config.env)
+  override lazy val glacier: Glacier = new GlacierService()
+
+  override lazy val update: Update = new UpdateService()
 
   val messages: Source[Message, NotUsed] = queue.getMessages
 
@@ -56,12 +60,14 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[ArchivedAttachment
 
   val archiving: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacier.archive
 
+  val metastoreUpdate: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = update.updateMetastore()
+
   val execute: RunnableGraph[A] = fromGraph(GraphDSL.createGraph(applicationSink) {
     implicit builder =>
       sink =>
         import GraphDSL.Implicits._
 
-        messages ~> parsing ~> downloading ~> unpacking ~> signing ~> repacking ~> archiving ~> sink
+        messages ~> parsing ~> downloading ~> unpacking ~> signing ~> repacking ~> archiving ~> metastoreUpdate ~> sink
 
         ClosedShape
   })

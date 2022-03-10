@@ -10,7 +10,7 @@ class ProcessorSpec extends BaseSpec {
   "attachments processor for happy path" should {
     import TestServices.success._
 
-    val processor: ProcessorService[TestSubscriber.Probe[EitherErr[ArchivedAttachment]]] =
+    val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
       new ProcessorService(testApplicationSink) {
         override lazy val storage: Storage = storageService
 
@@ -24,8 +24,7 @@ class ProcessorSpec extends BaseSpec {
     "process attachments" in {
       val result = processor.execute.run().request(1).expectNext().toOption.get
 
-      result.attachmentInfo.key shouldBe testAttachmentId
-      result.archiveId shouldBe archiveId
+      result.key shouldBe testAttachmentId
     }
   }
 

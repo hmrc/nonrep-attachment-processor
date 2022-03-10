@@ -44,8 +44,8 @@ object TestServices {
   val sampleSignedAttachmentContent: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.p7m").getFile).toPath)
 
-  val testApplicationSink: Sink[EitherErr[ArchivedAttachment], TestSubscriber.Probe[EitherErr[ArchivedAttachment]]] =
-    TestSink.probe[EitherErr[ArchivedAttachment]](typedSystem.classicSystem)
+  val testApplicationSink: Sink[EitherErr[AttachmentInfo], TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
+    TestSink.probe[EitherErr[AttachmentInfo]](typedSystem.classicSystem)
 
   object success {
     val storageService: Storage = new StorageService() {
@@ -72,7 +72,7 @@ object TestServices {
         }
     }
 
-    val glacierService: Glacier = new GlacierService("", "") {
+    val glacierService: Glacier = new GlacierService() {
       override def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
                                      asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
         Future successful UploadArchiveResponse.builder().archiveId(archiveId).build()
@@ -90,7 +90,7 @@ object TestServices {
           case (_, request) => (Try(HttpResponse(InternalServerError)), request)
         }
     }
-    val glacierService: GlacierService = new GlacierService("", "") {
+    val glacierService: GlacierService = new GlacierService() {
       override def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
                                      asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
         Future failed new RuntimeException("boom!")

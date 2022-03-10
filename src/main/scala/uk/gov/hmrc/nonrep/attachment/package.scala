@@ -28,7 +28,9 @@ package object attachment {
     val bytes: Array[Byte] = content.toArray
   }
 
-  case class ArchivedAttachment(attachmentInfo: AttachmentInfo, archiveId: String, vaultName: String)
+  case class ArchiveLocation(archiveId: String, vaultName: String)
+
+  case class ArchivedAttachment(info: AttachmentInfo, location: ArchiveLocation)
 
   case class ZipContent(info: AttachmentInfo, files: Seq[(String, Attachment)])
 }
