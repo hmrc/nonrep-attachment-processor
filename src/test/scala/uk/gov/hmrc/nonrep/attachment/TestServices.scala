@@ -77,6 +77,13 @@ object TestServices {
                                      asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
         Future successful UploadArchiveResponse.builder().archiveId(archiveId).build()
     }
+
+    val updateService: Update = new UpdateService() {
+      override def updateMetastore(): Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] =
+        Flow[EitherErr[ArchivedAttachment]].map{ attachment =>
+          attachment.map(_.info)
+        }
+    }
   }
 
   object failure {
@@ -94,6 +101,12 @@ object TestServices {
       override def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
                                      asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
         Future failed new RuntimeException("boom!")
+    }
+    val updateService: Update = new UpdateService() {
+      override def updateMetastore(): Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] =
+        Flow[EitherErr[ArchivedAttachment]].map{ _ =>
+          Left(ErrorMessage("failure")).withRight[AttachmentInfo]
+        }
     }
   }
 

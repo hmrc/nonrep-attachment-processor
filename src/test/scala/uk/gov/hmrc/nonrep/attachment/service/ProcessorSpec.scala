@@ -13,12 +13,10 @@ class ProcessorSpec extends BaseSpec {
     val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
       new ProcessorService(testApplicationSink) {
         override lazy val storage: Storage = storageService
-
         override lazy val queue: Queue = queueService
-
         override lazy val sign: Sign = signService
-
         override lazy val glacier: Glacier = glacierService
+        override lazy val update: Update = updateService
     }
 
     "process attachments" in {
@@ -33,7 +31,6 @@ class ProcessorSpec extends BaseSpec {
     "report a warning when an attachment cannot be downloaded from s3" in {
       val processor = new ProcessorService(testApplicationSink) {
         override lazy val storage: Storage = failure.storageService
-
         override lazy val queue: Queue = success.queueService
       }
 
@@ -49,9 +46,7 @@ class ProcessorSpec extends BaseSpec {
     "report a warning for signing failure" in {
       val processor = new ProcessorService(testApplicationSink) {
         override lazy val storage: Storage = success.storageService
-
         override lazy val queue: Queue = success.queueService
-
         override lazy val sign: Sign = failure.signService
       }
 
@@ -78,5 +73,22 @@ class ProcessorSpec extends BaseSpec {
       result.left.toOption.get.severity shouldBe ERROR
       result.left.toOption.get.message.startsWith("Error uploading attachment") shouldBe true
     }
+
+    "report an error for update metastore failure" in {
+      val processor = new ProcessorService(testApplicationSink) {
+        override lazy val storage: Storage = success.storageService
+        override lazy val queue: Queue = success.queueService
+        override lazy val sign: Sign = success.signService
+        override lazy val glacier: Glacier = failure.glacierService
+        override lazy val update: Update = failure.updateService
+      }
+
+      val result = processor.execute.run().request(1).expectNext()
+
+      result.isLeft shouldBe true
+      result.left.toOption.get.severity shouldBe ERROR
+      result.left.toOption.get.message shouldBe "failure"
+    }
+
   }
 }
