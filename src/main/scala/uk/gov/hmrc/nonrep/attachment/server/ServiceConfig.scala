@@ -20,6 +20,10 @@ class ServiceConfig(val servicePort: Int = 8000) {
 
   val attachmentsBucket = s"$env-nonrep-attachment-data"
 
+  val elasticSearchUri: URI = URI.create(sys.env.getOrElse("ELASTICSEARCH", "http://elasticsearch.nrs"))
+  val isElasticSearchProtocolSecure: Boolean = elasticSearchUri.toURL.getProtocol == "https"
+  val elasticSearchHost: String = elasticSearchUri.getHost
+
   private val configFile = new java.io.File(s"/etc/config/CONFIG_FILE")
 
   val config: Config =

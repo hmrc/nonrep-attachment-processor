@@ -30,7 +30,7 @@ object TestServices {
   implicit val ec: ExecutionContext = typedSystem.executionContext
   implicit val config: ServiceConfig = new ServiceConfig()
 
-  def entityToString(entity: ResponseEntity)(implicit ec: ExecutionContext): Future[String] =
+  def entityToString(entity: ResponseEntity): Future[String] =
     entity.dataBytes.runFold(ByteString(""))(_ ++ _).map(_.utf8String)
 
   val testAttachmentId = "738bcba6-7f9e-11ec-8768-3f8498104f38"
