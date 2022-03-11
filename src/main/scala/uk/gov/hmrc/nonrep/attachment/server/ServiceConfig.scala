@@ -39,13 +39,14 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val closeOnEmptyReceive: Boolean = systemParams.getBoolean("closeOnEmptyReceive")
   val waitTimeSeconds: Int = systemParams.getInt("waitTimeSeconds")
 
-  val queueUrl = sys.env.getOrElse("ATTACHMENT_SQS", s"https://sqs.eu-west-2.amazonaws.com/205520045207/$env-nonrep-attachment-queue")
+  val queueUrl: String = sys.env.getOrElse("ATTACHMENT_SQS", s"https://sqs.eu-west-2.amazonaws.com/205520045207/$env-nonrep-attachment-queue")
 
   override def toString =
     s"""
     appName: $appName
     port: $servicePort
     env: $env
+    receiptHandle: $receiptHandle
     queueUrl: $queueUrl
     attachmentsBucket: $attachmentsBucket
     configFile: ${config.toString}"""
