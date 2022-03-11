@@ -1,21 +1,11 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import akka.Done
-import akka.stream.alpakka.sqs.MessageAction
-import akka.stream.alpakka.sqs.SqsAckResult.SqsDeleteResult
-import akka.stream.alpakka.sqs.SqsAckResultEntry.SqsDeleteResultEntry
-import akka.stream.alpakka.sqs.scaladsl.{SqsAckSink, SqsSource}
-import akka.stream.scaladsl.{Keep, Sink}
+import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.{mock, times, verify, when}
-import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, DeleteMessageResponse, Message}
+import software.amazon.awssdk.services.sqs.model.Message
 import uk.gov.hmrc.nonrep.attachment.BaseSpec
-import uk.gov.hmrc.nonrep.attachment.TestServices.config.queueUrl
 
-import scala.compat.java8.FutureConverters.CompletionStageOps
 
 class QueueSpec extends BaseSpec {
 
@@ -59,79 +49,6 @@ class QueueSpec extends BaseSpec {
     }
 
     "Delete message" in {
-
-
-    }
-
-////    First attempt to get the deleteMessage method test to work' A
-//    "Deleting message from queue " in {
-//      implicit val sqsClient: SqsAsyncClient = mock[SqsAsyncClient]
-//      val result = DeleteMessageResponse.builder().build()
-//      val resp = DeleteMessageResponse
-//      when(sqsClient.deleteMessage(any[DeleteMessageRequest]))
-//        .receiptHandle(MessageAction.Delete.==())
-//        .take(1).shouldBe(true)
-//      sqsClient
-//        .deleteMessage(DeleteMessageRequest)
-//        .toScala
-
-//      val result = future.futureValue
-//      result shouldBe a[SqsDeleteResult]
-//
-//    }
-
-//    //  The test below was second idea' B
-//    "Deleting message a delete request " in {
-//          implicit val sqsClient: SqsAsyncClient = mock[SqsAsyncClient]
-//          val request = queueService.deleteMessage()
-//          when(sqsClient.deleteMessage(any()[DeleteMessageRequest]))
-//            .thenCallRealMethod()
-//            .via(queueService.getMessages)
-//            .toMat(Sink
-//              .head)(Keep.!=()).run() { result =>
-//            result.!=() shouldBe sqsSampleResponse
-//              .map(_ => new SqsDeleteResult(MessageAction, resp))(request)
-//          }
-      // The third idea which I prefer as its a bit more readable.
-//      "Delete message from queue" in {
-//        implicit val sqsClient: SqsAsyncClient = mock[SqsAsyncClient]
-//        val future = SqsSource(queueUrl, queueService.settings)
-////        val future = queueService.deleteMessage()
-//              .take(1)
-//              .map{
-//                case (m, _!=()) => MessageAction.delete(m)
-//              }
-//              .via(SqsAckSink(queueUrl)(Keep.eq())
-//          .runWith(Sink.head))
-//
-//        val result = future.futureValue
-//        result shouldBe a[SqsDeleteResult]
-//
-//      }
-  }
-
-  "For failure scenarios Queue service" should {
-    import TestServices.failure._
-
-    "Report parsing message failure" in {
-      val sink = TestSink.probe[EitherErr[AttachmentInfo]]
-
-      val (_, sub) = queueService
-        .getMessages
-        .via(queueService.parseMessages)
-        .toMat(sink)(Keep.both)
-        .run()
-
-      val result = sub
-        .request(1)
-        .expectNext()
-
-      result.isLeft shouldBe true
-      result.left.toOption.get.message shouldBe "Parsing SQS message failure"
-      result.left.toOption.get.severity shouldBe ERROR
-    }
-
-    "Report delete message failure" in {
       val source = TestSource.probe[EitherErr[AttachmentInfo]]
       val sink = TestSink.probe[EitherErr[AttachmentInfo]]
       val messageId = testSQSMessageIds.head
@@ -144,9 +61,48 @@ class QueueSpec extends BaseSpec {
         .request(1)
         .expectNext()
 
-      result.isLeft shouldBe true
-      result.left.toOption.get.severity shouldBe ERROR
-      result.left.toOption.get.message shouldBe "failure"
+      result.isRight shouldBe true
+      result.toOption.get.key shouldBe testAttachmentId
+    }
+
+    "For failure scenarios Queue service" should {
+      import TestServices.failure._
+
+      "Report parsing message failure" in {
+        val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+
+        val (_, sub) = queueService
+          .getMessages
+          .via(queueService.parseMessages)
+          .toMat(sink)(Keep.both)
+          .run()
+
+        val result = sub
+          .request(1)
+          .expectNext()
+
+        result.isLeft shouldBe true
+        result.left.toOption.get.message shouldBe "Parsing SQS message failure"
+        result.left.toOption.get.severity shouldBe ERROR
+      }
+
+      "Report delete message failure" in {
+        val source = TestSource.probe[EitherErr[AttachmentInfo]]
+        val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+        val messageId = testSQSMessageIds.head
+        val attachment = Right(AttachmentInfo(messageId, testAttachmentId))
+
+        val (pub, sub) = source.via(queueService.deleteMessage).toMat(sink)(Keep.both).run()
+        pub.sendNext(attachment).sendComplete()
+
+        val result = sub
+          .request(1)
+          .expectNext()
+
+        result.isLeft shouldBe true
+        result.left.toOption.get.severity shouldBe ERROR
+        result.left.toOption.get.message shouldBe "failure"
+      }
     }
   }
 }

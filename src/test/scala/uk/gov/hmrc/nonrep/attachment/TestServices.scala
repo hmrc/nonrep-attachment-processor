@@ -90,20 +90,6 @@ object TestServices {
     }
     """).build()
 
-  val sqsSampleRequest = """{
-   "Service":"Amazon S3",
-   "Event":"s3:TestEvent",
-   "Time":"2018-07-19T10:07:01.341Z",
-   "Bucket":"test-nonrep-attachment-data",
-   "RequestId":"b5293cb5-d306-4a17-9048-b263635abe41",
-   "ReceiptHandle": "$receiptHandle"
-  }"""
-
-  val sqsSampleResponse ="""{
-    "responseMetadata" : "sqs response metadata"
-    "RequestId": "b5293cb5-d306-4a17-9048-b263635abe42"
-  }"""
-
   object success {
     val storageService: Storage = new StorageService() {
       override def s3Source(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
