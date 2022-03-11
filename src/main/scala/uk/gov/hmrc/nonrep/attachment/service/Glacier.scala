@@ -44,7 +44,7 @@ class GlacierService()
     Flow[EitherErr[AttachmentContent]].mapAsyncUnordered(8) {
       case Right(attachmentContent) =>
         eventuallyCreateVaultIfNecessaryAndArchive(attachmentContent, datedVaultName).map { archiveIdOrError: EitherErr[String] =>
-          archiveIdOrError.map(archiveId => ArchivedAttachment(attachmentContent.info, ArchiveLocation(archiveId, datedVaultName)))
+          archiveIdOrError.map(archiveId => ArchivedAttachment(attachmentContent.info, archiveId, datedVaultName))
         }
       case Left(e) =>
         Future successful Left(e)

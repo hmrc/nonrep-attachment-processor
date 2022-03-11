@@ -22,15 +22,13 @@ package object attachment {
 
   case class ErrorMessage(message: String, severity: Severity = ERROR)
 
-  case class AttachmentInfo(message: String, key: String)
+  case class AttachmentInfo(message: String, key: String, notableEvent: String = "vat-registration")
 
   case class AttachmentContent(info: AttachmentInfo, content: ByteString) {
     val bytes: Array[Byte] = content.toArray
   }
 
-  case class ArchiveLocation(archiveId: String, vaultName: String)
-
-  case class ArchivedAttachment(info: AttachmentInfo, location: ArchiveLocation)
+  case class ArchivedAttachment(info: AttachmentInfo, archiveId: String, vaultName: String)
 
   case class ZipContent(info: AttachmentInfo, files: Seq[(String, Attachment)])
 }

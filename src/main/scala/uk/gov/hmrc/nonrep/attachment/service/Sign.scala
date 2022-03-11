@@ -19,7 +19,7 @@ import scala.util.{Failure, Success, Try}
 trait Sign {
   val TransactionIdHeader = "x-transaction-id"
 
-  def signing(): Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed]
+  def signing: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed]
 }
 
 class SignService()(implicit val config: ServiceConfig,
@@ -78,7 +78,7 @@ class SignService()(implicit val config: ServiceConfig,
       _.left.map(error => ErrorMessage(error.message, WARN))
     }
 
-  override def signing(): Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] =
+  override def signing: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] =
     Flow.fromGraph(
       GraphDSL.create() { implicit builder =>
         import GraphDSL.Implicits._

@@ -56,11 +56,11 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
 
   val repacking: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] = zip.zip()
 
-  val signing: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = sign.signing()
+  val signing: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = sign.signing
 
   val archiving: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacier.archive
 
-  val metastoreUpdate: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = update.updateMetastore()
+  val metastoreUpdate: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = update.updateMetastore
 
   val execute: RunnableGraph[A] = fromGraph(GraphDSL.createGraph(applicationSink) {
     implicit builder =>

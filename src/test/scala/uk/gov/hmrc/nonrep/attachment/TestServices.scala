@@ -79,9 +79,9 @@ object TestServices {
     }
 
     val updateService: Update = new UpdateService() {
-      override def updateMetastore(): Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] =
-        Flow[EitherErr[ArchivedAttachment]].map{ attachment =>
-          attachment.map(_.info)
+      override val callMetastore: Flow[(HttpRequest, EitherErr[ArchivedAttachment]), (Try[HttpResponse], EitherErr[ArchivedAttachment]), Any] =
+        Flow[(HttpRequest, EitherErr[ArchivedAttachment])].map {
+          case (_, request) => (Try(HttpResponse(OK, entity = HttpEntity(""))), request)
         }
     }
   }
@@ -103,7 +103,7 @@ object TestServices {
         Future failed new RuntimeException("boom!")
     }
     val updateService: Update = new UpdateService() {
-      override def updateMetastore(): Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] =
+      override val updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] =
         Flow[EitherErr[ArchivedAttachment]].map{ _ =>
           Left(ErrorMessage("failure")).withRight[AttachmentInfo]
         }
