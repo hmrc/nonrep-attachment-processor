@@ -5,7 +5,7 @@ import akka.actor.CoordinatedShutdown
 import akka.actor.typed.ActorSystem
 import akka.stream.ActorAttributes
 import akka.stream.Supervision.stoppingDecider
-import akka.stream.alpakka.sqs.{MessageAction, SqsSourceSettings}
+import akka.stream.alpakka.sqs.SqsSourceSettings
 import akka.stream.alpakka.sqs.scaladsl.SqsSource
 import akka.stream.scaladsl.{Flow, Source}
 import akka.util.Timeout
@@ -17,18 +17,19 @@ import spray.json.DefaultJsonProtocol._
 import spray.json._
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
-import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration.DurationInt
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.jdk.FutureConverters.CompletionStageOps
+import scala.util.Try
 
 trait Queue {
   def settings: SqsSourceSettings
 
   def getMessages: Source[Message, NotUsed]
 
-  def parseMessages: Flow[Message, AttachmentInfo, NotUsed]
+  def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed]
 
-  def deleteMessage(): Flow[AttachmentInfo, Boolean, NotUsed]
+  def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]
 }
 
 class QueueService()(implicit val config: ServiceConfig,
@@ -36,7 +37,7 @@ class QueueService()(implicit val config: ServiceConfig,
 
   implicit val ec: ExecutionContextExecutor = system.executionContext
 
-  private [service] implicit lazy val client: SqsAsyncClient = SqsAsyncClient.builder().region(EU_WEST_2).build()
+  private[service] implicit lazy val client: SqsAsyncClient = SqsAsyncClient.builder().region(EU_WEST_2).build()
 
   CoordinatedShutdown(system).addTask(CoordinatedShutdown.PhaseBeforeServiceUnbind, "close SQS client") { () =>
     implicit val timeout: Timeout = Timeout(5.seconds)
@@ -54,26 +55,34 @@ class QueueService()(implicit val config: ServiceConfig,
 
   override def getMessages: Source[Message, NotUsed] = SqsSource(config.queueUrl, settings)
 
-  override def parseMessages: Flow[Message, AttachmentInfo, NotUsed] =
+  override def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed] =
     Flow[Message].map { message =>
       val messageId = message.messageId()
 
-      val attachmentId = message
-        .body()
-        .parseJson
-        .asJsObject.fields("Records").convertTo[List[JsValue]].head
-        .asJsObject.fields("s3")
-        .asJsObject.fields("object")
-        .asJsObject.fields("key").convertTo[String]
-        .replaceFirst(".zip", "")
-
-      AttachmentInfo(messageId, attachmentId)
+      Try {
+        val attachmentId = message
+          .body()
+          .parseJson
+          .asJsObject.fields("Records").convertTo[List[JsValue]].head
+          .asJsObject.fields("s3")
+          .asJsObject.fields("object")
+          .asJsObject.fields("key").convertTo[String]
+          .replaceFirst(".zip", "")
+        AttachmentInfo(messageId, attachmentId)
+      }.toEither.left.map(thr => {
+        system.log.error(s"Parsing SQS message failure ${message.body()}", thr)
+        ErrorMessage("Parsing SQS message failure")
+      })
     }
 
-  override def deleteMessage(): Flow[AttachmentInfo, Boolean, NotUsed] =
-    Flow[AttachmentInfo].mapAsyncUnordered(8){ info =>
-      val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(info.message).build()
-      client.deleteMessage(request).asScala.map(_ => true)
+  override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
+    Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) { attachmentInfo =>
+      attachmentInfo.fold(
+        error => Future.successful(Left(error).withRight[AttachmentInfo]),
+        info => {
+          val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(info.message).build()
+          client.deleteMessage(request).asScala.map(_ => Right(info))
+        })
     }.withAttributes(ActorAttributes.supervisionStrategy(stoppingDecider))
 
 }

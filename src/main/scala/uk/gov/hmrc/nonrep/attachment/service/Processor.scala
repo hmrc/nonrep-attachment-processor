@@ -44,9 +44,11 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[ArchivedAttachment
 
   val messages: Source[Message, NotUsed] = queue.getMessages
 
-  val parsing: Flow[Message, AttachmentInfo, NotUsed] = queue.parseMessages
+  val parsing: Flow[Message, EitherErr[AttachmentInfo], NotUsed] = queue.parseMessages
 
-  val downloading: Flow[AttachmentInfo, EitherErr[AttachmentContent], NotUsed] = storage.downloadAttachment()
+  val deleting: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = queue.deleteMessage
+
+  val downloading: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storage.downloadAttachment
 
   val unpacking: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] = zip.unzip()
 

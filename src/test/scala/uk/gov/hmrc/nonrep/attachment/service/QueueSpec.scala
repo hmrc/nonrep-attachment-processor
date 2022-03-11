@@ -7,10 +7,11 @@ import akka.stream.alpakka.sqs.SqsAckResult.SqsDeleteResult
 import akka.stream.alpakka.sqs.SqsAckResultEntry.SqsDeleteResultEntry
 import akka.stream.alpakka.sqs.scaladsl.{SqsAckSink, SqsSource}
 import akka.stream.scaladsl.{Keep, Sink}
+import akka.stream.testkit.scaladsl.TestSink
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, times, verify, when}
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, DeleteMessageResponse}
+import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, DeleteMessageResponse, Message}
 import uk.gov.hmrc.nonrep.attachment.BaseSpec
 import uk.gov.hmrc.nonrep.attachment.TestServices.config.queueUrl
 
@@ -29,24 +30,32 @@ class QueueSpec extends BaseSpec {
       queueService.settings.closeOnEmptyReceive shouldBe config.closeOnEmptyReceive
     }
 
-      "Message from source should have" in {
-        queueService.getMessages shouldBe "ATTACHMENT_SQS"
-        queueService.getMessages shouldBe config.queueUrl
-        queueService.getMessages shouldBe config.env
-        queueService.settings shouldBe()
-      }
+    "Message from source should have" in {
+      val sink = TestSink.probe[Message]
 
-    "parse message properly" in {
-      whenReady(queueService
+      val sub = queueService.getMessages.runWith(sink)
+      val result = sub
+        .request(1)
+        .expectNext()
+
+      testSQSMessageIds should contain(result.messageId())
+    }
+
+    "Parse message properly" in {
+      val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+
+      val (_, sub) = queueService
         .getMessages
-        .via(queueService
-        .parseMessages)
-        .toMat(Sink
-          .head)(Keep
-          .right)
-        .run()) { info =>
-        info.key shouldBe testAttachmentId
-      }
+        .via(queueService.parseMessages)
+        .toMat(sink)(Keep.both)
+        .run()
+
+      val result = sub
+        .request(1)
+        .expectNext()
+
+      result.isRight shouldBe true
+      result.toOption.get.key shouldBe testAttachmentId
     }
 
 ////    First attempt to get the deleteMessage method test to work' A
@@ -79,20 +88,43 @@ class QueueSpec extends BaseSpec {
 //              .map(_ => new SqsDeleteResult(MessageAction, resp))(request)
 //          }
       // The third idea which I prefer as its a bit more readable.
-      "Delete message from queue" in {
-        implicit val sqsClient: SqsAsyncClient = mock[SqsAsyncClient]
-        val future = SqsSource(queueUrl, queueService.settings)
-//        val future = queueService.deleteMessage()
-              .take(1)
-              .map{
-                case (m, _!=()) => MessageAction.delete(m)
-              }
-              .via(SqsAckSink(queueUrl)(Keep.eq())
-          .runWith(Sink.head))
+//      "Delete message from queue" in {
+//        implicit val sqsClient: SqsAsyncClient = mock[SqsAsyncClient]
+//        val future = SqsSource(queueUrl, queueService.settings)
+////        val future = queueService.deleteMessage()
+//              .take(1)
+//              .map{
+//                case (m, _!=()) => MessageAction.delete(m)
+//              }
+//              .via(SqsAckSink(queueUrl)(Keep.eq())
+//          .runWith(Sink.head))
+//
+//        val result = future.futureValue
+//        result shouldBe a[SqsDeleteResult]
+//
+//      }
+  }
 
-        val result = future.futureValue
-        result shouldBe a[SqsDeleteResult]
+  "For failure scenarios Queue service" should {
+    import TestServices.failure._
 
-      }
+    "Report parsing message failure" in {
+      val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+
+      val (_, sub) = queueService
+        .getMessages
+        .via(queueService.parseMessages)
+        .toMat(sink)(Keep.both)
+        .run()
+
+      val result = sub
+        .request(1)
+        .expectNext()
+
+      result.isLeft shouldBe true
+      result.left.toOption.get.message shouldBe "Parsing SQS message failure"
+      result.left.toOption.get.severity shouldBe ERROR
+    }
+
   }
 }

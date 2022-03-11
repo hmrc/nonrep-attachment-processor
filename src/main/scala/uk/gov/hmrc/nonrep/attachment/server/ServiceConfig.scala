@@ -46,7 +46,6 @@ class ServiceConfig(val servicePort: Int = 8000) {
     appName: $appName
     port: $servicePort
     env: $env
-    receiptHandle: $receiptHandle
     queueUrl: $queueUrl
     attachmentsBucket: $attachmentsBucket
     configFile: ${config.toString}"""

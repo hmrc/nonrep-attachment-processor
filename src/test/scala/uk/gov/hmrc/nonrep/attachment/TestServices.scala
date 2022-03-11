@@ -47,7 +47,8 @@ object TestServices {
   val testApplicationSink: Sink[EitherErr[ArchivedAttachment], TestSubscriber.Probe[EitherErr[ArchivedAttachment]]] =
     TestSink.probe[EitherErr[ArchivedAttachment]](typedSystem.classicSystem)
 
-  def testSQSMessage(env: String, messageId: String, attachmentId: String) = Message.builder().messageId(messageId).body(
+  val testSQSMessageIds: IndexedSeq[String] = IndexedSeq.fill(3)(UUID.randomUUID().toString)
+  def testSQSMessage(env: String, messageId: String, attachmentId: String, service: String = "s3"): Message = Message.builder().messageId(messageId).body(
     s"""
     {
        "Records":[
@@ -67,7 +68,7 @@ object TestServices {
                 "x-amz-request-id":"QRD2XCV9XFBZ6WJD4",
                 "x-amz-id-2":"wGP2l4wq5ZhzxzcxCNcK9jik8VmXMO+c8HBYv66BJiWGD8vLAWaKyusb9Ifzo0lbK92CgohDuetpRcPQTldmUsSZnC44mqHfgwyL9e7WFwnKh7ug="
              },
-             "s3":{
+             "$service":{
                 "s3SchemaVersion":"1.0",
                 "configurationId":"tf-s3-queue-20220207093133700300000025",
                 "bucket":{
@@ -108,14 +109,13 @@ object TestServices {
       override def s3Source(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
         Source.single(Some(Source.single(ByteString(sampleAttachment)), ObjectMetadata(Seq())))
     }
-    /*
-    For queue service - this may be considered an interim solution
-     */
+
     val queueService: Queue = new QueueService() {
       override def getMessages: Source[Message, NotUsed] =
-        Source(IndexedSeq.fill(3)(testSQSMessage(config.env, UUID.randomUUID().toString, testAttachmentId)))
+        Source(testSQSMessageIds.map(id => testSQSMessage(config.env, id, testAttachmentId)))
 
-      override def deleteMessage(): Flow[AttachmentInfo, Boolean, NotUsed] = Flow[AttachmentInfo].map { _ => true }
+      override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
+        Flow[EitherErr[AttachmentInfo]].map { _ => Right(AttachmentInfo(testSQSMessageIds.head, testAttachmentId)) }
     }
 
     val signService: Sign = new SignService() {
@@ -148,6 +148,14 @@ object TestServices {
                                      asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
         Future failed new RuntimeException("boom!")
     }
+
+    val queueService: Queue = new QueueService() {
+      private val messages = IndexedSeq.fill(3)(UUID.randomUUID().toString)
+
+      override def getMessages: Source[Message, NotUsed] =
+        Source(messages.map(id => testSQSMessage(config.env, id, testAttachmentId, "invalid")))
+    }
+
   }
 
 }
