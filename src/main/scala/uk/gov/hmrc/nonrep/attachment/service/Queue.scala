@@ -78,7 +78,7 @@ class QueueService()(implicit val config: ServiceConfig,
   override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
     Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) { attachmentInfo =>
       attachmentInfo.fold(
-        error => Future.successful(Left(error).withRight[AttachmentInfo]),
+        error => Future.successful(Left(error)),
         info => {
           val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(info.message).build()
           client.deleteMessage(request).asScala.map(_ => Right(info))

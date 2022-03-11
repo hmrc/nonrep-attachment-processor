@@ -154,6 +154,11 @@ object TestServices {
 
       override def getMessages: Source[Message, NotUsed] =
         Source(messages.map(id => testSQSMessage(config.env, id, testAttachmentId, "invalid")))
+
+      override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
+        Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) { _ =>
+          Future.successful(Left(ErrorMessage("failure")).withRight[AttachmentInfo])
+        }
     }
 
   }

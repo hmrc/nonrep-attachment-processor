@@ -7,7 +7,7 @@ import akka.stream.alpakka.sqs.SqsAckResult.SqsDeleteResult
 import akka.stream.alpakka.sqs.SqsAckResultEntry.SqsDeleteResultEntry
 import akka.stream.alpakka.sqs.scaladsl.{SqsAckSink, SqsSource}
 import akka.stream.scaladsl.{Keep, Sink}
-import akka.stream.testkit.scaladsl.TestSink
+import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, times, verify, when}
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
@@ -56,6 +56,11 @@ class QueueSpec extends BaseSpec {
 
       result.isRight shouldBe true
       result.toOption.get.key shouldBe testAttachmentId
+    }
+
+    "Delete message" in {
+
+
     }
 
 ////    First attempt to get the deleteMessage method test to work' A
@@ -126,5 +131,22 @@ class QueueSpec extends BaseSpec {
       result.left.toOption.get.severity shouldBe ERROR
     }
 
+    "Report delete message failure" in {
+      val source = TestSource.probe[EitherErr[AttachmentInfo]]
+      val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+      val messageId = testSQSMessageIds.head
+      val attachment = Right(AttachmentInfo(messageId, testAttachmentId))
+
+      val (pub, sub) = source.via(queueService.deleteMessage).toMat(sink)(Keep.both).run()
+      pub.sendNext(attachment).sendComplete()
+
+      val result = sub
+        .request(1)
+        .expectNext()
+
+      result.isLeft shouldBe true
+      result.left.toOption.get.severity shouldBe ERROR
+      result.left.toOption.get.message shouldBe "failure"
+    }
   }
 }

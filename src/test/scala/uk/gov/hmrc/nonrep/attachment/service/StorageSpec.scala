@@ -15,7 +15,7 @@ class StorageSpec extends BaseSpec {
     import TestServices.success._
 
     "download file from S3" in {
-      val messageId = UUID.randomUUID().toString
+      val messageId = testSQSMessageIds.head
       val attachmentContent = ByteString(sampleAttachment)
       val attachment = Right(AttachmentInfo(messageId, testAttachmentId))
 
@@ -39,7 +39,7 @@ class StorageSpec extends BaseSpec {
     import TestServices.failure._
 
     "report when downloading file from S3 fails" in {
-      val messageId = UUID.randomUUID().toString
+      val messageId = testSQSMessageIds.head
       val attachment = Right(AttachmentInfo(messageId, testAttachmentId))
 
       val source = TestSource.probe[EitherErr[AttachmentInfo]]
