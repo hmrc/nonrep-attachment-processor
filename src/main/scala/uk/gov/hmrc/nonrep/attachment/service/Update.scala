@@ -23,7 +23,7 @@ class UpdateService()(implicit val config: ServiceConfig,
 
   import RequestsSigner._
 
-  val signerParams = Aws4SignerParams.builder()
+  val signerParams: Aws4SignerParams = Aws4SignerParams.builder()
     .awsCredentials(DefaultCredentialsProvider.create().resolveCredentials()).ensure
     .signingRegion(Region.EU_WEST_2).ensure
     .signingName("es").ensure
