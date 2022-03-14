@@ -82,7 +82,7 @@ class ProcessorSpec extends BaseSpec {
     "report an error for parsing SQS message failure" in {
       val processor = new ProcessorService(testApplicationSink) {
         override lazy val storage: Storage = success.storageService
-        override lazy val queue: Queue = success.queueService
+        override lazy val queue: Queue = failure.queueService
       }
 
       val result = processor.execute.run().request(1).expectNext()
@@ -94,7 +94,7 @@ class ProcessorSpec extends BaseSpec {
     "report an error for deleting SQS message failure" in {
       val processor = new ProcessorService(testApplicationSink) {
         override lazy val storage: Storage = success.storageService
-        override lazy val queue: Queue = success.queueService
+        override lazy val queue: Queue = failure.queueService
       }
 
       val result = processor.execute.run().request(1).expectNext()
