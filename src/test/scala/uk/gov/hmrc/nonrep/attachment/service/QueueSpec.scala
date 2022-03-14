@@ -49,13 +49,13 @@ class QueueSpec extends BaseSpec {
     }
 
     "Delete message" in {
-      val source = TestSource.probe[EitherErr[AttachmentInfo]]
       val sink = TestSink.probe[EitherErr[AttachmentInfo]]
-      val messageId = testSQSMessageIds.head
-      val attachment = Right(AttachmentInfo(messageId, testAttachmentId))
 
-      val (pub, sub) = source.via(queueService.deleteMessage).toMat(sink)(Keep.both).run()
-      pub.sendNext(attachment).sendComplete()
+      val (_, sub) = queueService.getMessages
+        .via(queueService.parseMessages)
+        .via(queueService.deleteMessage)
+        .toMat(sink)(Keep.both)
+        .run()
 
       val result = sub
         .request(1)
@@ -101,7 +101,7 @@ class QueueSpec extends BaseSpec {
 
         result.isLeft shouldBe true
         result.left.toOption.get.severity shouldBe ERROR
-        result.left.toOption.get.message shouldBe "failure"
+        result.left.toOption.get.message shouldBe "Delete SQS message failure"
       }
     }
   }
