@@ -79,5 +79,29 @@ class ProcessorSpec extends BaseSpec {
       result.left.toOption.get.severity shouldBe ERROR
       result.left.toOption.get.message.startsWith("Error uploading attachment") shouldBe true
     }
+    "report an error for parsing SQS message failure" in {
+      val processor = new ProcessorService(testApplicationSink) {
+        override lazy val storage: Storage = success.storageService
+        override lazy val queue: Queue = failure.queueService
+      }
+
+      val result = processor.execute.run().request(1).expectNext()
+
+      result.isLeft shouldBe true
+      result.left.toOption.get.severity shouldBe ERROR
+      result.left.toOption.get.message.startsWith("Parsing SQS message failure") shouldBe true
+    }
+    "report an error for deleting SQS message failure" in {
+      val processor = new ProcessorService(testApplicationSink) {
+        override lazy val storage: Storage = success.storageService
+        override lazy val queue: Queue = failure.queueService
+      }
+
+      val result = processor.execute.run().request(1).expectNext()
+
+      result.isLeft shouldBe true
+      result.left.toOption.get.severity shouldBe ERROR
+      result.left.toOption.get.message.startsWith("Deleting SQS message failure") shouldBe true
+    }
   }
 }

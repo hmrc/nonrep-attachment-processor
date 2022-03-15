@@ -15,7 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait Storage {
 
-  def downloadAttachment(): Flow[AttachmentInfo, EitherErr[AttachmentContent], NotUsed]
+  def downloadAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed]
 
 }
 
@@ -28,12 +28,15 @@ class StorageService()(implicit val config: ServiceConfig,
   Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
     S3.download(config.attachmentsBucket, s"${attachment.key}.zip")
 
-  override def downloadAttachment(): Flow[AttachmentInfo, EitherErr[AttachmentContent], NotUsed] = {
-    Flow[AttachmentInfo].mapAsyncUnordered(8) { attachment =>
-      s3Source(attachment).toMat(Sink.head)(Keep.right).run().flatMap {
-        case None => Future.successful(Left(ErrorMessage(s"Error getting attachment ${attachment.key} from S3 ${config.attachmentsBucket}", WARN)))
-        case Some(source) => source._1.runFold(ByteString(ByteString.empty))(_ ++ _).map(bytes => Right(AttachmentContent(attachment, bytes)))
-      }
+  override def downloadAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = {
+    Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) { attachmentInfo =>
+      attachmentInfo.fold(error => Future.successful(Left(error)),
+        attachment => {
+          s3Source(attachment).toMat(Sink.head)(Keep.right).run().flatMap {
+            case None => Future.successful(Left(ErrorMessage(s"Error getting attachment ${attachment.key} from S3 ${config.attachmentsBucket}", WARN)))
+            case Some(source) => source._1.runFold(ByteString(ByteString.empty))(_ ++ _).map(bytes => Right(AttachmentContent(attachment, bytes)))
+          }
+        })
     }.withAttributes(ActorAttributes.supervisionStrategy(stoppingDecider))
     //TODO: determine whether restartingDecider or stoppingDecider is more appropriate for keeping stream alive
   }
