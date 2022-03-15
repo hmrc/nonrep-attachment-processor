@@ -18,13 +18,13 @@ class ServiceConfig(val servicePort: Int = 8000) {
       throw new IllegalStateException(
         "System property GLACIER_SNS is not set. This is required by the service to create a Glacier vault when necessary."))
 
-  val queueUrl: String = if (env == "local") "local" else sqsSNSSystemProperty
+  val queueUrl: String = if (env == "local") "local" else sqsSystemProperty
 
-  private [server] def sqsSNSSystemProperty: String =
+  private [server] def sqsSystemProperty: String =
     sys.env.getOrElse(
-      "ATTACHMENT_SQS_SNS",
+      "ATTACHMENT_SQS",
       throw new IllegalStateException(
-        "System property SQS_SNS is not set. This is required by the service to create a SQS message when necessary."))
+        "System property SQS queue url connection not set. This is required by the service to create a SQS queue message when necessary."))
 
   val attachmentsBucket = s"$env-nonrep-attachment-data"
 
@@ -47,7 +47,6 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val closeOnEmptyReceive: Boolean = systemParams.getBoolean("closeOnEmptyReceive")
   val waitTimeSeconds: Int = systemParams.getInt("waitTimeSeconds")
 
-//  val queueUrl: String = sys.env.getOrElse("ATTACHMENT_SQS", s"https://sqs.eu-west-2.amazonaws.com/205520045207/$env-nonrep-attachment-queue")
 
   override def toString =
     s"""
