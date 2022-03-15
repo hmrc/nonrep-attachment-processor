@@ -30,6 +30,21 @@ class QueueSpec extends BaseSpec {
 
       testSQSMessageIds should contain(result.messageId())
     }
+    "Delete message" in {
+      val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+      val (_, sub) = queueService.getMessages
+        .via(queueService.parseMessages)
+        .via(queueService.deleteMessage)
+        .toMat(sink)(Keep.both)
+        .run()
+
+      val result = sub
+        .request(1)
+        .expectNext()
+
+      result.isRight shouldBe true
+      result.toOption.get.key shouldBe testAttachmentId
+    }
 
     "Parse message properly" in {
       val sink = TestSink.probe[EitherErr[AttachmentInfo]]
@@ -48,21 +63,6 @@ class QueueSpec extends BaseSpec {
       result.toOption.get.key shouldBe testAttachmentId
     }
 
-    "Delete message" in {
-      val sink = TestSink.probe[EitherErr[AttachmentInfo]]
-      val (_, sub) = queueService.getMessages
-        .via(queueService.parseMessages)
-        .via(queueService.deleteMessage)
-        .toMat(sink)(Keep.both)
-        .run()
-
-      val result = sub
-        .request(1)
-        .expectNext()
-
-      result.isRight shouldBe true
-      result.toOption.get.key shouldBe testAttachmentId
-    }
 
     "For failure scenarios Queue service" should {
       import TestServices.failure._
