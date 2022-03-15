@@ -82,7 +82,6 @@ class ProcessorSpec extends BaseSpec {
         override lazy val glacier: Glacier = failure.glacierService
         override lazy val update: Update = failure.updateService
       }
-
       val result = processor.execute.run().request(1).expectNext()
 
       result.isLeft shouldBe true
@@ -90,5 +89,30 @@ class ProcessorSpec extends BaseSpec {
       result.left.toOption.get.message shouldBe "failure"
     }
 
+    "report an error for parsing SQS message failure" in {
+      val processor = new ProcessorService(testApplicationSink) {
+        override lazy val storage: Storage = success.storageService
+        override lazy val queue: Queue = failure.queueService
+      }
+
+      val result = processor.execute.run().request(1).expectNext()
+
+      result.isLeft shouldBe true
+      result.left.toOption.get.severity shouldBe ERROR
+      result.left.toOption.get.message shouldBe "Parsing SQS message failure"
+    }
+
+    "report an error for deleting SQS message failure" in {
+      val processor = new ProcessorService(testApplicationSink) {
+        override lazy val storage: Storage = success.storageService
+        override lazy val queue: Queue = failure.queueService
+      }
+
+      val result = processor.execute.run().request(1).expectNext()
+
+      result.isLeft shouldBe true
+      result.left.toOption.get.severity shouldBe ERROR
+      result.left.toOption.get.message shouldBe "Delete SQS message failure"
+    }
   }
 }

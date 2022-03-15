@@ -47,22 +47,61 @@ object TestServices {
   val testApplicationSink: Sink[EitherErr[AttachmentInfo], TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
     TestSink.probe[EitherErr[AttachmentInfo]](typedSystem.classicSystem)
 
+  val testSQSMessageIds: IndexedSeq[String] = IndexedSeq.fill(3)(UUID.randomUUID().toString)
+  def testSQSMessage(env: String, messageId: String, attachmentId: String, service: String = "s3"): Message = Message.builder().messageId(messageId).body(
+    s"""
+    {
+       "Records":[
+          {
+             "eventVersion":"2.1",
+             "eventSource":"aws:s3",
+             "awsRegion":"eu-west-2",
+             "eventTime":"2022-02-07T15:11:29.424Z",
+             "eventName":"ObjectCreated:Put",
+             "userIdentity":{
+                "principalId":"AWS:AROAS3WPTASL6ZOV32XXX:xxx.xxx"
+             },
+             "requestParameters":{
+                "sourceIPAddress":"11.132.226.116"
+             },
+             "responseElements":{
+                "x-amz-request-id":"QRD2XCV9XFBZ6WJD4",
+                "x-amz-id-2":"wGP2l4wq5ZhzxzcxCNcK9jik8VmXMO+c8HBYv66BJiWGD8vLAWaKyusb9Ifzo0lbK92CgohDuetpRcPQTldmUsSZnC44mqHfgwyL9e7WFwnKh7ug="
+             },
+             "$service":{
+                "s3SchemaVersion":"1.0",
+                "configurationId":"tf-s3-queue-20220207093133700300000025",
+                "bucket":{
+                   "name":"$env-nonrep-attachment-data",
+                   "ownerIdentity":{
+                      "principalId":"A202PFQUTJVXI"
+                   },
+                   "arn":"arn:aws:s3:::$env-nonrep-attachment-data"
+                },
+                "object":{
+                   "key":"$attachmentId.zip",
+                   "size":2063,
+                   "eTag":"28e4175ade4bacd44d180b90d719e921",
+                   "sequencer":"00620136A15E3CA4A7"
+                }
+             }
+          }
+       ]
+    }
+    """).build()
+
   object success {
     val storageService: Storage = new StorageService() {
       override def s3Source(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
         Source.single(Some(Source.single(ByteString(sampleAttachment)), ObjectMetadata(Seq())))
     }
-    /*
-    For queue service - this may be considered an interim solution
-     */
-    val queueService: Queue = new Queue() {
-      override def getMessages: Source[Message, NotUsed] = Source.single(Message.builder().messageId(UUID.randomUUID().toString).build())
 
-      override def parseMessages: Flow[Message, AttachmentInfo, NotUsed] = Flow[Message].map {
-        message => AttachmentInfo(message.messageId(), testAttachmentId)
-      }
+    val queueService: Queue = new QueueService() {
+      override def getMessages: Source[Message, NotUsed] =
+        Source(testSQSMessageIds.map(id => testSQSMessage(config.env, id, testAttachmentId)))
 
-      override def deleteMessage: Flow[AttachmentInfo, Boolean, NotUsed] = Flow[AttachmentInfo].map { _ => true }
+      override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
+        Flow[EitherErr[AttachmentInfo]].map { _ => Right(AttachmentInfo(testSQSMessageIds.head, testAttachmentId)) }
     }
 
     val signService: Sign = new SignService() {
@@ -102,12 +141,23 @@ object TestServices {
                                      asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
         Future failed new RuntimeException("boom!")
     }
+
     val updateService: Update = new UpdateService() {
       override val updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] =
         Flow[EitherErr[ArchivedAttachment]].map{ _ =>
           Left(ErrorMessage("failure")).withRight[AttachmentInfo]
         }
     }
-  }
 
+    val queueService: Queue = new QueueService() {
+
+      override def getMessages: Source[Message, NotUsed] =
+        Source(testSQSMessageIds.map(id => testSQSMessage(config.env, id, testAttachmentId, "invalid")))
+
+      override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
+        Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) { _ =>
+          Future.successful(Left(ErrorMessage("Delete SQS message failure")).withRight[AttachmentInfo])
+        }
+    }
+  }
 }
