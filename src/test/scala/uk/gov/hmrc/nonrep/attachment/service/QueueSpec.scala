@@ -50,7 +50,6 @@ class QueueSpec extends BaseSpec {
 
     "Delete message" in {
       val sink = TestSink.probe[EitherErr[AttachmentInfo]]
-
       val (_, sub) = queueService.getMessages
         .via(queueService.parseMessages)
         .via(queueService.deleteMessage)
