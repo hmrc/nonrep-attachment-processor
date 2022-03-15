@@ -101,7 +101,7 @@ object TestServices {
         Source(testSQSMessageIds.map(id => testSQSMessage(config.env, id, testAttachmentId)))
 
       override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
-        Flow[EitherErr[AttachmentInfo]].map { _ => Right(AttachmentInfo(testSQSMessageIds.head, testAttachmentId)) }
+        Flow[EitherErr[AttachmentInfo]].map { _.map(_ => AttachmentInfo(testSQSMessageIds.head, testAttachmentId)) }
     }
 
     val signService: Sign = new SignService() {
@@ -123,6 +123,8 @@ object TestServices {
           case (_, request) => (Try(HttpResponse(OK, entity = HttpEntity(""))), request)
         }
     }
+
+    val zipperService = new ZipperService
   }
 
   object failure {
@@ -155,8 +157,12 @@ object TestServices {
         Source(testSQSMessageIds.map(id => testSQSMessage(config.env, id, testAttachmentId, "invalid")))
 
       override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
-        Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) { _ =>
-          Future.successful(Left(ErrorMessage("Delete SQS message failure")).withRight[AttachmentInfo])
+        Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) { info =>
+          Future.successful(
+            info.fold(
+              err => Left(err),
+              _ => Left(ErrorMessage("Delete SQS message failure")).withRight[AttachmentInfo])
+          )
         }
     }
   }

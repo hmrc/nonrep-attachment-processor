@@ -1,38 +1,49 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
+import akka.NotUsed
+import akka.stream.scaladsl.{Flow, Source}
 import akka.stream.testkit.TestSubscriber
+import software.amazon.awssdk.services.sqs.model.Message
+import org.mockito.Mockito.{verify, when}
+import org.mockito.MockitoSugar.mock
 
 class ProcessorSpec extends BaseSpec {
 
   import TestServices._
+  import TestServices.success._
 
   "attachments processor for happy path" should {
-    import TestServices.success._
 
     val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
       new ProcessorService(testApplicationSink) {
-        override lazy val storage: Storage = storageService
-        override lazy val queue: Queue = queueService
-        override lazy val sign: Sign = signService
-        override lazy val glacier: Glacier = glacierService
-        override lazy val update: Update = updateService
+        override def getMessages: Source[Message, NotUsed] = queueService.getMessages
+        override def parseMessage: Flow[Message, EitherErr[AttachmentInfo], NotUsed] = queueService.parseMessages
+        override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = queueService.deleteMessage
+        override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
+        override def unpackBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] = zipperService.unzip
+        override def repackBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] = zipperService.zip
+        override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = signService.signing
+        override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacierService.archive
+        override def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = updateService.updateMetastore
     }
 
     "process attachments" in {
       val result = processor.execute.run().request(1).expectNext().toOption.get
 
       result.key shouldBe testAttachmentId
+      result.message shouldBe testSQSMessageIds.head
     }
   }
 
   "for failure scenarios attachments processor" should {
 
     "report a warning when an attachment cannot be downloaded from s3" in {
-      val processor = new ProcessorService(testApplicationSink) {
-        override lazy val storage: Storage = failure.storageService
-        override lazy val queue: Queue = success.queueService
-      }
+      val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
+        new ProcessorService(testApplicationSink) {
+          override def getMessages: Source[Message, NotUsed] = queueService.getMessages
+          override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = failure.storageService.downloadAttachment
+        }
 
       val result = processor.execute.run()
         .request(1)
@@ -44,11 +55,12 @@ class ProcessorSpec extends BaseSpec {
     }
 
     "report a warning for signing failure" in {
-      val processor = new ProcessorService(testApplicationSink) {
-        override lazy val storage: Storage = success.storageService
-        override lazy val queue: Queue = success.queueService
-        override lazy val sign: Sign = failure.signService
-      }
+      val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
+        new ProcessorService(testApplicationSink) {
+          override def getMessages: Source[Message, NotUsed] = queueService.getMessages
+          override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
+          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = failure.signService.signing
+        }
 
       val result = processor.execute.run()
         .request(1)
@@ -60,12 +72,14 @@ class ProcessorSpec extends BaseSpec {
     }
 
     "report an error for a glacier failure" in {
-      val processor = new ProcessorService(testApplicationSink) {
-        override lazy val storage: Storage = success.storageService
-        override lazy val queue: Queue = success.queueService
-        override lazy val sign: Sign = success.signService
-        override lazy val glacier: Glacier = failure.glacierService
-      }
+      val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
+        new ProcessorService(testApplicationSink) {
+          override def getMessages: Source[Message, NotUsed] = queueService.getMessages
+          override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
+          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = signService.signing
+          override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = failure.glacierService.archive
+        }
+
 
       val result = processor.execute.run().request(1).expectNext()
 
@@ -75,13 +89,15 @@ class ProcessorSpec extends BaseSpec {
     }
 
     "report an error for update metastore failure" in {
-      val processor = new ProcessorService(testApplicationSink) {
-        override lazy val storage: Storage = success.storageService
-        override lazy val queue: Queue = success.queueService
-        override lazy val sign: Sign = success.signService
-        override lazy val glacier: Glacier = failure.glacierService
-        override lazy val update: Update = failure.updateService
-      }
+      val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
+        new ProcessorService(testApplicationSink) {
+          override def getMessages: Source[Message, NotUsed] = queueService.getMessages
+          override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
+          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = signService.signing
+          override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacierService.archive
+          override def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = failure.updateService.updateMetastore
+        }
+
       val result = processor.execute.run().request(1).expectNext()
 
       result.isLeft shouldBe true
@@ -90,10 +106,10 @@ class ProcessorSpec extends BaseSpec {
     }
 
     "report an error for parsing SQS message failure" in {
-      val processor = new ProcessorService(testApplicationSink) {
-        override lazy val storage: Storage = success.storageService
-        override lazy val queue: Queue = failure.queueService
-      }
+      val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
+        new ProcessorService(testApplicationSink) {
+          override def getMessages: Source[Message, NotUsed] = failure.queueService.getMessages
+        }
 
       val result = processor.execute.run().request(1).expectNext()
 
@@ -103,10 +119,15 @@ class ProcessorSpec extends BaseSpec {
     }
 
     "report an error for deleting SQS message failure" in {
-      val processor = new ProcessorService(testApplicationSink) {
-        override lazy val storage: Storage = success.storageService
-        override lazy val queue: Queue = failure.queueService
-      }
+      val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
+        new ProcessorService(testApplicationSink) {
+          override def getMessages: Source[Message, NotUsed] = queueService.getMessages
+          override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = failure.queueService.deleteMessage
+          override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
+          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = signService.signing
+          override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacierService.archive
+          override def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = updateService.updateMetastore
+        }
 
       val result = processor.execute.run().request(1).expectNext()
 

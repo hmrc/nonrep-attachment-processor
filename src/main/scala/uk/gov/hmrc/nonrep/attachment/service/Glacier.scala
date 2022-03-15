@@ -14,6 +14,8 @@ import java.lang.Integer.toHexString
 import java.security.MessageDigest.getInstance
 import java.time.LocalDate.now
 
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
+import software.amazon.awssdk.regions.Region.EU_WEST_2
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
 import scala.annotation.tailrec
@@ -32,7 +34,11 @@ class GlacierService()
   private val glacierNotificationsSnsTopicArn = config.glacierNotificationsSnsTopicArn
   private val environment = config.env
 
-  private [service] lazy val client: GlacierAsyncClient = GlacierAsyncClient.builder().build()
+  private [service] lazy val client: GlacierAsyncClient = GlacierAsyncClient
+    .builder()
+    .region(EU_WEST_2)
+    .httpClientBuilder(NettyNioAsyncHttpClient.builder())
+    .build()
 
   private val environmentalVaultNamePrefix =
     if (Set("dev", "qa", "staging", "production").contains(environment)) ""

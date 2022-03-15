@@ -31,9 +31,9 @@ class GlacierServiceSpec extends BaseSpec {
 
   private def serviceConfig(environment: String) = {
     new ServiceConfig() {
-      override val env = environment
-
+      override val env: String = environment
       override def glacierSNSSystemProperty = "local"
+      override def sqsSystemProperty = "local"
     }
   }
 
@@ -79,7 +79,7 @@ class GlacierServiceSpec extends BaseSpec {
 
     "create a glacier vault" when {
       "the vault does not exist" in {
-        val glacierServiceWithoutVault = new GlacierService() {
+        val glacierServiceWithoutVault: GlacierService = new GlacierService() {
           override lazy val client: GlacierAsyncClient = glacierAsyncClient
 
           private var vaultExists = false

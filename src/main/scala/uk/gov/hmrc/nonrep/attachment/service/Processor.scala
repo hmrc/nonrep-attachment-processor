@@ -10,17 +10,23 @@ import software.amazon.awssdk.services.sqs.model.Message
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
 trait Processor[A] {
-  def storage: Storage
+  def getMessages: Source[Message, NotUsed]
 
-  def queue: Queue
+  def parseMessage: Flow[Message, EitherErr[AttachmentInfo], NotUsed]
 
-  def sign: Sign
+  def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]
 
-  def zip: Zipper
+  def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed]
 
-  def glacier: Glacier
+  def unpackBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed]
 
-  def update: Update
+  def repackBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed]
+
+  def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed]
+
+  def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed]
+
+  def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed]
 
   def applicationSink: Sink[EitherErr[AttachmentInfo], A]
 }
@@ -34,42 +40,42 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
                          (implicit val system: ActorSystem[_], config: ServiceConfig)
   extends Processor[A] {
 
-  override lazy val storage: Storage = new StorageService()
+  val storage: Storage = new StorageService()
 
-  override lazy val queue: Queue = new QueueService()
+  val queue: Queue = new QueueService()
 
-  override lazy val sign: Sign = new SignService()
+  val sign: Sign = new SignService()
 
-  override lazy val zip: Zipper = new ZipperService()
+  val zip: Zipper = new ZipperService()
 
-  override lazy val glacier: Glacier = new GlacierService()
+  val glacier: Glacier = new GlacierService()
 
-  override lazy val update: Update = new UpdateService()
+  val update: Update = new UpdateService()
 
-  val messages: Source[Message, NotUsed] = queue.getMessages
+  override def getMessages: Source[Message, NotUsed] = queue.getMessages
 
-  val parsing: Flow[Message, EitherErr[AttachmentInfo], NotUsed] = queue.parseMessages
+  override def parseMessage: Flow[Message, EitherErr[AttachmentInfo], NotUsed] = queue.parseMessages
 
-  val deleting: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = queue.deleteMessage
+  override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = queue.deleteMessage
 
-  val downloading: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storage.downloadAttachment
+  override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storage.downloadAttachment
 
-  val unpacking: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] = zip.unzip()
+  override def unpackBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] = zip.unzip
 
-  val repacking: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] = zip.zip()
+  override def repackBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] = zip.zip
 
-  val signing: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = sign.signing
+  override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = sign.signing
 
-  val archiving: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacier.archive
+  override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacier.archive
 
-  val metastoreUpdate: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = update.updateMetastore
+  override def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = update.updateMetastore
 
   val execute: RunnableGraph[A] = fromGraph(GraphDSL.createGraph(applicationSink) {
     implicit builder =>
       sink =>
         import GraphDSL.Implicits._
 
-        messages ~> parsing ~> downloading ~> unpacking ~> signing ~> repacking ~> archiving ~> metastoreUpdate ~> deleting ~> sink
+        getMessages ~> parseMessage ~> downloadBundle ~> unpackBundle ~> signAttachment ~> repackBundle ~> archiveBundle ~> updateMetastore ~> deleteMessage ~> sink
 
         ClosedShape
   })

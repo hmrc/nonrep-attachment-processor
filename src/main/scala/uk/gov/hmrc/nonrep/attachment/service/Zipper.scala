@@ -11,14 +11,14 @@ import akka.util.ByteString
 import scala.util.Using
 
 trait Zipper {
-  def zip(): Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed]
+  def zip: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed]
 
-  def unzip(): Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed]
+  def unzip: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed]
 }
 
 class ZipperService extends Zipper {
 
-  override def zip(): Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] =
+  override def zip: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] =
     Flow[EitherErr[ZipContent]].map {
       _.flatMap(content => {
         Using.Manager { use =>
@@ -36,7 +36,7 @@ class ZipperService extends Zipper {
       }.toEither.left.flatMap(x => Left(ErrorMessage(s"Failure of creating zip archive for ${content.info.key} with ${x.getCause}"))))
     }
 
-  override def unzip(): Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] =
+  override def unzip: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] =
     Flow[EitherErr[AttachmentContent]].map {
       _.flatMap(attachment => {
         Using.Manager { use =>
