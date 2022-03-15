@@ -10,10 +10,14 @@ import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.services.glacier.GlacierAsyncClient
 import software.amazon.awssdk.services.glacier.model._
 import uk.gov.hmrc.nonrep.attachment.service.ChecksumUtils.sha256TreeHashHex
-
 import java.lang.Integer.toHexString
 import java.security.MessageDigest.getInstance
 import java.time.LocalDate.now
+
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
+import software.amazon.awssdk.regions.Region.EU_WEST_2
+import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
+
 import scala.annotation.tailrec
 import scala.compat.java8.FutureConverters._
 import scala.concurrent.{ExecutionContext, Future}
@@ -23,10 +27,18 @@ trait Glacier {
   val archive: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed]
 }
 
-class GlacierService(glacierNotificationsSnsTopicArn: String, environment: String)
-                    (implicit val system: ActorSystem[_]) extends Glacier {
+class GlacierService()
+                    (implicit val config: ServiceConfig,
+                     implicit val system: ActorSystem[_]) extends Glacier {
 
-  private [service] lazy val client: GlacierAsyncClient = GlacierAsyncClient.builder().build()
+  private val glacierNotificationsSnsTopicArn = config.glacierNotificationsSnsTopicArn
+  private val environment = config.env
+
+  private [service] lazy val client: GlacierAsyncClient = GlacierAsyncClient
+    .builder()
+    .region(EU_WEST_2)
+    .httpClientBuilder(NettyNioAsyncHttpClient.builder())
+    .build()
 
   private val environmentalVaultNamePrefix =
     if (Set("dev", "qa", "staging", "production").contains(environment)) ""

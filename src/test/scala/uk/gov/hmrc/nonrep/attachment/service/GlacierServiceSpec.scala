@@ -12,20 +12,29 @@ import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.services.glacier.GlacierAsyncClient
 import software.amazon.awssdk.services.glacier.model._
 import uk.gov.hmrc.nonrep.attachment.service.ChecksumUtils.{chunkSize, sha256TreeHashHex}
-
 import java.util.Collections.emptyList
 import java.util.concurrent.CompletableFuture.completedFuture
+
+import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
+
 import scala.concurrent.{ExecutionContext, Future}
 
 class GlacierServiceSpec extends BaseSpec {
+
   import TestServices._
 
   private val glacierAsyncClient = mock[GlacierAsyncClient]
 
-  private val glacierService: GlacierService = glacierService("local")
-
-  private def glacierService(environment: String) = new GlacierService("", environment) {
+  private def glacierService(sc: ServiceConfig = config): GlacierService = new GlacierService()(sc, typedSystem) {
     override lazy val client: GlacierAsyncClient = glacierAsyncClient
+  }
+
+  private def serviceConfig(environment: String) = {
+    new ServiceConfig() {
+      override val env: String = environment
+      override def glacierSNSSystemProperty = "local"
+      override def sqsSystemProperty = "local"
+    }
   }
 
   private implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
@@ -47,10 +56,10 @@ class GlacierServiceSpec extends BaseSpec {
 
     "archive an attachment in Glacier" when {
       "the glacier client call succeeds" in {
-        when(glacierService.client.uploadArchive(ArgumentMatchers.eq(uploadArchiveRequest), any[AsyncRequestBody]()))
+        when(glacierService().client.uploadArchive(ArgumentMatchers.eq(uploadArchiveRequest), any[AsyncRequestBody]()))
           .thenAnswer(future(UploadArchiveResponse.builder().archiveId(archiveId).build))
 
-        glacierService.eventuallyCreateVaultIfNecessaryAndArchive(content, vaultName).futureValue.toOption.get shouldBe archiveId
+        glacierService().eventuallyCreateVaultIfNecessaryAndArchive(content, vaultName).futureValue.toOption.get shouldBe archiveId
       }
     }
 
@@ -59,9 +68,9 @@ class GlacierServiceSpec extends BaseSpec {
         when(
           glacierAsyncClient
             .uploadArchive(ArgumentMatchers.eq(uploadArchiveRequest), any[AsyncRequestBody]))
-            .thenAnswer(future(new RuntimeException("boom!")))
+          .thenAnswer(future(new RuntimeException("boom!")))
 
-        glacierService.eventuallyCreateVaultIfNecessaryAndArchive(content, vaultName).futureValue match {
+        glacierService().eventuallyCreateVaultIfNecessaryAndArchive(content, vaultName).futureValue match {
           case Left(error) => error.message shouldBe s"Error uploading attachment $content to glacier $vaultName"
           case Right(_) => fail("an error was expected")
         }
@@ -70,7 +79,7 @@ class GlacierServiceSpec extends BaseSpec {
 
     "create a glacier vault" when {
       "the vault does not exist" in {
-        val glacierServiceWithoutVault = new GlacierService("glacierNotificationsSnsTopicArn", "local") {
+        val glacierServiceWithoutVault: GlacierService = new GlacierService() {
           override lazy val client: GlacierAsyncClient = glacierAsyncClient
 
           private var vaultExists = false
@@ -88,7 +97,7 @@ class GlacierServiceSpec extends BaseSpec {
         when(
           glacierAsyncClient
             .listVaults(any[ListVaultsRequest]))
-            .thenAnswer(future(ListVaultsResponse.builder().vaultList(emptyList[DescribeVaultOutput]()).build()))
+          .thenAnswer(future(ListVaultsResponse.builder().vaultList(emptyList[DescribeVaultOutput]()).build()))
         when(glacierAsyncClient.createVault(any[CreateVaultRequest])).thenAnswer(future(CreateVaultRequest.builder().build()))
 
         glacierServiceWithoutVault.eventuallyCreateVaultIfNecessaryAndArchive(content, vaultName).futureValue.toOption.get shouldBe archiveId
@@ -102,26 +111,27 @@ class GlacierServiceSpec extends BaseSpec {
     "return a vault name without a prefix" when {
       val vaultNameWithNoPrefix = s"vat-return-${now().year()}"
 
+
       "running in dev" in {
-        glacierService("dev").datedVaultName shouldBe vaultNameWithNoPrefix
+        glacierService(serviceConfig("dev")).datedVaultName shouldBe vaultNameWithNoPrefix
       }
 
       "running in qa" in {
-        glacierService("qa").datedVaultName shouldBe vaultNameWithNoPrefix
+        glacierService(serviceConfig("qa")).datedVaultName shouldBe vaultNameWithNoPrefix
       }
 
       "running in staging" in {
-        glacierService("staging").datedVaultName shouldBe vaultNameWithNoPrefix
+        glacierService(serviceConfig("staging")).datedVaultName shouldBe vaultNameWithNoPrefix
       }
 
       "running in production" in {
-        glacierService("production").datedVaultName shouldBe vaultNameWithNoPrefix
+        glacierService(serviceConfig("production")).datedVaultName shouldBe vaultNameWithNoPrefix
       }
     }
 
     "return a vault name with the environment name as prefix" when {
       "running in another environment" in {
-        glacierService("sandbox1").datedVaultName shouldBe s"sandbox1-vat-return-${now().year()}"
+        glacierService(serviceConfig("sandbox1")).datedVaultName shouldBe s"sandbox1-vat-return-${now().year()}"
       }
     }
   }

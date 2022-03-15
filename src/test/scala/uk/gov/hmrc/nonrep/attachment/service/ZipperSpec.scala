@@ -26,7 +26,7 @@ class ZipperSpec extends BaseSpec {
 
       val source = TestSource.probe[EitherErr[ZipContent]]
       val sink = TestSink.probe[EitherErr[AttachmentContent]]
-      val (pub, sub) = source.via(zipper.zip()).toMat(sink)(Keep.both).run()
+      val (pub, sub) = source.via(zipper.zip).toMat(sink)(Keep.both).run()
       pub.sendNext(Right(zipContent)).sendComplete()
       val result = sub
         .request(1)
@@ -51,7 +51,7 @@ class ZipperSpec extends BaseSpec {
       val source = TestSource.probe[EitherErr[AttachmentContent]]
       val sink = TestSink.probe[EitherErr[ZipContent]]
 
-      val (pub, sub) = source.via(zipper.unzip()).toMat(sink)(Keep.both).run()
+      val (pub, sub) = source.via(zipper.unzip).toMat(sink)(Keep.both).run()
       pub.sendNext(Right(content)).sendComplete()
       val result = sub
         .request(1)
@@ -74,7 +74,7 @@ class ZipperSpec extends BaseSpec {
       val source = TestSource.probe[EitherErr[AttachmentContent]]
       val sink = TestSink.probe[EitherErr[ZipContent]]
 
-      val (pub, sub) = source.via(zipper.unzip()).toMat(sink)(Keep.both).run()
+      val (pub, sub) = source.via(zipper.unzip).toMat(sink)(Keep.both).run()
       pub.sendNext(Right(content)).sendComplete()
       val result = sub
         .request(1)

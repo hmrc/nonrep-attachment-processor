@@ -10,6 +10,7 @@ import akka.stream.alpakka.sqs.scaladsl.SqsSource
 import akka.stream.scaladsl.{Flow, Source}
 import akka.util.Timeout
 import akka.{Done, NotUsed}
+import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region.EU_WEST_2
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, Message}
@@ -37,7 +38,11 @@ class QueueService()(implicit val config: ServiceConfig,
 
   implicit val ec: ExecutionContextExecutor = system.executionContext
 
-  private[service] implicit lazy val client: SqsAsyncClient = SqsAsyncClient.builder().region(EU_WEST_2).build()
+  private[service] implicit lazy val client: SqsAsyncClient = SqsAsyncClient
+    .builder()
+    .region(EU_WEST_2)
+    .httpClientBuilder(NettyNioAsyncHttpClient.builder())
+    .build()
 
   CoordinatedShutdown(system).addTask(CoordinatedShutdown.PhaseBeforeServiceUnbind, "close SQS client") { () =>
     implicit val timeout: Timeout = Timeout(5.seconds)

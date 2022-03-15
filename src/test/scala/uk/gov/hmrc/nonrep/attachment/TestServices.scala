@@ -30,7 +30,7 @@ object TestServices {
   implicit val ec: ExecutionContext = typedSystem.executionContext
   implicit val config: ServiceConfig = new ServiceConfig()
 
-  def entityToString(entity: ResponseEntity)(implicit ec: ExecutionContext): Future[String] =
+  def entityToString(entity: ResponseEntity): Future[String] =
     entity.dataBytes.runFold(ByteString(""))(_ ++ _).map(_.utf8String)
 
   val testAttachmentId = "738bcba6-7f9e-11ec-8768-3f8498104f38"
@@ -44,8 +44,8 @@ object TestServices {
   val sampleSignedAttachmentContent: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.p7m").getFile).toPath)
 
-  val testApplicationSink: Sink[EitherErr[ArchivedAttachment], TestSubscriber.Probe[EitherErr[ArchivedAttachment]]] =
-    TestSink.probe[EitherErr[ArchivedAttachment]](typedSystem.classicSystem)
+  val testApplicationSink: Sink[EitherErr[AttachmentInfo], TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
+    TestSink.probe[EitherErr[AttachmentInfo]](typedSystem.classicSystem)
 
   val testSQSMessageIds: IndexedSeq[String] = IndexedSeq.fill(3)(UUID.randomUUID().toString)
   def testSQSMessage(env: String, messageId: String, attachmentId: String, service: String = "s3"): Message = Message.builder().messageId(messageId).body(
@@ -101,7 +101,7 @@ object TestServices {
         Source(testSQSMessageIds.map(id => testSQSMessage(config.env, id, testAttachmentId)))
 
       override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
-        Flow[EitherErr[AttachmentInfo]].map { _ => Right(AttachmentInfo(testSQSMessageIds.head, testAttachmentId)) }
+        Flow[EitherErr[AttachmentInfo]].map { _.map(_ => AttachmentInfo(testSQSMessageIds.head, testAttachmentId)) }
     }
 
     val signService: Sign = new SignService() {
@@ -111,11 +111,20 @@ object TestServices {
         }
     }
 
-    val glacierService: Glacier = new GlacierService("", "") {
+    val glacierService: Glacier = new GlacierService() {
       override def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
                                      asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
         Future successful UploadArchiveResponse.builder().archiveId(archiveId).build()
     }
+
+    val updateService: Update = new UpdateService() {
+      override val callMetastore: Flow[(HttpRequest, EitherErr[ArchivedAttachment]), (Try[HttpResponse], EitherErr[ArchivedAttachment]), Any] =
+        Flow[(HttpRequest, EitherErr[ArchivedAttachment])].map {
+          case (_, request) => (Try(HttpResponse(OK, entity = HttpEntity(""))), request)
+        }
+    }
+
+    val zipperService = new ZipperService
   }
 
   object failure {
@@ -129,24 +138,32 @@ object TestServices {
           case (_, request) => (Try(HttpResponse(InternalServerError)), request)
         }
     }
-    val glacierService: GlacierService = new GlacierService("", "") {
+    val glacierService: GlacierService = new GlacierService() {
       override def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
                                      asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
         Future failed new RuntimeException("boom!")
     }
 
-    val queueService: Queue = new QueueService() {
-      private val messages = IndexedSeq.fill(3)(UUID.randomUUID().toString)
-
-      override def getMessages: Source[Message, NotUsed] =
-        Source(messages.map(id => testSQSMessage(config.env, id, testAttachmentId, "invalid")))
-
-      override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
-        Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) { _ =>
-          Future.successful(Left(ErrorMessage("failure")).withRight[AttachmentInfo])
+    val updateService: Update = new UpdateService() {
+      override val updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] =
+        Flow[EitherErr[ArchivedAttachment]].map{ _ =>
+          Left(ErrorMessage("failure")).withRight[AttachmentInfo]
         }
     }
 
-  }
+    val queueService: Queue = new QueueService() {
 
+      override def getMessages: Source[Message, NotUsed] =
+        Source(testSQSMessageIds.map(id => testSQSMessage(config.env, id, testAttachmentId, "invalid")))
+
+      override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
+        Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) { info =>
+          Future.successful(
+            info.fold(
+              err => Left(err),
+              _ => Left(ErrorMessage("Delete SQS message failure")).withRight[AttachmentInfo])
+          )
+        }
+    }
+  }
 }
