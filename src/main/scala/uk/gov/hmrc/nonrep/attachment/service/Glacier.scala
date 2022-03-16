@@ -32,7 +32,6 @@ class GlacierService()
                      implicit val system: ActorSystem[_]) extends Glacier {
 
   private val glacierNotificationsSnsTopicArn = config.glacierNotificationsSnsTopicArn
-  private val environment = config.env
 
   private [service] lazy val client: GlacierAsyncClient = GlacierAsyncClient
     .builder()
@@ -40,9 +39,7 @@ class GlacierService()
     .httpClientBuilder(NettyNioAsyncHttpClient.builder())
     .build()
 
-  private val environmentalVaultNamePrefix =
-    if (Set("dev", "qa", "staging", "production").contains(environment)) ""
-    else s"$environment-"
+  private val environmentalVaultNamePrefix = if(config.isSandbox) s"${config.env}-" else ""
 
   implicit val ec: ExecutionContext = system.executionContext
 

@@ -5,8 +5,6 @@ import akka.NotUsed
 import akka.stream.scaladsl.{Flow, Source}
 import akka.stream.testkit.TestSubscriber
 import software.amazon.awssdk.services.sqs.model.Message
-import org.mockito.Mockito.{verify, when}
-import org.mockito.MockitoSugar.mock
 
 class ProcessorSpec extends BaseSpec {
 

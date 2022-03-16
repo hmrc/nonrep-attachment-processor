@@ -10,7 +10,10 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val appName = "attachment-processor"
   val port: Int = sys.env.get("REST_PORT").fold(servicePort)(_.toInt)
   val env: String = sys.env.getOrElse("ENV", "local")
-  val glacierNotificationsSnsTopicArn: String = if (env == "local") "local" else glacierSNSSystemProperty
+
+  def isSandbox = !Set("dev", "qa", "staging", "production").contains(env)
+
+  val glacierNotificationsSnsTopicArn: String = if (isSandbox) "local" else glacierSNSSystemProperty
 
   private[server] def glacierSNSSystemProperty =
     sys.env.getOrElse(
@@ -18,7 +21,7 @@ class ServiceConfig(val servicePort: Int = 8000) {
       throw new IllegalStateException(
         "System property GLACIER_SNS is not set. This is required by the service to create a Glacier vault when necessary."))
 
-  val queueUrl: String = if (env == "local") "local" else sqsSystemProperty
+  val queueUrl: String = if (isSandbox) "local" else sqsSystemProperty
 
   private [server] def sqsSystemProperty: String =
     sys.env.getOrElse(
