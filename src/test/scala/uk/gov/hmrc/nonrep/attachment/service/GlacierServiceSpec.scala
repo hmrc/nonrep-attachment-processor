@@ -43,7 +43,7 @@ class GlacierServiceSpec extends BaseSpec {
 
   "eventuallyCreateVaultIfNecessaryAndUpload" should {
     val archiveId = "archiveId"
-    val vaultName = s"local-vat-return-${now().year()}"
+    val vaultName = s"local-vat-registration-${now().year()}"
     val content = AttachmentContent(AttachmentInfo("messageId", testAttachmentId), ByteString(sampleAttachment))
 
     val uploadArchiveRequest =
@@ -109,7 +109,7 @@ class GlacierServiceSpec extends BaseSpec {
 
   "datedVaultName" should {
     "return a vault name without a prefix" when {
-      val vaultNameWithNoPrefix = s"vat-return-${now().year()}"
+      val vaultNameWithNoPrefix = s"vat-registration-${now().year()}"
 
 
       "running in dev" in {
@@ -131,7 +131,7 @@ class GlacierServiceSpec extends BaseSpec {
 
     "return a vault name with the environment name as prefix" when {
       "running in another environment" in {
-        glacierService(serviceConfig("sandbox1")).datedVaultName shouldBe s"sandbox1-vat-return-${now().year()}"
+        glacierService(serviceConfig("sandbox1")).datedVaultName shouldBe s"sandbox1-vat-registration-${now().year()}"
       }
     }
   }

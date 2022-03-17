@@ -44,8 +44,8 @@ class UpdateService()(implicit val config: ServiceConfig,
     if (response.status == OK) {
       response.entity.dataBytes
         .runFold(ByteString.empty)(_ ++ _)
-        .map(_.mkString)
-        .foreach(system.log.info)
+        .map(_.utf8String)
+        .foreach(response => system.log.info(s"Metastore response $response"))
       archived
     } else {
       response.discardEntityBytes()
@@ -57,7 +57,7 @@ class UpdateService()(implicit val config: ServiceConfig,
   val createRequest: Flow[EitherErr[ArchivedAttachment], (HttpRequest, EitherErr[ArchivedAttachment]), NotUsed] =
     Flow[EitherErr[ArchivedAttachment]].map { attachment =>
       (attachment.toOption.map(archived => {
-        val path = s"/${archived.info.notableEvent}/index/${archived.info.key}/_update"
+        val path = s"/${archived.info.notableEvent}/index/${archived.info.submissionId.getOrElse(new IllegalStateException("Submission ID must be present"))}/_update"
         val body = s"""{"doc": {"glacier": {"attachments":{ "${archived.info.key}": { "vaultName": "${archived.vaultName}", "archiveId": "${archived.archiveId}"}}}}}"""
         val request = createSignedRequest(HttpMethods.POST, config.elasticSearchUri, path, body, signerParams)
         system.log.info(s"Update metastore request for: [${archived.info.key}], path: [$path], body: [$body] and request: [$request]")

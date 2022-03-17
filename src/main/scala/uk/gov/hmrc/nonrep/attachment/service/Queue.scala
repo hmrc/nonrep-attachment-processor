@@ -62,7 +62,7 @@ class QueueService()(implicit val config: ServiceConfig,
 
   override def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed] =
     Flow[Message].map { message =>
-      val messageId = message.messageId()
+      val messageHandle = message.receiptHandle()
 
       Try {
         val attachmentId = message
@@ -73,7 +73,7 @@ class QueueService()(implicit val config: ServiceConfig,
           .asJsObject.fields("object")
           .asJsObject.fields("key").convertTo[String]
           .replaceFirst(".zip", "")
-        AttachmentInfo(messageId, attachmentId)
+        AttachmentInfo(messageHandle, attachmentId)
       }.toEither.left.map(thr => {
         system.log.error(s"Parsing SQS message failure ${message.body()}", thr)
         ErrorMessage("Parsing SQS message failure")

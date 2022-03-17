@@ -124,7 +124,7 @@ object TestServices {
         }
     }
 
-    val zipperService = new ZipperService
+    val zipperService = new BundleService
   }
 
   object failure {

@@ -22,7 +22,7 @@ package object attachment {
 
   case class ErrorMessage(message: String, severity: Severity = ERROR)
 
-  case class AttachmentInfo(message: String, key: String, notableEvent: String = "vat-registration")
+  case class AttachmentInfo(message: String, key: String, notableEvent: String = "vat-registration", submissionId: Option[String] = None)
 
   case class AttachmentContent(info: AttachmentInfo, content: ByteString) {
     val bytes: Array[Byte] = content.toArray

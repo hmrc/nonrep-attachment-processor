@@ -30,6 +30,23 @@ class NonrepMicroservice(routes: Routes)(implicit val system: ActorSystem[_], co
       system.log.error("Failed to bind HTTP endpoint, terminating system", ex)
       system.terminate()
   }
+
+  val applicationSink: Sink[EitherErr[AttachmentInfo], Future[Done]] = Sink.foreach[EitherErr[AttachmentInfo]] {
+    _.fold(
+      {
+        case ErrorMessage(message, WARN) => system.log.warn(message)
+        case ErrorMessage(message, ERROR) => system.log.error(message)
+      },
+      attachmentInfo =>
+        system.log.info(s"Successful processing of attachment ${attachmentInfo.key}")
+    )
+  }
+
+  Processor(applicationSink).execute.run().onComplete {
+    case Success(result) => system.log.info(s"Attachments processor finished its work ${result.toString}")
+    case Failure(ex) => system.log.error(s"Attachments processor failed with ${ex.getMessage}", ex)
+  }
+
 }
 
 object Main {
@@ -43,7 +60,6 @@ object Main {
   def main(args: Array[String]): Unit = {
     val rootBehavior = Behaviors.setup[Nothing] { context =>
 
-
       val routes = Routes()(context.system, implicitly)
 
       NonrepMicroservice(routes)(context.system, config)
@@ -52,19 +68,6 @@ object Main {
     }
 
     implicit val system: ActorSystem[Nothing] = ActorSystem[Nothing](rootBehavior, s"NrsServer-${config.appName}")
-
-    val applicationSink: Sink[EitherErr[AttachmentInfo], Future[Done]] = Sink.foreach[EitherErr[AttachmentInfo]] {
-      _.fold(
-        {
-          case ErrorMessage(message, WARN) => system.log.warn(message)
-          case ErrorMessage(message, ERROR) => system.log.error(message)
-        },
-        attachmentInfo =>
-          system.log.info(s"Successful processing of attachment ${attachmentInfo.key}")
-      )
-    }
-    //TODO: enable method run after the implementation is complete
-    Processor(applicationSink).execute /*.run()*/
 
   }
 }

@@ -117,7 +117,7 @@ class GlacierService()
     }
   }
 
-  private[service] def datedVaultName = s"${environmentalVaultNamePrefix}vat-return-${now().getYear}"
+  private[service] def datedVaultName = s"${environmentalVaultNamePrefix}vat-registration-${now().getYear}"
 }
 
 object ChecksumUtils {

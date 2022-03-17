@@ -19,8 +19,8 @@ class ProcessorSpec extends BaseSpec {
         override def parseMessage: Flow[Message, EitherErr[AttachmentInfo], NotUsed] = queueService.parseMessages
         override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = queueService.deleteMessage
         override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
-        override def unpackBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] = zipperService.unzip
-        override def repackBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] = zipperService.zip
+        override def unpackBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] = zipperService.extractBundle
+        override def repackBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] = zipperService.createBundle
         override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = signService.signing
         override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacierService.archive
         override def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = updateService.updateMetastore
