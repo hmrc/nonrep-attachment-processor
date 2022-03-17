@@ -10,6 +10,9 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val appName = "attachment-processor"
   val port: Int = sys.env.get("REST_PORT").fold(servicePort)(_.toInt)
   val env: String = sys.env.getOrElse("ENV", "local")
+
+  def isSandbox = !Set("dev", "qa", "staging", "production").contains(env)
+
   val glacierNotificationsSnsTopicArn: String = if (env == "local") "local" else glacierSNSSystemProperty
 
   private[server] def glacierSNSSystemProperty =
@@ -50,6 +53,7 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val maxBatchSize: Int = systemParams.getInt("maxBatchSize")
   val closeOnEmptyReceive: Boolean = systemParams.getBoolean("closeOnEmptyReceive")
   val waitTimeSeconds: Int = systemParams.getInt("waitTimeSeconds")
+  val messagesPerSecond: Int = systemParams.getInt("messagesPerSecond")
   
   override def toString =
     s"""
@@ -57,6 +61,8 @@ class ServiceConfig(val servicePort: Int = 8000) {
     port: $servicePort
     env: $env
     queueUrl: $queueUrl
+    elasticSearchUri: $elasticSearchUri
+    glacierNotificationsSnsTopicArn: $glacierNotificationsSnsTopicArn
     attachmentsBucket: $attachmentsBucket
     configFile: ${config.toString}"""
 

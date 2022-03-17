@@ -14,8 +14,8 @@ class UpdateSpec extends BaseSpec {
 
     "Update metastore document with attachment info" in {
       import TestServices.success._
-      val messageId = UUID.randomUUID().toString
-      val attachmentInfo = AttachmentInfo(messageId, testAttachmentId)
+      val messageId = testSQSMessageIds.head
+      val attachmentInfo = AttachmentInfo(messageId, testAttachmentId, submissionId = Some(UUID.randomUUID().toString))
       val vaultName = UUID.randomUUID().toString
       val archiveId = UUID.randomUUID().toString
       val archived = Right(ArchivedAttachment(attachmentInfo, vaultName, archiveId))
@@ -36,7 +36,7 @@ class UpdateSpec extends BaseSpec {
 
     "Report update metastore failure" in {
       import TestServices.failure._
-      val messageId = UUID.randomUUID().toString
+      val messageId = testSQSMessageIds.head
       val attachmentInfo = AttachmentInfo(messageId, testAttachmentId)
       val vaultName = UUID.randomUUID().toString
       val archiveId = UUID.randomUUID().toString

@@ -7,36 +7,54 @@ import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
 import akka.NotUsed
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 
-import scala.util.Using
+import scala.util.{Try, Using}
 
-trait Zipper {
-  def zip: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed]
+trait Bundle {
+  def createBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed]
 
-  def unzip: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed]
+  def extractBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed]
+
+  def extractMetadataField(zip: ZipContent, field: String): Option[String]
 }
 
-class ZipperService extends Zipper {
+class BundleService extends Bundle {
 
-  override def zip: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] =
+  override def extractMetadataField(zip: ZipContent, field: String): Option[String] = {
+    Try {
+      zip
+        .files
+        .filter(_._1 == METADATA_FILE)
+        .map(m => new String(m._2, "utf-8"))
+        .head
+        .parseJson
+        .asJsObject
+        .fields(field)
+        .convertTo[String]
+    }.toOption
+  }
+
+  override def createBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] =
     Flow[EitherErr[ZipContent]].map {
       _.flatMap(content => {
         Using.Manager { use =>
           val bytes = use(new ByteArrayOutputStream())
           val zip = use(new ZipOutputStream(bytes))
+
           content.files.foreach {
-            case (name, file) => {
+            case (name, file) =>
               zip.putNextEntry(new ZipEntry(name))
               zip.write(file)
               zip.closeEntry()
-            }
           }
-          AttachmentContent(content.info, ByteString(bytes.toByteArray))
+          AttachmentContent(content.info.copy(submissionId = extractMetadataField(content, "nrSubmissionId")) , ByteString(bytes.toByteArray))
         }
       }.toEither.left.flatMap(x => Left(ErrorMessage(s"Failure of creating zip archive for ${content.info.key} with ${x.getCause}"))))
     }
 
-  override def unzip: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] =
+  override def extractBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] =
     Flow[EitherErr[AttachmentContent]].map {
       _.flatMap(attachment => {
         Using.Manager { use =>
@@ -48,7 +66,7 @@ class ZipperService extends Zipper {
           })
           ZipContent(attachment.info, content)
         }.toEither.left.flatMap(x => Left(ErrorMessage(s"Failure of extracting zip archive for ${attachment.info.key} with ${x.getCause}")))
-          .filterOrElse(_.files.size > 0, ErrorMessage(s"Failure of extracting zip archive for ${attachment.info.key} with no files found"))
+          .filterOrElse(_.files.nonEmpty, ErrorMessage(s"Failure of extracting zip archive for ${attachment.info.key} with no files found"))
       })
     }
 }

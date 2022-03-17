@@ -9,24 +9,24 @@ import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
 
-class ZipperSpec extends BaseSpec {
+class BundleSpec extends BaseSpec {
 
   import TestServices._
 
-  val zipper = new ZipperService
+  val zipper = new BundleService
 
   "Zipping service" should {
     "create a zip archive from content given" in {
-      val attachmentId = UUID.randomUUID().toString
+      val attachmentId = testAttachmentId
       val attachment = (attachmentId, Array.fill[Byte](1000)(Byte.MaxValue))
       val metadata = (METADATA_FILE, sampleAttachmentMetadata)
-      val messageId = UUID.randomUUID().toString
+      val messageId = testSQSMessageIds.head
       val info = AttachmentInfo(messageId, attachmentId)
       val zipContent = ZipContent(info, Seq(metadata, attachment))
 
       val source = TestSource.probe[EitherErr[ZipContent]]
       val sink = TestSink.probe[EitherErr[AttachmentContent]]
-      val (pub, sub) = source.via(zipper.zip).toMat(sink)(Keep.both).run()
+      val (pub, sub) = source.via(zipper.createBundle).toMat(sink)(Keep.both).run()
       pub.sendNext(Right(zipContent)).sendComplete()
       val result = sub
         .request(1)
@@ -43,7 +43,7 @@ class ZipperSpec extends BaseSpec {
     }
 
     "extract content from zip archive" in {
-      val messageId = UUID.randomUUID().toString
+      val messageId = testSQSMessageIds.head
       val file = ByteString(sampleAttachment)
       val info = AttachmentInfo(messageId, testAttachmentId)
       val content = AttachmentContent(info, file)
@@ -51,7 +51,7 @@ class ZipperSpec extends BaseSpec {
       val source = TestSource.probe[EitherErr[AttachmentContent]]
       val sink = TestSink.probe[EitherErr[ZipContent]]
 
-      val (pub, sub) = source.via(zipper.unzip).toMat(sink)(Keep.both).run()
+      val (pub, sub) = source.via(zipper.extractBundle).toMat(sink)(Keep.both).run()
       pub.sendNext(Right(content)).sendComplete()
       val result = sub
         .request(1)
@@ -65,8 +65,29 @@ class ZipperSpec extends BaseSpec {
       result.toOption.get.files.exists(_._1 == ATTACHMENT_FILE) shouldBe true
     }
 
+    "extract nrSubmissionId field from metadata" in {
+      val attachmentId = testAttachmentId
+      val attachment = (attachmentId, Array.fill[Byte](1000)(Byte.MaxValue))
+      val metadata = (METADATA_FILE, sampleAttachmentMetadata)
+      val messageId = testSQSMessageIds.head
+      val info = AttachmentInfo(messageId, attachmentId)
+      val zipContent = ZipContent(info, Seq(metadata, attachment))
+
+      val source = TestSource.probe[EitherErr[ZipContent]]
+      val sink = TestSink.probe[EitherErr[AttachmentContent]]
+      val (pub, sub) = source.via(zipper.createBundle).toMat(sink)(Keep.both).run()
+      pub.sendNext(Right(zipContent)).sendComplete()
+      val result = sub
+        .request(1)
+        .expectNext()
+
+      info.submissionId shouldBe None
+      result.isRight shouldBe true
+      result.toOption.get.info.submissionId shouldBe Some("eed095f9-7cd5-4a58-b74e-906c8d8807b5")
+    }
+
     "fail on extracting non-zip archive" in {
-      val messageId = UUID.randomUUID().toString
+      val messageId = testSQSMessageIds.head
       val file = ByteString(Array.fill[Byte](10)(77))
       val info = AttachmentInfo(messageId, testAttachmentId)
       val content = AttachmentContent(info, file)
@@ -74,7 +95,7 @@ class ZipperSpec extends BaseSpec {
       val source = TestSource.probe[EitherErr[AttachmentContent]]
       val sink = TestSink.probe[EitherErr[ZipContent]]
 
-      val (pub, sub) = source.via(zipper.unzip).toMat(sink)(Keep.both).run()
+      val (pub, sub) = source.via(zipper.extractBundle).toMat(sink)(Keep.both).run()
       pub.sendNext(Right(content)).sendComplete()
       val result = sub
         .request(1)
