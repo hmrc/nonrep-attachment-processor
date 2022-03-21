@@ -94,8 +94,9 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
     .log(name = "updateMetastore")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
-
   override def deleteBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = storage.deleteAttachment
+    .log(name = "deleteBundle")
+    .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
   val execute: RunnableGraph[A] = fromGraph(GraphDSL.createGraph(applicationSink) {
     implicit builder =>
