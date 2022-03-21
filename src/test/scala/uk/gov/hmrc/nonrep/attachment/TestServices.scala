@@ -1,6 +1,6 @@
 package uk.gov.hmrc.nonrep.attachment
 
-import akka.NotUsed
+import akka.{Done, NotUsed}
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.{InternalServerError, OK}
@@ -15,10 +15,10 @@ import software.amazon.awssdk.services.glacier.model.{UploadArchiveRequest, Uplo
 import software.amazon.awssdk.services.sqs.model.Message
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import uk.gov.hmrc.nonrep.attachment.service._
-
 import java.io.File
 import java.nio.file.Files
 import java.util.UUID
+
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -94,6 +94,9 @@ object TestServices {
     val storageService: Storage = new StorageService() {
       override def s3Source(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
         Source.single(Some(Source.single(ByteString(sampleAttachment)), ObjectMetadata(Seq())))
+
+      override def s3DeleteSource(attachment: AttachmentInfo): Source[Done, NotUsed] =
+        Source.single(Done)
     }
 
     val queueService: Queue = new QueueService() {
@@ -131,6 +134,9 @@ object TestServices {
     val storageService: Storage = new StorageService() {
       override def s3Source(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
         Source.single(None)
+
+      override def deleteAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
+        Flow[EitherErr[AttachmentInfo]].map { _ => Left(ErrorMessage("failure")) }
     }
     val signService: Sign = new SignService() {
       override val callDigitalSignatures: Flow[(HttpRequest, EitherErr[ZipContent]), (Try[HttpResponse], EitherErr[ZipContent]), Any] =

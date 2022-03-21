@@ -33,6 +33,24 @@ class StorageSpec extends BaseSpec {
       result.toOption.get.info.message shouldBe messageId
       result.toOption.get.content shouldBe attachmentContent
     }
+
+    "delete file from S3" in {
+      val messageId = testSQSMessageIds.head
+      val attachment = Right(AttachmentInfo(messageId, testAttachmentId))
+
+      val source = TestSource.probe[EitherErr[AttachmentInfo]]
+      val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+
+      val (pub, sub) = source.via(storageService.deleteAttachment).toMat(sink)(Keep.both).run()
+      pub.sendNext(attachment).sendComplete()
+      val result = sub
+        .request(1)
+        .expectNext()
+
+      result.isRight shouldBe true
+      result.toOption.get.key shouldBe attachment.toOption.get.key
+      result.toOption.get.message shouldBe messageId
+    }
   }
 
   "Storage service for failure scenarios" should {
@@ -53,6 +71,23 @@ class StorageSpec extends BaseSpec {
 
       result.isRight shouldBe false
       result.left.toOption.get.message shouldBe s"Error getting attachment ${attachment.toOption.get.key} from S3 ${config.attachmentsBucket}"
+    }
+
+    "report when deleting file from S3 fails" in {
+      val messageId = testSQSMessageIds.head
+      val attachment = Right(AttachmentInfo(messageId, testAttachmentId))
+
+      val source = TestSource.probe[EitherErr[AttachmentInfo]]
+      val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+
+      val (pub, sub) = source.via(storageService.deleteAttachment).toMat(sink)(Keep.both).run()
+      pub.sendNext(attachment).sendComplete()
+      val result = sub
+        .request(1)
+        .expectNext()
+
+      result.isLeft shouldBe true
+      result.left.toOption.get.message shouldBe "failure"
     }
 
   }
