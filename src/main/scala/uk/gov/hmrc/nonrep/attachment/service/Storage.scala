@@ -26,7 +26,7 @@ class StorageService()(implicit val config: ServiceConfig,
 
   implicit val ec: ExecutionContext = system.executionContext
 
-  protected def s3Source(attachment: AttachmentInfo):
+  protected def s3DownloadSource(attachment: AttachmentInfo):
   Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
     S3.download(config.attachmentsBucket, s"${attachment.key}.zip")
 
@@ -34,7 +34,7 @@ class StorageService()(implicit val config: ServiceConfig,
     Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) { attachmentInfo =>
       attachmentInfo.fold(error => Future.successful(Left(error)),
         attachment => {
-          s3Source(attachment).toMat(Sink.head)(Keep.right).run().flatMap {
+          s3DownloadSource(attachment).toMat(Sink.head)(Keep.right).run().flatMap {
             case None => Future.successful(Left(ErrorMessage(s"Error getting attachment ${attachment.key} from S3 ${config.attachmentsBucket}", WARN)))
             case Some(source) => source._1.runFold(ByteString(ByteString.empty))(_ ++ _).map(bytes => Right(AttachmentContent(attachment, bytes)))
           }

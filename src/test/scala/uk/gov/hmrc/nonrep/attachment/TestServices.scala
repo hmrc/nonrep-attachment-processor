@@ -92,7 +92,7 @@ object TestServices {
 
   object success {
     val storageService: Storage = new StorageService() {
-      override def s3Source(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
+      override def s3DownloadSource(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
         Source.single(Some(Source.single(ByteString(sampleAttachment)), ObjectMetadata(Seq())))
 
       override def s3DeleteSource(attachment: AttachmentInfo): Source[Done, NotUsed] =
@@ -132,7 +132,7 @@ object TestServices {
 
   object failure {
     val storageService: Storage = new StorageService() {
-      override def s3Source(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
+      override def s3DownloadSource(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
         Source.single(None)
 
       override def deleteAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
