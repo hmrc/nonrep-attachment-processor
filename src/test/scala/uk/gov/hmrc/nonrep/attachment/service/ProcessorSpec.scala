@@ -24,6 +24,7 @@ class ProcessorSpec extends BaseSpec {
         override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = signService.signing
         override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacierService.archive
         override def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = updateService.updateMetastore
+        override def deleteBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = storageService.deleteAttachment
     }
 
     "process attachments" in {
@@ -132,6 +133,27 @@ class ProcessorSpec extends BaseSpec {
       result.isLeft shouldBe true
       result.left.toOption.get.severity shouldBe ERROR
       result.left.toOption.get.message shouldBe "Delete SQS message failure"
+    }
+
+    "report error for deleting s3 bundle failure" in {
+      val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
+        new ProcessorService(testApplicationSink) {
+          override def getMessages: Source[Message, NotUsed] = queueService.getMessages
+          override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = queueService.deleteMessage
+          override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
+          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = signService.signing
+          override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacierService.archive
+          override def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = updateService.updateMetastore
+
+          override def deleteBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = failure.storageService.deleteAttachment
+
+        }
+
+      val result = processor.execute.run().request(1).expectNext()
+
+      result.isLeft shouldBe true
+      result.left.toOption.get.severity shouldBe ERROR
+      result.left.toOption.get.message shouldBe "failure"
     }
   }
 }
