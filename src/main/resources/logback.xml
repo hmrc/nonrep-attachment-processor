@@ -4,7 +4,7 @@
         <remoteHost>${LOGSTASH_URL}</remoteHost>
         <port>${LOGSTASH_PORT}</port>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <customFields>{"appname":"attachment-processor", "env":"local"}</customFields>
+            <customFields>{"appname":"attachment-processor", "env":"${ENV}"}</customFields>
         </encoder>
     </appender>
 

@@ -2,7 +2,7 @@
 <configuration>
     <appender name="jsonConsoleAppender" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <customFields>{"appname":"attachment-processor", "env":"${ENV}"}</customFields>
+            <customFields>{"appname":"attachment-processor", "env":"local"}</customFields>
         </encoder>
     </appender>
 
