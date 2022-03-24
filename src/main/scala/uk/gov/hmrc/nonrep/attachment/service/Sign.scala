@@ -7,11 +7,11 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{HttpEntity, HttpMethods, HttpRequest, HttpResponse}
-import akka.stream.Supervision.stoppingDecider
-import akka.stream.{ActorAttributes, FlowShape}
+import akka.stream.Supervision.restartingDecider
 import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Partition}
-import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
+import akka.stream.{ActorAttributes, FlowShape, OverflowStrategy}
 import akka.util.ByteString
+import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -27,7 +27,7 @@ class SignService()(implicit val config: ServiceConfig,
 
   private def partitionRequests[A]() =
     Partition[EitherErr[A]](2, {
-      case Left(_)  => 0
+      case Left(_) => 0
       case Right(_) => 1
     })
 
@@ -46,10 +46,11 @@ class SignService()(implicit val config: ServiceConfig,
   }
 
   val callDigitalSignatures: Flow[(HttpRequest, EitherErr[ZipContent]), (Try[HttpResponse], EitherErr[ZipContent]), Any] =
-    if (config.isSignaturesServiceSecure)
+    (if (config.isSignaturesServiceSecure)
       Http().cachedHostConnectionPoolHttps[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort)
     else
-      Http().cachedHostConnectionPool[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort)
+      Http().cachedHostConnectionPool[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort))
+      .buffer(config.signServiceBufferSize, OverflowStrategy.backpressure).async
 
   val createRequest: Flow[EitherErr[ZipContent], (HttpRequest, EitherErr[ZipContent]), NotUsed] =
     Flow[EitherErr[ZipContent]].map { zip =>
@@ -67,14 +68,14 @@ class SignService()(implicit val config: ServiceConfig,
       .mapAsyncUnordered(8) {
         case (httpResponse, request) =>
           httpResponse match {
-            case Success(response)  => parse(request, response)
+            case Success(response) => parse(request, response)
             case Failure(exception) => Future.successful(Left(ErrorMessage(s"Failure connection to ${config.signaturesServiceHost} with ${exception.getMessage}")))
           }
       }
-      .withAttributes(ActorAttributes.supervisionStrategy(stoppingDecider))
+      .withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
 
   val remapErrorSeverity: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] =
-    Flow[EitherErr[ZipContent]].map{
+    Flow[EitherErr[ZipContent]].map {
       _.left.map(error => ErrorMessage(error.message, WARN))
     }
 

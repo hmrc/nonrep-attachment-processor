@@ -1,14 +1,14 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import akka.{Done, NotUsed}
 import akka.actor.typed.ActorSystem
 import akka.stream.ActorAttributes
-import akka.stream.Supervision.stoppingDecider
+import akka.stream.Supervision.restartingDecider
 import akka.stream.alpakka.s3.ObjectMetadata
 import akka.stream.alpakka.s3.scaladsl.S3
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
+import akka.{Done, NotUsed}
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -39,8 +39,7 @@ class StorageService()(implicit val config: ServiceConfig,
             case Some(source) => source._1.runFold(ByteString(ByteString.empty))(_ ++ _).map(bytes => Right(AttachmentContent(attachment, bytes)))
           }
         })
-    }.withAttributes(ActorAttributes.supervisionStrategy(stoppingDecider))
-    //TODO: determine whether restartingDecider or stoppingDecider is more appropriate for keeping stream alive
+    }.withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
   }
 
   protected def s3DeleteSource(attachment: AttachmentInfo): Source[Done, NotUsed] =
