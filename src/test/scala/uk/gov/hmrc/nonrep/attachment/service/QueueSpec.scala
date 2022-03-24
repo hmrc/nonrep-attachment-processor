@@ -28,7 +28,7 @@ class QueueSpec extends BaseSpec {
         .request(1)
         .expectNext()
 
-      testSQSMessageIds should contain(result.messageId())
+      testSQSMessageIds should contain(result.receiptHandle())
     }
 
     "Delete message" in {
