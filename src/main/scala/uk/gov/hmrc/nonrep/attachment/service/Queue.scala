@@ -6,7 +6,7 @@ import akka.actor.typed.ActorSystem
 import akka.stream.Supervision.stoppingDecider
 import akka.stream.alpakka.sqs.SqsSourceSettings
 import akka.stream.alpakka.sqs.scaladsl.SqsSource
-import akka.stream.scaladsl.{Flow, GraphDSL, Partition, Sink, Source}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge, Partition, Sink, Source, Zip}
 import akka.stream.{ActorAttributes, FlowShape}
 import akka.util.Timeout
 import akka.{Done, NotUsed}
@@ -91,12 +91,27 @@ class QueueService()(implicit val config: ServiceConfig,
       GraphDSL.create() { implicit builder =>
         import GraphDSL.Implicits._
 
-        val parseMessageShape = builder.add(parseMessage)
+        val broadcastMessageShape = builder.add(Broadcast[Message](2))
         val partition = builder.add(partitionRequests[AttachmentInfo]())
+        val zip = builder.add(Zip[Message, EitherErr[AttachmentInfo]]())
+        val broadcastAttachmentInfo = builder.add(Broadcast[EitherErr[AttachmentInfo]](2))
+        val merge = builder.add(Merge[EitherErr[AttachmentInfo]](2, true))
 
-        parseMessageShape ~> partition
-        partition ~> deleteMessage ~> Sink.foreach[EitherErr[AttachmentInfo]](info => system.log.info(s"Invalid SQS message removed $info"))
-        FlowShape(parseMessageShape.in, partition.out(1))
+        broadcastMessageShape ~> parseMessage ~> partition
+
+        broadcastMessageShape ~> zip.in0
+        partition ~> broadcastAttachmentInfo
+
+        broadcastAttachmentInfo ~> zip.in1
+
+        broadcastAttachmentInfo ~> merge
+        partition ~> merge
+
+        zip.out.map {
+          case (message, _) => Right(AttachmentInfo(message.receiptHandle(), message.messageId()))
+        } ~> deleteMessage ~> Sink.foreach[EitherErr[AttachmentInfo]](info => system.log.info(s"Invalid SQS message removed $info"))
+
+        FlowShape(broadcastMessageShape.in, merge.out)
       })
 
   override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
