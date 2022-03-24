@@ -1,22 +1,22 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import akka.NotUsed
-import akka.actor.typed.ActorSystem
-import akka.stream.ActorAttributes
-import akka.stream.Supervision.stoppingDecider
-import akka.stream.scaladsl.Flow
-import software.amazon.awssdk.core.async.AsyncRequestBody
-import software.amazon.awssdk.services.glacier.GlacierAsyncClient
-import software.amazon.awssdk.services.glacier.model._
-import uk.gov.hmrc.nonrep.attachment.service.ChecksumUtils.sha256TreeHashHex
 import java.lang.Integer.toHexString
 import java.security.MessageDigest.getInstance
 import java.time.LocalDate.now
 
+import akka.NotUsed
+import akka.actor.typed.ActorSystem
+import akka.stream.ActorAttributes
+import akka.stream.Supervision.restartingDecider
+import akka.stream.scaladsl.Flow
+import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region.EU_WEST_2
+import software.amazon.awssdk.services.glacier.GlacierAsyncClient
+import software.amazon.awssdk.services.glacier.model._
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
+import uk.gov.hmrc.nonrep.attachment.service.ChecksumUtils.sha256TreeHashHex
 
 import scala.annotation.tailrec
 import scala.compat.java8.FutureConverters._
@@ -33,13 +33,13 @@ class GlacierService()
 
   private val glacierNotificationsSnsTopicArn = config.glacierNotificationsSnsTopicArn
 
-  private [service] lazy val client: GlacierAsyncClient = GlacierAsyncClient
+  private[service] lazy val client: GlacierAsyncClient = GlacierAsyncClient
     .builder()
     .region(EU_WEST_2)
     .httpClientBuilder(NettyNioAsyncHttpClient.builder())
     .build()
 
-  private val environmentalVaultNamePrefix = if(config.isSandbox) s"${config.env}-" else ""
+  private val environmentalVaultNamePrefix = if (config.isSandbox) s"${config.env}-" else ""
 
   implicit val ec: ExecutionContext = system.executionContext
 
@@ -51,8 +51,8 @@ class GlacierService()
         }
       case Left(e) =>
         Future successful Left(e)
-    }.withAttributes(ActorAttributes.supervisionStrategy(stoppingDecider))
-  //TODO: determine whether restartingDecider or stoppingDecider is more appropriate for keeping stream alive
+    }.withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
+
   //presumably this would depend on the type of error we've encountered
   //e.g. message level vs resource (glacier/network) errors, and is it transient or persistent?
   //there is also backoffWithRetry but that too can be very wasteful given a general error e.g. network outage.
@@ -61,13 +61,13 @@ class GlacierService()
 
   private[service] def eventuallyCreateVaultIfNecessaryAndArchive(content: AttachmentContent, vaultName: String): Future[EitherErr[String]] =
     eventuallyArchive(
-        UploadArchiveRequest
-          .builder()
-          .vaultName(vaultName)
-          .checksum(sha256TreeHashHex(content.bytes))
-          .contentLength(content.bytes.length.toLong)
-          .build(),
-        AsyncRequestBody.fromBytes(content.bytes))
+      UploadArchiveRequest
+        .builder()
+        .vaultName(vaultName)
+        .checksum(sha256TreeHashHex(content.bytes))
+        .contentLength(content.bytes.length.toLong)
+        .build(),
+      AsyncRequestBody.fromBytes(content.bytes))
       .map(uploadResponse => Right(uploadResponse.archiveId()))
       .recoverWith[EitherErr[String]] {
         case _: ResourceNotFoundException =>
@@ -77,7 +77,7 @@ class GlacierService()
           } yield uploadResponse
         case _ =>
           Future successful Left(ErrorMessage(s"Error uploading attachment $content to glacier $vaultName"))
-    }
+      }
 
   private[service] def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
                                          asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
@@ -112,7 +112,7 @@ class GlacierService()
         _ <- eventuallyCreateVault()
         _ <- eventuallySetVaultNotifications()
       } yield Right(vaultExists)
-    ).recover {
+      ).recover {
       case e => Left(ErrorMessage(s"Error creating glacier vault $vaultName: ${e.getMessage}"))
     }
   }
@@ -140,14 +140,14 @@ object ChecksumUtils {
 
   @tailrec
   private def sha256TreeHash(sha256Hashes: Seq[Array[Byte]]): Array[Byte] =
-    /*
-     * Consumes a sequence of SHA 256 hashes to produce a single concatenated hash.
-     * One way to do this would be to create a merkle tree structure.
-     * A merkle tree is a binary tree where each branch node contains the concatenation of the hash of its children.
-     * We don't need the whole merkle tree structure, simply the hash value held in the root node.
-     * For the first call in the recursive chain, each hash in the sequence is equivalent to a leaf node of a merkle tree.
-     * Each recursive step moves us up the implied tree towards the root node.
-     */
+  /*
+   * Consumes a sequence of SHA 256 hashes to produce a single concatenated hash.
+   * One way to do this would be to create a merkle tree structure.
+   * A merkle tree is a binary tree where each branch node contains the concatenation of the hash of its children.
+   * We don't need the whole merkle tree structure, simply the hash value held in the root node.
+   * For the first call in the recursive chain, each hash in the sequence is equivalent to a leaf node of a merkle tree.
+   * Each recursive step moves us up the implied tree towards the root node.
+   */
     if (sha256Hashes.tail.isEmpty) {
       // If there is only a single hash then this is the root hash of the merkle tree so we use it
       sha256Hashes.head
