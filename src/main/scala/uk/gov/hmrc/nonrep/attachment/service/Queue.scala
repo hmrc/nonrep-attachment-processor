@@ -3,11 +3,12 @@ package service
 
 import akka.actor.CoordinatedShutdown
 import akka.actor.typed.ActorSystem
+import akka.http.scaladsl.client.RequestBuilding.WithTransformation
 import akka.stream.ActorAttributes
 import akka.stream.Supervision.stoppingDecider
 import akka.stream.alpakka.sqs.SqsSourceSettings
 import akka.stream.alpakka.sqs.scaladsl.SqsSource
-import akka.stream.scaladsl.{Flow, Source}
+import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Partition, Source}
 import akka.util.Timeout
 import akka.{Done, NotUsed}
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
@@ -30,13 +31,19 @@ trait Queue {
 
   def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed]
 
-  def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]
+  def deleteMessage(): Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]
 }
 
 class QueueService()(implicit val config: ServiceConfig,
                      implicit val system: ActorSystem[_]) extends Queue {
 
   implicit val ec: ExecutionContextExecutor = system.executionContext
+
+  private def partitionRequests[A]() =
+    Partition[EitherErr[A]](2, {
+      case Left(_) => 0
+      case Right(_) => 1
+    })
 
   private[service] implicit lazy val client: SqsAsyncClient = SqsAsyncClient
     .builder()
@@ -61,33 +68,44 @@ class QueueService()(implicit val config: ServiceConfig,
   override def getMessages: Source[Message, NotUsed] = SqsSource(config.queueUrl, settings)
 
   override def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed] =
-    Flow[Message].map { message =>
-      val messageHandle = message.receiptHandle()
+    Flow.fromGraph(
+      GraphDSL.create() { implicit builder =>
+        import GraphDSL.Implicits._
 
-      Try {
-        val attachmentId = message
-          .body()
-          .parseJson
-          .asJsObject.fields("Records").convertTo[List[JsValue]].head
-          .asJsObject.fields("s3")
-          .asJsObject.fields("object")
-          .asJsObject.fields("key").convertTo[String]
-          .replaceFirst(".zip", "")
-        AttachmentInfo(messageHandle, attachmentId)
-      }.toEither.left.map(thr => {
-        system.log.error(s"Parsing SQS message failure ${message.body()}", thr)
-        ErrorMessage("Parsing SQS message failure")
+        val parse = builder.add(partitionRequests[Message]()) //should be M being parsed
+        val merge = builder.add(Merge[EitherErr[AttachmentInfo]](2)) //naming convention
+
+        parse ~> merge
+        merge ~> deleteMessage ~> reportSink
+        partition ~> out
+
+        Flow[Message].map { message =>
+          val messageHandle = message.receiptHandle()
+
+          Try {
+            val attachmentId = message
+              .body()
+              .parseJson
+              .asJsObject.fields("Records").convertTo[List[JsValue]].head
+              .asJsObject.fields("s3")
+              .asJsObject.fields("object")
+              .asJsObject.fields("key").convertTo[String]
+              .replaceFirst(".zip", "")
+            AttachmentInfo(messageHandle, attachmentId)
+          }.toEither.left.map(thr => {
+            system.log.error(s"Parsing SQS message failure ${message.body()}", thr)
+            ErrorMessage("Parsing SQS message failure")
+          })
+        }
+        //def divertTo
+        def deleteMessage(): Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
+          Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) { attachmentInfo =>
+            attachmentInfo.fold(
+              error => Future.successful(Left(error)),
+              info => {
+                val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(info.message).build()
+                client.deleteMessage(request).asScala.map(_ => Right(info))
+              })
+          }.withAttributes(ActorAttributes.supervisionStrategy(stoppingDecider))
       })
-    }
-
-  override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
-    Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) { attachmentInfo =>
-      attachmentInfo.fold(
-        error => Future.successful(Left(error)),
-        info => {
-          val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(info.message).build()
-          client.deleteMessage(request).asScala.map(_ => Right(info))
-        })
-    }.withAttributes(ActorAttributes.supervisionStrategy(stoppingDecider))
-
 }
