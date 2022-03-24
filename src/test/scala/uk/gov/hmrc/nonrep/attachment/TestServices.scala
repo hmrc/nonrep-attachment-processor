@@ -48,7 +48,7 @@ object TestServices {
     TestSink.probe[EitherErr[AttachmentInfo]](typedSystem.classicSystem)
 
   val testSQSMessageIds: IndexedSeq[String] = IndexedSeq.fill(3)(UUID.randomUUID().toString)
-  def testSQSMessage(env: String, messageId: String, attachmentId: String, service: String = "s3"): Message = Message.builder().messageId(messageId).body(
+  def testSQSMessage(env: String, messageId: String, attachmentId: String, service: String = "s3"): Message = Message.builder().receiptHandle(messageId).body(
     s"""
     {
        "Records":[
@@ -99,7 +99,7 @@ object TestServices {
         Source.single(Done)
     }
 
-    val queueService: Queue = new QueueService() {
+    val queueService: QueueService = new QueueService() {
       override def getMessages: Source[Message, NotUsed] =
         Source(testSQSMessageIds.map(id => testSQSMessage(config.env, id, testAttachmentId)))
 
@@ -157,7 +157,7 @@ object TestServices {
         }
     }
 
-    val queueService: Queue = new QueueService() {
+    val queueService: QueueService = new QueueService() {
 
       override def getMessages: Source[Message, NotUsed] =
         Source(testSQSMessageIds.map(id => testSQSMessage(config.env, id, testAttachmentId, "invalid")))
