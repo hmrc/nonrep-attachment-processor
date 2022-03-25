@@ -4,8 +4,6 @@ package service
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import software.amazon.awssdk.services.sqs.model.Message
-import uk.gov.hmrc.nonrep.attachment.BaseSpec
-
 
 class QueueSpec extends BaseSpec {
 
@@ -47,23 +45,6 @@ class QueueSpec extends BaseSpec {
       result.toOption.get.key shouldBe testAttachmentId
     }
 
-    "Parse message properly" in {
-      val sink = TestSink.probe[EitherErr[AttachmentInfo]]
-
-      val (_, sub) = queueService
-        .getMessages
-        .via(queueService.parseMessage)
-        .toMat(sink)(Keep.both)
-        .run()
-
-      val result = sub
-        .request(1)
-        .expectNext()
-
-      result.isRight shouldBe true
-      result.toOption.get.key shouldBe testAttachmentId
-    }
-
     "Parse messages properly" in {
       val sink = TestSink.probe[EitherErr[AttachmentInfo]]
 
@@ -89,17 +70,11 @@ class QueueSpec extends BaseSpec {
 
         val (_, sub) = queueService
           .getMessages
-          .via(queueService.parseMessage)
+          .via(queueService.parseMessages)
           .toMat(sink)(Keep.both)
           .run()
 
-        val result = sub
-          .request(1)
-          .expectNext()
-
-        result.isLeft shouldBe true
-        result.left.toOption.get.message shouldBe "Parsing SQS message failure"
-        result.left.toOption.get.severity shouldBe ERROR
+        sub.request(1).expectComplete()
       }
 
       "Report delete message failure" in {

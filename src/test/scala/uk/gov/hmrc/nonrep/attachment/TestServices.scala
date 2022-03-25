@@ -99,7 +99,7 @@ object TestServices {
         Source.single(Done)
     }
 
-    val queueService: QueueService = new QueueService() {
+    val queueService: Queue = new QueueService() {
       override def getMessages: Source[Message, NotUsed] =
         Source(testSQSMessageIds.map(id => testSQSMessage(config.env, id, testAttachmentId)))
 
@@ -157,7 +157,7 @@ object TestServices {
         }
     }
 
-    val queueService: QueueService = new QueueService() {
+    val queueService: Queue = new QueueService() {
 
       override def getMessages: Source[Message, NotUsed] =
         Source(testSQSMessageIds.map(id => testSQSMessage(config.env, id, testAttachmentId, "invalid")))

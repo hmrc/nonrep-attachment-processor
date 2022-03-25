@@ -4,11 +4,11 @@ package service
 import akka.NotUsed
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.StatusCodes.OK
+import akka.http.scaladsl.model.StatusCodes.{Created, OK}
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
-import akka.stream.Supervision.stoppingDecider
+import akka.stream.Supervision.restartingDecider
 import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Partition}
-import akka.stream.{ActorAttributes, FlowShape}
+import akka.stream.{ActorAttributes, FlowShape, OverflowStrategy}
 import akka.util.ByteString
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.auth.signer.params.Aws4SignerParams
@@ -41,7 +41,7 @@ class UpdateService()(implicit val config: ServiceConfig,
 
   protected def parse(archived: EitherErr[ArchivedAttachment], response: HttpResponse): EitherErr[ArchivedAttachment] = {
     import system.executionContext
-    if (response.status == OK) {
+    if (response.status == OK || response.status == Created) {
       response.entity.dataBytes
         .runFold(ByteString.empty)(_ ++ _)
         .map(_.utf8String)
@@ -57,8 +57,9 @@ class UpdateService()(implicit val config: ServiceConfig,
   val createRequest: Flow[EitherErr[ArchivedAttachment], (HttpRequest, EitherErr[ArchivedAttachment]), NotUsed] =
     Flow[EitherErr[ArchivedAttachment]].map { attachment =>
       (attachment.toOption.map(archived => {
-        val path = s"/${archived.info.notableEvent}/index/${archived.info.submissionId.getOrElse(new IllegalStateException("Submission ID must be present"))}/_update"
-        val body = s"""{"doc": {"glacier": {"attachments":{ "${archived.info.key}": { "vaultName": "${archived.vaultName}", "archiveId": "${archived.archiveId}"}}}}}"""
+        val submissionId = archived.info.submissionId.getOrElse(new IllegalStateException("Submission ID must be present"))
+        val path = s"/${archived.info.notableEvent}-attachments/index/${archived.info.key}"
+        val body = s"""{ "nrSubmissionId": "$submissionId", "glacier": { "vaultName": "${archived.vaultName}", "archiveId": "${archived.archiveId}"}}"""
         val request = createSignedRequest(HttpMethods.POST, config.elasticSearchUri, path, body, signerParams)
         system.log.info(s"Update metastore request for: [${archived.info.key}], path: [$path], body: [$body] and request: [$request]")
         request
@@ -66,10 +67,11 @@ class UpdateService()(implicit val config: ServiceConfig,
     }
 
   val callMetastore: Flow[(HttpRequest, EitherErr[ArchivedAttachment]), (Try[HttpResponse], EitherErr[ArchivedAttachment]), Any] =
-    if (config.isElasticSearchProtocolSecure)
+    (if (config.isElasticSearchProtocolSecure)
       Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]](config.elasticSearchHost)
     else
-      Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost)
+      Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost))
+      .buffer(config.esServiceBufferSize, OverflowStrategy.backpressure).async
 
   val parseResponse: Flow[(Try[HttpResponse], EitherErr[ArchivedAttachment]), EitherErr[ArchivedAttachment], NotUsed] =
     Flow[(Try[HttpResponse], EitherErr[ArchivedAttachment])].map {
@@ -79,7 +81,7 @@ class UpdateService()(implicit val config: ServiceConfig,
           case Failure(exception) => Left(ErrorMessage(s"Failure connection to ${config.elasticSearchHost} with ${exception.getMessage}"))
         }
     }
-      .withAttributes(ActorAttributes.supervisionStrategy(stoppingDecider))
+      .withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
 
   val remapAttachmentInfo: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] =
     Flow[EitherErr[ArchivedAttachment]].map {

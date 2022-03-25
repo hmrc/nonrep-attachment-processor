@@ -110,11 +110,7 @@ class ProcessorSpec extends BaseSpec {
           override def getMessages: Source[Message, NotUsed] = failure.queueService.getMessages
         }
 
-      val result = processor.execute.run().request(1).expectNext()
-
-      result.isLeft shouldBe true
-      result.left.toOption.get.severity shouldBe ERROR
-      result.left.toOption.get.message shouldBe "Parsing SQS message failure"
+      processor.execute.run().request(1).expectComplete()
     }
 
     "report an error for deleting SQS message failure" in {

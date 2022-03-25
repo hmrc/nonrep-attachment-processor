@@ -54,6 +54,9 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val closeOnEmptyReceive: Boolean = systemParams.getBoolean("closeOnEmptyReceive")
   val waitTimeSeconds: Int = systemParams.getInt("waitTimeSeconds")
   val messagesPerSecond: Int = systemParams.getInt("messagesPerSecond")
+
+  val signServiceBufferSize: Int = systemParams.getInt("signServiceBufferSize")
+  val esServiceBufferSize: Int = systemParams.getInt("esServiceBufferSize")
   
   override def toString =
     s"""
