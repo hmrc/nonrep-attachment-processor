@@ -6,6 +6,8 @@ import java.util.UUID
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 
+import scala.concurrent.duration.DurationInt
+
 class UpdateSpec extends BaseSpec {
 
   import TestServices._
@@ -54,6 +56,18 @@ class UpdateSpec extends BaseSpec {
       result.isLeft shouldBe true
       result.left.toOption.get.severity shouldBe ERROR
       result.left.toOption.get.message shouldBe "failure"
+    }
+
+    "use new request signing parameters when needed" in {
+      import TestServices.success._
+
+      val sink = TestSink.probe[RequestsSignerParams]
+      val sub = updateService.signerParams.throttle(1, 1.second).runWith(sink)
+
+      val key1 = sub.request(1).expectNext().params.awsCredentials().accessKeyId()
+      val key2 = sub.request(1).expectNext().params.awsCredentials().accessKeyId()
+
+      key1 != key2 shouldBe true
     }
 
   }

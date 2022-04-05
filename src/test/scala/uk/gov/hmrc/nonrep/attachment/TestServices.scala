@@ -1,6 +1,10 @@
 package uk.gov.hmrc.nonrep.attachment
 
-import akka.{Done, NotUsed}
+import java.io.File
+import java.nio.file.Files
+import java.time.temporal.{ChronoUnit, TemporalUnit}
+import java.util.UUID
+
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.{InternalServerError, OK}
@@ -10,14 +14,15 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.testkit.TestSubscriber
 import akka.stream.testkit.scaladsl.TestSink
 import akka.util.ByteString
+import akka.{Done, NotUsed}
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
+import software.amazon.awssdk.auth.signer.params.Aws4SignerParams
 import software.amazon.awssdk.core.async.AsyncRequestBody
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.glacier.model.{UploadArchiveRequest, UploadArchiveResponse}
 import software.amazon.awssdk.services.sqs.model.Message
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import uk.gov.hmrc.nonrep.attachment.service._
-import java.io.File
-import java.nio.file.Files
-import java.util.UUID
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
@@ -48,6 +53,7 @@ object TestServices {
     TestSink.probe[EitherErr[AttachmentInfo]](typedSystem.classicSystem)
 
   val testSQSMessageIds: IndexedSeq[String] = IndexedSeq.fill(3)(UUID.randomUUID().toString)
+
   def testSQSMessage(env: String, messageId: String, attachmentId: String, service: String = "s3"): Message = Message.builder().receiptHandle(messageId).body(
     s"""
     {
@@ -104,7 +110,9 @@ object TestServices {
         Source(testSQSMessageIds.map(id => testSQSMessage(config.env, id, testAttachmentId)))
 
       override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
-        Flow[EitherErr[AttachmentInfo]].map { _.map(_ => AttachmentInfo(testSQSMessageIds.head, testAttachmentId)) }
+        Flow[EitherErr[AttachmentInfo]].map {
+          _.map(_ => AttachmentInfo(testSQSMessageIds.head, testAttachmentId))
+        }
     }
 
     val signService: Sign = new SignService() {
@@ -125,6 +133,20 @@ object TestServices {
         Flow[(HttpRequest, EitherErr[ArchivedAttachment])].map {
           case (_, request) => (Try(HttpResponse(OK, entity = HttpEntity(""))), request)
         }
+
+      override def createRequestsSignerParams = new RequestsSignerParams() {
+
+        import RequestsSigner._
+
+        override val amountToAdd: Long = 999
+        override val unit: TemporalUnit = ChronoUnit.MILLIS
+
+        override def params: Aws4SignerParams = Aws4SignerParams.builder()
+          .awsCredentials(StaticCredentialsProvider.create(AwsBasicCredentials.create(UUID.randomUUID().toString, "xxx")).resolveCredentials()).ensure
+          .signingRegion(Region.EU_WEST_2).ensure
+          .signingName("es").ensure
+          .build()
+      }
     }
 
     val zipperService = new BundleService
@@ -152,7 +174,7 @@ object TestServices {
 
     val updateService: Update = new UpdateService() {
       override val updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] =
-        Flow[EitherErr[ArchivedAttachment]].map{ _ =>
+        Flow[EitherErr[ArchivedAttachment]].map { _ =>
           Left(ErrorMessage("failure")).withRight[AttachmentInfo]
         }
     }
@@ -172,4 +194,5 @@ object TestServices {
         }
     }
   }
+
 }
