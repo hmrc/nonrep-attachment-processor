@@ -3,13 +3,39 @@ package service
 
 import java.io.ByteArrayInputStream
 import java.net.URI
+import java.time.Instant
+import java.time.temporal.{ChronoUnit, TemporalUnit}
 
 import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpMethod, HttpRequest}
 import org.apache.http.client.utils.URIBuilder
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.auth.signer.Aws4Signer
 import software.amazon.awssdk.auth.signer.params.Aws4SignerParams
 import software.amazon.awssdk.http.{SdkHttpFullRequest, SdkHttpMethod}
+import software.amazon.awssdk.regions.Region
+
+trait RequestsParams[T] {
+  lazy val validUntil: Instant = Instant.now().plus(amountToAdd, unit)
+  def amountToAdd: Long
+  def unit: TemporalUnit
+
+  final def expired(): Boolean = Instant.now().isAfter(validUntil)
+  def params: T
+}
+
+class RequestsSignerParams extends RequestsParams[Aws4SignerParams] {
+  import RequestsSigner._
+
+  override val amountToAdd: Long = 60
+  override val unit: TemporalUnit = ChronoUnit.MINUTES
+
+  override def params: Aws4SignerParams = Aws4SignerParams.builder()
+    .awsCredentials(DefaultCredentialsProvider.create().resolveCredentials()).ensure
+    .signingRegion(Region.EU_WEST_2).ensure
+    .signingName("es").ensure
+    .build()
+}
 
 object RequestsSigner {
   private lazy val signer = Aws4Signer.create()
@@ -51,6 +77,6 @@ object RequestsSigner {
 
     val is = signedRequest.contentStreamProvider().orElseGet(() => () => new ByteArrayInputStream(Array[Byte]())).newStream()
     request.withHeadersAndEntity(headers, HttpEntity(ContentTypes.`application/json`, scala.io.Source.fromInputStream(is).mkString))
-
   }
+
 }

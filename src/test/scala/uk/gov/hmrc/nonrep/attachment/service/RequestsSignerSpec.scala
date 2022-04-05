@@ -1,14 +1,13 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
+import java.time.temporal.{ChronoUnit, TemporalUnit}
 import java.time.{Clock, Instant, ZoneId}
 
 import akka.http.scaladsl.model.HttpMethods
-import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, DefaultCredentialsProvider, StaticCredentialsProvider}
-import software.amazon.awssdk.auth.signer.AwsSignerExecutionAttribute
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.auth.signer.internal.Aws4SignerUtils
 import software.amazon.awssdk.auth.signer.params.Aws4SignerParams
-import software.amazon.awssdk.core.interceptor.{ExecutionAttributes, SdkExecutionAttribute}
 import software.amazon.awssdk.regions.Region
 
 class RequestsSignerSpec extends BaseSpec {
@@ -45,6 +44,20 @@ class RequestsSignerSpec extends BaseSpec {
       request.headers.find(_.name() == "Host").get.value() shouldBe config.elasticSearchHost
       request.headers.find(_.name() == "X-Amz-Date").get.value() shouldBe "20210310T121314Z"
       request.headers.find(_.name() == "Authorization").get.value() shouldBe expectedAuthHeader
+    }
+  }
+
+  "requests signer parameters class" should {
+    val params = new RequestsSignerParams() {
+      override val amountToAdd: Long = 1
+      override val unit: TemporalUnit = ChronoUnit.SECONDS
+    }
+    "not report expiry before defined time" in {
+      params.expired() shouldBe false
+    }
+    "report expiry after defined time" in {
+      Thread.sleep(1500)
+      params.expired() shouldBe true
     }
   }
 

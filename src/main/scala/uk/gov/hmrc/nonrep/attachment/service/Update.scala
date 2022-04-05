@@ -7,31 +7,31 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.StatusCodes.{Created, OK}
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
 import akka.stream.Supervision.restartingDecider
-import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Partition}
+import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Partition, Source}
 import akka.stream.{ActorAttributes, FlowShape, OverflowStrategy}
 import akka.util.ByteString
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
-import software.amazon.awssdk.auth.signer.params.Aws4SignerParams
-import software.amazon.awssdk.regions.Region
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
+import uk.gov.hmrc.nonrep.attachment.service.RequestsSigner._
 
 import scala.util.{Failure, Success, Try}
 
 trait Update {
-
   def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed]
+
+  def signerParams: Source[RequestsSignerParams, NotUsed]
 }
 
 class UpdateService()(implicit val config: ServiceConfig,
                       implicit val system: ActorSystem[_]) extends Update {
 
-  import RequestsSigner._
 
-  val signerParams: Aws4SignerParams = Aws4SignerParams.builder()
-    .awsCredentials(DefaultCredentialsProvider.create().resolveCredentials()).ensure
-    .signingRegion(Region.EU_WEST_2).ensure
-    .signingName("es").ensure
-    .build()
+  private[service] def createRequestsSignerParams = {
+    system.log.info("AWS Signer parameters has been refreshed")
+    new RequestsSignerParams()
+  }
+
+  override val signerParams: Source[RequestsSignerParams, NotUsed] =
+    Source.unfold(createRequestsSignerParams)(params => Some(if (params.expired()) createRequestsSignerParams else params, params))
 
   private def partitionRequests[A]() =
     Partition[EitherErr[A]](2, {
@@ -54,13 +54,13 @@ class UpdateService()(implicit val config: ServiceConfig,
     }
   }
 
-  val createRequest: Flow[EitherErr[ArchivedAttachment], (HttpRequest, EitherErr[ArchivedAttachment]), NotUsed] =
-    Flow[EitherErr[ArchivedAttachment]].map { attachment =>
+  val createRequest: Flow[(EitherErr[ArchivedAttachment], RequestsSignerParams), (HttpRequest, EitherErr[ArchivedAttachment]), NotUsed] =
+    Flow[(EitherErr[ArchivedAttachment], RequestsSignerParams)].map { case (attachment, signerParams) =>
       (attachment.toOption.map(archived => {
         val submissionId = archived.info.submissionId.getOrElse(new IllegalStateException("Submission ID must be present"))
         val path = s"/${archived.info.notableEvent}-attachments/index/${archived.info.key}"
         val body = s"""{ "nrSubmissionId": "$submissionId", "glacier": { "vaultName": "${archived.vaultName}", "archiveId": "${archived.archiveId}"}}"""
-        val request = createSignedRequest(HttpMethods.POST, config.elasticSearchUri, path, body, signerParams)
+        val request = createSignedRequest(HttpMethods.POST, config.elasticSearchUri, path, body, signerParams.params)
         system.log.info(s"Update metastore request for: [${archived.info.key}], path: [$path], body: [$body] and request: [$request]")
         request
       }).getOrElse(throw new RuntimeException("Error creating ES request")), attachment)
@@ -98,7 +98,7 @@ class UpdateService()(implicit val config: ServiceConfig,
         val remapAttachmentInfoShape = builder.add(remapAttachmentInfo)
 
         input ~> merge
-        input ~> createRequest ~> callMetastore ~> parseResponse ~> merge ~> remapAttachmentInfoShape.in
+        input.zip(signerParams) ~> createRequest ~> callMetastore ~> parseResponse ~> merge ~> remapAttachmentInfoShape.in
 
         FlowShape(input.in, remapAttachmentInfoShape.out)
       }
