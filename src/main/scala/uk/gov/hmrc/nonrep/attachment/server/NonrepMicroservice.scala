@@ -11,25 +11,7 @@ import uk.gov.hmrc.nonrep.attachment.service.Processor
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-object NonrepMicroservice {
-  def apply(routes: Routes)(implicit system: ActorSystem[_], config: ServiceConfig) = new NonrepMicroservice(routes)
-}
-
-class NonrepMicroservice(routes: Routes)(implicit val system: ActorSystem[_], config: ServiceConfig) {
-
-  import system.executionContext
-
-  val serverBinding: Future[Http.ServerBinding] =
-    Http().newServerAt("0.0.0.0", config.port).bind(routes.serviceRoutes)
-
-  serverBinding.onComplete {
-    case Success(binding) =>
-      val address = binding.localAddress
-      system.log.info("Server '{}' is online at http://{}:{}/ with configuration: {}", config.appName, address.getHostString, address.getPort, config.toString)
-    case Failure(ex) =>
-      system.log.error("Failed to bind HTTP endpoint, terminating system", ex)
-      system.terminate()
-  }
+class NonrepMicroservice()(implicit val system: ActorSystem[_], config: ServiceConfig) {
 
   val applicationSink: Sink[EitherErr[AttachmentInfo], Future[Done]] = Sink.foreach[EitherErr[AttachmentInfo]] {
     _.fold(
@@ -42,11 +24,11 @@ class NonrepMicroservice(routes: Routes)(implicit val system: ActorSystem[_], co
     )
   }
 
-  Processor(applicationSink).execute.run().onComplete {
-    case Success(result) => system.log.info(s"Attachments processor finished its work ${result.toString}")
-    case Failure(ex) => system.log.error(s"Attachments processor failed with ${ex.getMessage}", ex)
-  }
+  val attachmentsProcessor: Future[Done] = Processor(applicationSink).execute.run()
 
+  val routes = Routes(attachmentsProcessor)
+
+  val serverBinding: Future[Http.ServerBinding] = Http().newServerAt("0.0.0.0", config.port).bind(routes.serviceRoutes)
 }
 
 object Main {
@@ -57,17 +39,25 @@ object Main {
 
   implicit val config: ServiceConfig = new ServiceConfig()
 
+  implicit val system: ActorSystem[Nothing] = ActorSystem[Nothing](Behaviors.empty, s"NrsServer-${config.appName}")
+
+  val service = new NonrepMicroservice()
+
   def main(args: Array[String]): Unit = {
-    val rootBehavior = Behaviors.setup[Nothing] { context =>
+    import system.executionContext
 
-      val routes = Routes()(context.system, implicitly)
-
-      NonrepMicroservice(routes)(context.system, config)
-
-      Behaviors.empty
+    service.serverBinding.onComplete {
+      case Success(binding) =>
+        val address = binding.localAddress
+        system.log.info("Server '{}' is online at http://{}:{}/ with configuration: {}", config.appName, address.getHostString, address.getPort, config.toString)
+      case Failure(ex) =>
+        system.log.error("Failed to bind HTTP endpoint, terminating system", ex)
+        system.terminate()
     }
 
-    implicit val system: ActorSystem[Nothing] = ActorSystem[Nothing](rootBehavior, s"NrsServer-${config.appName}")
-
+    service.attachmentsProcessor.onComplete {
+      case Success(result) => system.log.info(s"Attachments processor finished its work ${result.toString}")
+      case Failure(ex) => system.log.error(s"Attachments processor failed with ${ex.getMessage}", ex)
+    }
   }
 }

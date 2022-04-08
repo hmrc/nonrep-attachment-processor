@@ -1,6 +1,7 @@
 package uk.gov.hmrc.nonrep.attachment
 package server
 
+import akka.Done
 import akka.actor.testkit.typed.scaladsl.ActorTestKit
 import akka.actor.typed.scaladsl.adapter._
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
@@ -10,6 +11,7 @@ import akka.http.scaladsl.testkit.RouteTestTimeout
 import uk.gov.hmrc.nonrep.BuildInfo
 import uk.gov.hmrc.nonrep.attachment.utils.JsonFormats._
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
 
 class RoutesSpec extends BaseSpec {
@@ -21,7 +23,10 @@ class RoutesSpec extends BaseSpec {
 
   implicit val config: ServiceConfig = new ServiceConfig()
 
-  val routes = new Routes()
+  val routes = new Routes(Future{
+    Thread.sleep(1000)
+    Done
+  })
 
   "Attachment Processor routes" should {
 
@@ -46,6 +51,14 @@ class RoutesSpec extends BaseSpec {
         status shouldBe StatusCodes.OK
         contentType shouldBe ContentTypes.`text/plain(UTF-8)`
         responseAs[String] shouldBe "pong"
+      }
+    }
+
+    "reply to ping when processor stopped working" in {
+      Get(s"/${config.appName}/ping") ~> new Routes(Future(Done)).serviceRoutes ~> check {
+        status shouldBe StatusCodes.InternalServerError
+        contentType shouldBe ContentTypes.`text/plain(UTF-8)`
+        responseAs[String] shouldBe "Processing of attachments is finished"
       }
     }
 

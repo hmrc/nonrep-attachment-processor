@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import org.scalatest.Inside
 import org.scalatest.time.{Millis, Span}
 import uk.gov.hmrc.nonrep.BuildInfo
-import uk.gov.hmrc.nonrep.attachment.server.{NonrepMicroservice, Routes, ServiceConfig}
+import uk.gov.hmrc.nonrep.attachment.server.{NonrepMicroservice, ServiceConfig}
 import uk.gov.hmrc.nonrep.attachment.utils.JsonFormats._
 
 import scala.concurrent.Future
@@ -28,7 +28,7 @@ class ServiceIntSpec extends BaseSpec with Inside {
   implicit val patience: PatienceConfig = PatienceConfig(Span(5000, Millis), Span(100, Millis))
 
   override def beforeAll() = {
-    server = NonrepMicroservice(Routes())
+    server = new NonrepMicroservice()
   }
 
   override def afterAll(): Unit = {
@@ -55,6 +55,19 @@ class ServiceIntSpec extends BaseSpec with Inside {
         res.status shouldBe StatusCodes.OK
         whenReady(entityToString(res.entity)) { body =>
           body shouldBe "pong"
+        }
+      }
+    }
+
+    "return a 500 response for GET requests to service /ping endpoint when attachments processor has stopped" in {
+      import scala.jdk.FutureConverters._
+      server.attachmentsProcessor.asJava.toCompletableFuture.cancel(true)
+      Thread.sleep(1000)
+      val responseFuture: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = s"$hostUrl/${config.appName}/ping"))
+      whenReady(responseFuture) { res =>
+        res.status shouldBe StatusCodes.InternalServerError
+        whenReady(entityToString(res.entity)) { body =>
+          body shouldBe "Processing of attachments is finished"
         }
       }
     }
