@@ -123,8 +123,8 @@ object TestServices {
     }
 
     val glacierService: Glacier = new GlacierService() {
-      override def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
-                                     asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
+      override def eventuallyUploadArchive(uploadArchiveRequest: UploadArchiveRequest,
+                                           asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
         Future successful UploadArchiveResponse.builder().archiveId(archiveId).build()
     }
 
@@ -134,7 +134,7 @@ object TestServices {
           case (_, request) => (Try(HttpResponse(OK, entity = HttpEntity(""))), request)
         }
 
-      override def createRequestsSignerParams = new RequestsSignerParams() {
+      override def createRequestsSignerParams: RequestsSignerParams = new RequestsSignerParams() {
 
         import RequestsSigner._
 
@@ -167,8 +167,8 @@ object TestServices {
         }
     }
     val glacierService: GlacierService = new GlacierService() {
-      override def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
-                                     asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
+      override def eventuallyUploadArchive(uploadArchiveRequest: UploadArchiveRequest,
+                                           asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
         Future failed new RuntimeException("boom!")
     }
 
@@ -194,5 +194,4 @@ object TestServices {
         }
     }
   }
-
 }

@@ -5,19 +5,18 @@ import akka.http.javadsl.model.DateTime.now
 import akka.util.ByteString
 import org.mockito.ArgumentMatchers
 import org.mockito.ArgumentMatchers.any
-import org.mockito.Mockito.{verify, when}
+import org.mockito.Mockito.when
 import org.mockito.MockitoSugar.mock
 import org.mockito.internal.stubbing.answers.Returns
 import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.services.glacier.GlacierAsyncClient
 import software.amazon.awssdk.services.glacier.model._
-import uk.gov.hmrc.nonrep.attachment.service.ChecksumUtils.{chunkSize, sha256TreeHashHex}
-import java.util.Collections.emptyList
-import java.util.concurrent.CompletableFuture.completedFuture
-
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
+import uk.gov.hmrc.nonrep.attachment.service.ChecksumUtils.{chunkSize, sha256TreeHashHex}
 
-import scala.concurrent.{ExecutionContext, Future}
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CompletableFuture.completedFuture
+import scala.concurrent.ExecutionContext
 
 class GlacierServiceSpec extends BaseSpec {
 
@@ -32,7 +31,6 @@ class GlacierServiceSpec extends BaseSpec {
   private def serviceConfig(environment: String) = {
     new ServiceConfig() {
       override val env: String = environment
-      override def glacierSNSSystemProperty = "local"
       override def sqsSystemProperty = "local"
     }
   }
@@ -59,50 +57,42 @@ class GlacierServiceSpec extends BaseSpec {
         when(glacierService().client.uploadArchive(ArgumentMatchers.eq(uploadArchiveRequest), any[AsyncRequestBody]()))
           .thenAnswer(future(UploadArchiveResponse.builder().archiveId(archiveId).build))
 
-        glacierService().eventuallyCreateVaultIfNecessaryAndArchive(content, vaultName).futureValue.toOption.get shouldBe archiveId
+        glacierService().eventuallyArchive(content, vaultName).futureValue.toOption.get shouldBe archiveId
       }
     }
 
-    "return an error message" when {
+    "return an error" when {
+      def eventualError(exception: Exception) = {
+        val error: CompletableFuture[UploadArchiveResponse] = new CompletableFuture[UploadArchiveResponse]()
+        error.completeExceptionally(exception)
+        new Returns(error)
+      }
+
       "the glacier client call fails" in {
-        when(
-          glacierAsyncClient
-            .uploadArchive(ArgumentMatchers.eq(uploadArchiveRequest), any[AsyncRequestBody]))
-          .thenAnswer(future(new RuntimeException("boom!")))
+        when(glacierAsyncClient.uploadArchive(ArgumentMatchers.eq(uploadArchiveRequest), any[AsyncRequestBody]))
+          .thenAnswer(eventualError(new RuntimeException("boom!")))
 
-        glacierService().eventuallyCreateVaultIfNecessaryAndArchive(content, vaultName).futureValue match {
-          case Left(error) => error.message shouldBe s"Error uploading attachment $content to glacier $vaultName"
-          case Right(_) => fail("an error was expected")
+        glacierService().eventuallyArchive(content, vaultName).futureValue match {
+          case Left(error) =>
+            error.message shouldBe s"Error uploading attachment $content to glacier $vaultName"
+            error.severity shouldBe ERROR
+          case Right(_) =>
+            fail("an error was expected")
         }
       }
-    }
 
-    "create a glacier vault" when {
-      "the vault does not exist" in {
-        val glacierServiceWithoutVault: GlacierService = new GlacierService() {
-          override lazy val client: GlacierAsyncClient = glacierAsyncClient
+      "the vault is not found" in {
+        when(glacierAsyncClient.uploadArchive(ArgumentMatchers.eq(uploadArchiveRequest), any[AsyncRequestBody]))
+          .thenAnswer(eventualError(ResourceNotFoundException.builder().message("boom").build()))
 
-          private var vaultExists = false
-
-          override def eventuallyArchive(uploadArchiveRequest: UploadArchiveRequest,
-                                         asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =
-            if (vaultExists) {
-              Future successful UploadArchiveResponse.builder().archiveId(archiveId).build()
-            } else {
-              vaultExists = true
-              Future failed ResourceNotFoundException.builder.build()
-            }
+        glacierService().eventuallyArchive(content, vaultName).futureValue match {
+          case Left(error) =>
+            error.message shouldBe
+              s"Vault $vaultName not found for attachment $content. The sign service should create the vault in due course."
+            error.severity shouldBe WARN
+          case Right(_) =>
+            fail("an error was expected")
         }
-
-        when(
-          glacierAsyncClient
-            .listVaults(any[ListVaultsRequest]))
-          .thenAnswer(future(ListVaultsResponse.builder().vaultList(emptyList[DescribeVaultOutput]()).build()))
-        when(glacierAsyncClient.createVault(any[CreateVaultRequest])).thenAnswer(future(CreateVaultRequest.builder().build()))
-
-        glacierServiceWithoutVault.eventuallyCreateVaultIfNecessaryAndArchive(content, vaultName).futureValue.toOption.get shouldBe archiveId
-
-        verify(glacierAsyncClient.setVaultNotifications(any[SetVaultNotificationsRequest]))
       }
     }
   }
@@ -110,7 +100,6 @@ class GlacierServiceSpec extends BaseSpec {
   "datedVaultName" should {
     "return a vault name without a prefix" when {
       val vaultNameWithNoPrefix = s"vat-registration-${now().year()}"
-
 
       "running in dev" in {
         glacierService(serviceConfig("dev")).datedVaultName shouldBe vaultNameWithNoPrefix
