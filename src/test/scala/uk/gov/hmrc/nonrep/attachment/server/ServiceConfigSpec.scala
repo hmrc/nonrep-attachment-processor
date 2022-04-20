@@ -20,17 +20,5 @@ class ServiceConfigSpec extends AnyWordSpec with Matchers {
     "be able to use default service port" in {
       config.port shouldBe config.servicePort
     }
-
-    "specify the glacier notifications SNS topic Arn" in {
-      config.glacierNotificationsSnsTopicArn shouldBe "local"
-    }
-
-    "throw an error in non-local environments" when {
-      "the mandatory GLACIER_SNS system property is not defined" in {
-        intercept[Exception] {
-          config.glacierSNSSystemProperty
-        }.getMessage shouldBe "System property GLACIER_SNS is not set. This is required by the service to create a Glacier vault when necessary."
-      }
-    }
   }
 }
