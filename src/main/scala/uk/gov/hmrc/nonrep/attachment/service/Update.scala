@@ -59,7 +59,7 @@ class UpdateService()(implicit val config: ServiceConfig,
       (attachment.toOption.map(archived => {
         val submissionId = archived.info.submissionId.getOrElse(new IllegalStateException("Submission ID must be present"))
         val path = s"/${archived.info.notableEvent}-attachments/index/${archived.info.key}"
-        val body = s"""{ "nrSubmissionId": "$submissionId", "glacier": { "vaultName": "${archived.vaultName}", "archiveId": "${archived.archiveId}"}}"""
+        val body = s"""{ "attachmentId": "${archived.info.key}", "nrSubmissionId": "$submissionId", "glacier": { "vaultName": "${archived.vaultName}", "archiveId": "${archived.archiveId}"}}"""
         val request = createSignedRequest(HttpMethods.POST, config.elasticSearchUri, path, body, signerParams.params)
         system.log.info(s"Update metastore request for: [${archived.info.key}], path: [$path], body: [$body] and request: [$request]")
         request
