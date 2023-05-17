@@ -7,6 +7,7 @@ RUN echo "$TZ" > /etc/timezone
 RUN DEBIAN_FRONTEND=noninteractive \
     && apt-get update \
     && apt-get upgrade -y \
+    && apt-get install -y ca-certificates-java \
     && apt-get install -y openjdk-17-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
