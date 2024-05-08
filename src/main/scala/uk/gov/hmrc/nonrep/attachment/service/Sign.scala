@@ -46,7 +46,7 @@ class SignService()(implicit val config: ServiceConfig,
 
 //      response.discardEntityBytes()
       messageF.map { message =>
-        val error = s"Response status ${response.status} with message $message from signatures service ${config.signaturesServiceHost}"
+        val error = s"Response status ${response.status} with message $message from signatures service ${response.headers.mkString("\n")}"
         Left(ErrorMessage(error))
       }
     }
