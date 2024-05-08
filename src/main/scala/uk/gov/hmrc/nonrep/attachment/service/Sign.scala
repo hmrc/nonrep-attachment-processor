@@ -39,9 +39,16 @@ class SignService()(implicit val config: ServiceConfig,
         .map(_.toArray[Byte])
         .map(signed => zip.map(content => content.copy(files = content.files :+ (SIGNED_ATTACHMENT_FILE, signed))))
     } else {
-      response.discardEntityBytes()
-      val error = s"Response status ${response.status} from signatures service ${config.signaturesServiceHost}"
-      Future.successful(Left(ErrorMessage(error)))
+      val messageF: Future[String] = response.entity.dataBytes
+        .runFold(ByteString.empty)(_ ++ _)
+        .map(_.toArray[Byte])
+        .map(new String(_))
+
+//      response.discardEntityBytes()
+      messageF.map { message =>
+        val error = s"Response status ${response.status} with message $message from signatures service ${config.signaturesServiceHost}"
+        Left(ErrorMessage(error))
+      }
     }
   }
 
@@ -50,7 +57,7 @@ class SignService()(implicit val config: ServiceConfig,
       Http().cachedHostConnectionPoolHttps[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort)
     else
       Http().cachedHostConnectionPool[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort))
-      .buffer(config.signServiceBufferSize, OverflowStrategy.backpressure).async
+//      .buffer(config.signServiceBufferSize, OverflowStrategy.backpressure).async
 
   val createRequest: Flow[EitherErr[ZipContent], (HttpRequest, EitherErr[ZipContent]), NotUsed] =
     Flow[EitherErr[ZipContent]].map { zip =>
