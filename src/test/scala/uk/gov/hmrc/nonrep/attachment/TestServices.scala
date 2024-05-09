@@ -52,7 +52,7 @@ object TestServices {
   val testApplicationSink: Sink[EitherErr[AttachmentInfo], TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
     TestSink.probe[EitherErr[AttachmentInfo]](typedSystem.classicSystem)
 
-  val testSQSMessageIds: IndexedSeq[String] = IndexedSeq.fill(4)(UUID.randomUUID().toString)
+  val testSQSMessageIds: IndexedSeq[String] = IndexedSeq.fill(3)(UUID.randomUUID().toString)
 
   def testSQSMessage(env: String, messageId: String, attachmentId: String, service: String = "s3"): Message = Message.builder().receiptHandle(messageId).body(
     s"""
@@ -160,12 +160,14 @@ object TestServices {
       override def deleteAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
         Flow[EitherErr[AttachmentInfo]].map { _ => Left(ErrorMessage("failure")) }
     }
+
     val signService: Sign = new SignService() {
       override val callDigitalSignatures: Flow[(HttpRequest, EitherErr[ZipContent]), (Try[HttpResponse], EitherErr[ZipContent]), Any] =
         Flow[(HttpRequest, EitherErr[ZipContent])].map {
           case (_, request) => (Try(HttpResponse(InternalServerError)), request)
         }
     }
+
     val glacierService: GlacierService = new GlacierService() {
       override def eventuallyUploadArchive(uploadArchiveRequest: UploadArchiveRequest,
                                            asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =

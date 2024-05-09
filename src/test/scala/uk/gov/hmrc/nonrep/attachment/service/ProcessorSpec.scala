@@ -42,6 +42,7 @@ class ProcessorSpec extends BaseSpec {
         new ProcessorService(testApplicationSink) {
           override def getMessages: Source[Message, NotUsed] = queueService.getMessages
           override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = failure.storageService.downloadAttachment
+          override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = queueService.deleteMessage
         }
 
       val result = processor.execute.run()
@@ -49,8 +50,9 @@ class ProcessorSpec extends BaseSpec {
         .expectNext()
 
       result.isLeft shouldBe true
-//      result.left.toOption.get.severity shouldBe WARN
-//      result.left.toOption.get.message shouldBe s"Error getting attachment $testAttachmentId from S3 ${config.attachmentsBucket}"
+      result.left.toOption.get shouldBe a [FailedToDownloadS3BundleError]
+      result.left.toOption.get.severity shouldBe WARN
+      result.left.toOption.get.message shouldBe s"failed to download 738bcba6-7f9e-11ec-8768-3f8498104f38 attachment bundle from s3 ${config.attachmentsBucket}"
     }
 
     "report a warning for signing failure" in {
