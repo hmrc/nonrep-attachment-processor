@@ -88,11 +88,17 @@ class QueueService()(implicit val config: ServiceConfig,
       })
     }.divertTo(invalidMessage, _.isLeft)
 
-  override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
+  override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = {
+    def delete(info: AttachmentInfo) = {
+      val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(info.message).build()
+      client.deleteMessage(request).asScala
+    }
     Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) {
+      case Right(info) => delete(info).map(_ => Right(info))
+      case Left(error: FailedToDownloadS3BundleError) =>
+        system.log.error(s"failed to get bundle because ${error.message}, SQS message to be removed")
+        delete(AttachmentInfo(error.messageId, error.s3Object)).map(_ => Left(error))
       case Left(error) => Future.successful(Left(error))
-      case Right(info) =>
-        val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(info.message).build()
-        client.deleteMessage(request).asScala.map(_ => Right(info))
     }.withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
+  }
 }

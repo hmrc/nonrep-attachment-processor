@@ -29,20 +29,41 @@ class QueueSpec extends BaseSpec {
       testSQSMessageIds should contain(result.receiptHandle())
     }
 
-    "Delete message" in {
-      val sink = TestSink.probe[EitherErr[AttachmentInfo]]
-      val (_, sub) = queueService.getMessages
-        .via(queueService.parseMessages)
-        .via(queueService.deleteMessage)
-        .toMat(sink)(Keep.both)
-        .run()
+    "Delete messages" when {
+      "the s3 object can not be downloaded" in {
+        val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+        val (_, sub) = queueService.getMessages
+          .via(queueService.parseMessages)
+          .via(TestServices.failure.storageService.downloadAttachment)
+          .map(_.map(_.info))
+          .via(queueService.deleteMessage)
+          .toMat(sink)(Keep.both)
+          .run()
 
-      val result = sub
-        .request(1)
-        .expectNext()
+        val result = sub
+          .request(1)
+          .expectNext()
 
-      result.isRight shouldBe true
-      result.toOption.get.key shouldBe testAttachmentId
+        result.isLeft shouldBe true
+        result.left.toOption.get shouldBe a [FailedToDownloadS3BundleError]
+        result.left.toOption.get.message shouldBe "failed to download 738bcba6-7f9e-11ec-8768-3f8498104f38 attachment bundle from s3 local-nonrep-attachment-data"
+      }
+
+      "completed processing" in {
+        val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+        val (_, sub) = queueService.getMessages
+          .via(queueService.parseMessages)
+          .via(queueService.deleteMessage)
+          .toMat(sink)(Keep.both)
+          .run()
+
+        val result = sub
+          .request(1)
+          .expectNext()
+
+        result.isRight shouldBe true
+        result.toOption.get.key shouldBe testAttachmentId
+      }
     }
 
     "Parse messages properly" in {

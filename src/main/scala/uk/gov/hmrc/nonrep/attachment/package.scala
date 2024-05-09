@@ -18,9 +18,21 @@ package object attachment {
 
   case class ClientData(businessId: String, notableEvent: String, retentionPeriod: Int)
 
-  type EitherErr[T] = Either[ErrorMessage, T]
 
-  case class ErrorMessage(message: String, severity: Severity = ERROR)
+  sealed trait Error {
+    def message: String
+
+    def severity: Severity
+  }
+
+  type EitherErr[T] = Either[Error, T]
+
+  case class FailedToDownloadS3BundleError(messageId: String, s3Object: String, bucket: String) extends Error {
+    override def message = s"failed to download $s3Object attachment bundle from s3 $bucket"
+
+    override def severity: Severity = WARN
+  }
+  case class ErrorMessage(message: String, severity: Severity = ERROR) extends Error
 
   case class AttachmentInfo(message: String, key: String, notableEvent: String = "vat-registration", submissionId: Option[String] = None)
 

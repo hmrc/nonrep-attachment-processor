@@ -52,7 +52,7 @@ object TestServices {
   val testApplicationSink: Sink[EitherErr[AttachmentInfo], TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
     TestSink.probe[EitherErr[AttachmentInfo]](typedSystem.classicSystem)
 
-  val testSQSMessageIds: IndexedSeq[String] = IndexedSeq.fill(3)(UUID.randomUUID().toString)
+  val testSQSMessageIds: IndexedSeq[String] = IndexedSeq.fill(4)(UUID.randomUUID().toString)
 
   def testSQSMessage(env: String, messageId: String, attachmentId: String, service: String = "s3"): Message = Message.builder().receiptHandle(messageId).body(
     s"""
