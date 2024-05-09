@@ -16,9 +16,9 @@ class NonrepMicroservice()(implicit val system: ActorSystem[_], config: ServiceC
   val applicationSink: Sink[EitherErr[AttachmentInfo], Future[Done]] = Sink.foreach[EitherErr[AttachmentInfo]] {
     _.fold(
       {
-        case error: FailedToDownloadS3BundleError  => system.log.warn(error.message)
-        case ErrorMessage(message, WARN)      => system.log.warn(message)
-        case ErrorMessage(message, ERROR)     => system.log.error(message)
+        case error: FailedToDownloadS3BundleError => system.log.warn(error.message)
+        case ErrorMessage(message, WARN)          => system.log.warn(message)
+        case ErrorMessage(message, ERROR)         => system.log.error(message)
       },
       attachmentInfo =>
         system.log.info(s"Successful processing of attachment ${attachmentInfo.key}")
