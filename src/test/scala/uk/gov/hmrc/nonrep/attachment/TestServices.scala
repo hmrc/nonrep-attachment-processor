@@ -43,7 +43,7 @@ object TestServices {
   val sampleAttachmentMetadata: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(METADATA_FILE).getFile).toPath)
   val sampleAttachment: Array[Byte] =
-    Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.zip").getFile).toPath)
+    Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"8cad83c4-3381-420d-8c75-0b18383807eb.zip").getFile).toPath)
   val sampleAttachmentContent: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(testAttachmentId).getFile).toPath)
   val sampleSignedAttachmentContent: Array[Byte] =

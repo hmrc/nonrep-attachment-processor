@@ -10,6 +10,7 @@ import akka.stream.alpakka.sqs.scaladsl.SqsSource
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.util.Timeout
 import akka.{Done, NotUsed}
+import org.slf4j.MDC
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region.EU_WEST_2
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
@@ -81,6 +82,8 @@ class QueueService()(implicit val config: ServiceConfig,
           .asJsObject.fields("object")
           .asJsObject.fields("key").convertTo[String]
           .replaceFirst(".zip", "")
+
+        MDC.put("attachmentId", attachmentId)
         AttachmentInfo(messageHandle, attachmentId)
       }.toEither.left.map(thr => {
         system.log.error(s"Parsing SQS message failure ${message.body()}", thr)

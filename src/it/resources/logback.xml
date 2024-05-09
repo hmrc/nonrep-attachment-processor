@@ -2,7 +2,8 @@
 <configuration>
     <appender name="jsonConsoleAppender" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <customFields>{"appname":"attachment-processor", "env":"local"}</customFields>
+            <pattern>[%date{ISO8601}] [%level] [%logger] [%marker] [%thread] - %msg MDC: {%mdc}%n</pattern>
+<!--            <customFields>{"appname":"attachment-processor", "env":"local"}</customFields>-->
         </encoder>
     </appender>
 

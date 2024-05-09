@@ -31,6 +31,12 @@ class SignService()(implicit val config: ServiceConfig,
       case Right(_) => 1
     })
 
+  private def partitionHttpRequestsRequests[A]() =
+    Partition[(HttpRequest, EitherErr[A])](2, {
+      case (_, Left(_))   => 0
+      case (_, Right(_))  => 1
+    })
+
   protected def parse(zip: EitherErr[ZipContent], response: HttpResponse): Future[EitherErr[ZipContent]] = {
     import system.executionContext
     if (response.status == OK) {
@@ -61,7 +67,7 @@ class SignService()(implicit val config: ServiceConfig,
 
   val createRequest: Flow[EitherErr[ZipContent], (HttpRequest, EitherErr[ZipContent]), NotUsed] =
     Flow[EitherErr[ZipContent]].map { zip =>
-      zip.filterOrElse(_.files.exists(_._1 == ATTACHMENT_FILE), ErrorMessage(s"Invalid attachment bundle for $zip")).fold(
+      zip.filterOrElse(_.files.exists(_._1 == ATTACHMENT_FILE), ErrorMessage(s"Attachment bundle does not contain $ATTACHMENT_FILE within $zip file")).fold(
         error => (HttpRequest(), Left(error)),
         content => {
           val headers = List(RawHeader(TransactionIdHeader, content.info.key))
@@ -92,10 +98,13 @@ class SignService()(implicit val config: ServiceConfig,
         import GraphDSL.Implicits._
 
         val input = builder.add(partitionRequests[ZipContent]())
-        val merge = builder.add(Merge[EitherErr[ZipContent]](2))
+        val meh = builder.add(partitionHttpRequestsRequests[ZipContent]())
+        val merge = builder.add(Merge[EitherErr[ZipContent]](4))
 
-        input ~> merge
-        input ~> createRequest ~> callDigitalSignatures ~> parseResponse ~> remapErrorSeverity ~> merge
+        input.out(0) ~> merge
+        input.out(1) ~> createRequest ~> meh
+        meh.out(0) ~> merge
+        meh.out(1) ~> callDigitalSignatures ~> parseResponse ~> remapErrorSeverity ~> merge
 
         FlowShape(input.in, merge.out)
       }

@@ -3,6 +3,7 @@ package service
 
 import akka.NotUsed
 import akka.actor.typed.ActorSystem
+import akka.event.LogMarker
 import akka.stream.Attributes.LogLevels.{Error, Info}
 import akka.stream.Attributes.logLevels
 import akka.stream.ClosedShape
@@ -59,43 +60,51 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
   val update: Update = new UpdateService()
 
   override def getMessages: Source[Message, NotUsed] = queue.getMessages.throttle(config.messagesPerSecond, 1.second)
-    .log(name = "getMessages")
+//    .log(name = "getMessages")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
+  val x: EitherErr[AttachmentInfo] => LogMarker = {
+    case Right(info) =>
+        new LogMarker("some name", properties = Map("attachmentId" -> info.key))
+    case Left(error) =>
+        new LogMarker("some name error")
+  }
   override def parseMessage: Flow[Message, EitherErr[AttachmentInfo], NotUsed] = queue.parseMessages
-    .log(name = "parseMessage")
+    .logWithMarker(name = "parseMessage", x)
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
+  //TODO validate message ???
   override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = queue.deleteMessage
-    .log(name = "deleteMessage")
+//    .log(name = "deleteMessage")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
   override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storage.downloadAttachment
-    .log(name = "downloadBundle")
+//    .log(name = "downloadBundle")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
   override def unpackBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] = bundle.extractBundle
-    .log(name = "unpackBundle")
+//    .log(name = "unpackBundle")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
+  //TODO validate bundle ???
   override def repackBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] = bundle.createBundle
-    .log(name = "repackBundle")
+//    .log(name = "repackBundle")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
   override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = sign.signing
-    .log(name = "signAttachment")
+//    .log(name = "signAttachment")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
   override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacier.archive
-    .log(name = "archiveBundle")
+//    .log(name = "archiveBundle")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
   override def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = update.updateMetastore
-    .log(name = "updateMetastore")
+//    .log(name = "updateMetastore")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
   override def deleteBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = storage.deleteAttachment
-    .log(name = "deleteBundle")
+//    .log(name = "deleteBundle")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
   val execute: RunnableGraph[A] = fromGraph(GraphDSL.createGraph(applicationSink) {

@@ -54,6 +54,7 @@ class BundleService extends Bundle {
       }.toEither.left.flatMap(x => Left(ErrorMessage(s"Failure of creating zip archive for ${content.info.key} with ${x.getCause}"))))
     }
 
+  //TODO this extract bundle should either ONLY look for the file, or pass the files to a validator function which checks for the files existence
   override def extractBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] =
     Flow[EitherErr[AttachmentContent]].map {
       _.flatMap(attachment => {

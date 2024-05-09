@@ -53,6 +53,25 @@ class ProcessorSpec extends BaseSpec {
       result.left.toOption.get.message shouldBe s"Error getting attachment $testAttachmentId from S3 ${config.attachmentsBucket}"
     }
 
+    "report a warning for random failure" in {
+      val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
+        new ProcessorService(testApplicationSink) {
+          override def getMessages: Source[Message, NotUsed] = queueService.getMessages
+          override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
+          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = signService.signing
+        }
+
+      val result = processor.execute.run()
+        .request(1)
+        .expectNext()
+
+      println("------------------ RESULT -----------------------")
+      println(result)
+      result.isLeft shouldBe true
+      result.left.toOption.get.severity shouldBe WARN
+      result.left.toOption.get.message shouldBe s"Response status 500 Internal Server Error from signatures service ${config.signaturesServiceHost}"
+    }
+
     "report a warning for signing failure" in {
       val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
         new ProcessorService(testApplicationSink) {
@@ -67,7 +86,7 @@ class ProcessorSpec extends BaseSpec {
 
       result.isLeft shouldBe true
       result.left.toOption.get.severity shouldBe WARN
-//      result.left.toOption.get.message shouldBe s"Response status 500 Internal Server Error from signatures service ${config.signaturesServiceHost}"
+      //      result.left.toOption.get.message shouldBe s"Response status 500 Internal Server Error from signatures service ${config.signaturesServiceHost}"
     }
 
     "report an error for a glacier failure" in {
