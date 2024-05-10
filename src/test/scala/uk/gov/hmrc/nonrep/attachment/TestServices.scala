@@ -97,13 +97,6 @@ object TestServices {
     """).build()
 
   object success {
-    val storageService: Storage = new StorageService() {
-      override def s3DownloadSource(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
-        Source.single(Some(Source.single(ByteString(sampleAttachment)), ObjectMetadata(Seq())))
-
-      override def s3DeleteSource(attachment: AttachmentInfo): Source[Done, NotUsed] =
-        Source.single(Done)
-    }
 
     val queueService: Queue = new QueueService() {
       override def getMessages: Source[Message, NotUsed] =
@@ -113,6 +106,14 @@ object TestServices {
         Flow[EitherErr[AttachmentInfo]].map {
           _.map(_ => AttachmentInfo(testSQSMessageIds.head, testAttachmentId))
         }
+    }
+
+    val storageService: Storage = new StorageService(queueService) {
+      override def s3DownloadSource(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
+        Source.single(Some(Source.single(ByteString(sampleAttachment)), ObjectMetadata(Seq())))
+
+      override def s3DeleteSource(attachment: AttachmentInfo): Source[Done, NotUsed] =
+        Source.single(Done)
     }
 
     val signService: Sign = new SignService() {
@@ -153,7 +154,7 @@ object TestServices {
   }
 
   object failure {
-    val storageService: Storage = new StorageService() {
+    val storageService: Storage = new StorageService(success.queueService) {
       override def s3DownloadSource(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
         Source.single(None)
 

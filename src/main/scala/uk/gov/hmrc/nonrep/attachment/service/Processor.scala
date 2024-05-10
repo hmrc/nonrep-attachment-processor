@@ -46,9 +46,9 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
                          (implicit val system: ActorSystem[_], config: ServiceConfig)
   extends Processor[A] {
 
-  val storage: Storage = new StorageService()
-
   val queue: Queue = new QueueService()
+
+  val storage: Storage = new StorageService(queue)
 
   val sign: Sign = new SignService()
 

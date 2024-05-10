@@ -21,7 +21,7 @@ trait Storage {
 
 }
 
-class StorageService()(implicit val config: ServiceConfig,
+class StorageService(queue: Queue)(implicit val config: ServiceConfig,
                        implicit val system: ActorSystem[_]) extends Storage {
 
   implicit val ec: ExecutionContext = system.executionContext
@@ -43,7 +43,11 @@ class StorageService()(implicit val config: ServiceConfig,
           )))
         case Some(source) => source._1.runFold(ByteString(ByteString.empty))(_ ++ _).map(bytes => Right(AttachmentContent(attachment, bytes)))
       }
-    }.withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
+    }.divertTo(queue.invalidMessage[AttachmentContent](_.info), {
+        case Left(_: ErrorMessageWithDeleteSQSMessage) => true
+        case _ => false
+      })
+      .withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
   }
 
   protected def s3DeleteSource(attachment: AttachmentInfo): Source[Done, NotUsed] =

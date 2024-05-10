@@ -42,11 +42,7 @@ class QueueSpec extends BaseSpec {
 
         val result = sub
           .request(1)
-          .expectNext()
-
-        result.isLeft shouldBe true
-        result.left.toOption.get shouldBe a [ErrorMessageWithDeleteSQSMessage]
-        result.left.toOption.get.message shouldBe "failed to download 738bcba6-7f9e-11ec-8768-3f8498104f38 attachment bundle from s3 local-nonrep-attachment-data"
+          .expectComplete()
       }
 
       "completed processing" in {
@@ -95,11 +91,7 @@ class QueueSpec extends BaseSpec {
           .toMat(sink)(Keep.both)
           .run()
 
-        val result = sub.request(1).expectNext()
-
-        result.isLeft shouldBe true
-        result.left.toOption.get.severity shouldBe ERROR
-        result.left.toOption.get.message should startWith regex "Parsing SQS message failure"
+        val result = sub.request(1).expectComplete()
       }
 
       "Report delete message failure" in {

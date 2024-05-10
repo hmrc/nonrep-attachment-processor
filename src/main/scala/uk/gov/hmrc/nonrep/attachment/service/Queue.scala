@@ -32,6 +32,8 @@ trait Queue {
   def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed]
 
   def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]
+
+  def invalidMessage[A](convertF: A => AttachmentInfo): Sink[EitherErr[A], NotUsed]
 }
 
 class QueueService()(implicit val config: ServiceConfig,
@@ -61,6 +63,37 @@ class QueueService()(implicit val config: ServiceConfig,
 
   override def getMessages: Source[Message, NotUsed] = SqsSource(config.queueUrl, settings)
 
+  override def invalidMessage[A](convertF: A => AttachmentInfo): Sink[EitherErr[A], NotUsed] =
+    Flow[EitherErr[A]]
+      .map(_.map(convertF(_)))
+      .map {
+        case Right(info) =>
+          system.log.error("incorrectly called invalid message")
+          Right(info)
+        case Left(ErrorMessageWithDeleteSQSMessage(messageId, message, None, WARN)) =>
+          system.log.warn(message)
+          Right(AttachmentInfo(messageId, message))
+        case Left(ErrorMessageWithDeleteSQSMessage(messageId, message, Some(throwable), WARN)) =>
+          system.log.warn(message, throwable)
+          Right(AttachmentInfo(messageId, message))
+        case Left(ErrorMessageWithDeleteSQSMessage(messageId, message, None, ERROR)) =>
+          system.log.error(message)
+          Right(AttachmentInfo(messageId, message))
+        case Left(ErrorMessageWithDeleteSQSMessage(messageId, message, Some(throwable), ERROR)) =>
+          system.log.error(message, throwable)
+          Right(AttachmentInfo(messageId, message))
+        case Left(error) =>
+          system.log.error("incorrectly called invalid message")
+          Left(error)
+      }
+      .via(deleteMessage)
+      .to(Sink.foreach[EitherErr[AttachmentInfo]]{
+        case Right(_) => system.log.error("Invalid SQS message removed")
+        case Left(error) =>
+          system.log.error(s"delete message failed due to ${error.message}")
+          errorHandler(system)(error)
+      })
+
   override def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed] =
     Flow[Message].map { message =>
       val messageHandle = message.receiptHandle()
@@ -78,19 +111,13 @@ class QueueService()(implicit val config: ServiceConfig,
       }.toEither.left.map(thr => {
         ErrorMessageWithDeleteSQSMessage(messageHandle, s"Parsing SQS message failure ${message.body()}", Some(thr))
       })
-    }
+    }.divertTo(invalidMessage[AttachmentInfo](identity), _.isLeft)
 
-  override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = {
-    def delete(receiptHandle: String) = {
-      val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(receiptHandle).build()
-      client.deleteMessage(request).asScala
-    }
+  override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
     Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) {
-      case Right(info) => delete(info.message).map(_ => Right(info))
-      case Left(error: ErrorMessageWithDeleteSQSMessage) =>
-        system.log.error(s"failure caused by: ${error.message}, SQS message to be removed")
-        delete(error.messageId).map(_ => Left(error))
       case Left(error) => Future.successful(Left(error))
+      case Right(info) =>
+        val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(info.message).build()
+        client.deleteMessage(request).asScala.map(_ => Right(info))
     }.withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
-  }
 }
