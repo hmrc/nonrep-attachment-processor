@@ -51,7 +51,9 @@ class BundleService extends Bundle {
           }
           AttachmentContent(content.info.copy(submissionId = extractMetadataField(content, "nrSubmissionId")) , ByteString(bytes.toByteArray))
         }
-      }.toEither.left.flatMap(x => Left(ErrorMessage(s"Failure of creating zip archive for ${content.info.key} with ${x.getCause}"))))
+      }.toEither.left.flatMap(exception =>
+        Left(ErrorMessage(s"Failure of creating zip archive for ${content.info.key} with ${exception.getCause}", Some(exception)))
+      ))
     }
 
   override def extractBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] =
@@ -65,8 +67,9 @@ class BundleService extends Bundle {
             seq :+ (entry.getName, output.toByteArray)
           })
           ZipContent(attachment.info, content)
-        }.toEither.left.flatMap(x => Left(ErrorMessage(s"Failure of extracting zip archive for ${attachment.info.key} with ${x.getCause}")))
-          .filterOrElse(_.files.nonEmpty, ErrorMessage(s"Failure of extracting zip archive for ${attachment.info.key} with no files found"))
+        }.toEither.left.flatMap(exception =>
+          Left(ErrorMessage(s"Failure of extracting zip archive for ${attachment.info.key} with ${exception.getCause}", Some(exception)))
+        ).filterOrElse(_.files.nonEmpty, ErrorMessage(s"Failure of extracting zip archive for ${attachment.info.key} with no files found"))
       })
     }
 }

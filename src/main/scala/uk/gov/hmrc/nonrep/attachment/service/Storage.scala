@@ -34,7 +34,13 @@ class StorageService()(implicit val config: ServiceConfig,
     Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) {
       case Left(error) => Future.successful(Left(error))
       case Right(attachment) => s3DownloadSource(attachment).toMat(Sink.head)(Keep.right).run().flatMap {
-        case None         => Future.successful(Left(FailedToDownloadS3BundleError(attachment.message, attachment.key, config.attachmentsBucket)))
+        case None         =>
+          Future.successful(Left(ErrorMessageWithDeleteSQSMessage(
+            messageId     = attachment.message,
+            message       = s"failed to download ${attachment.key} attachment bundle from s3 ${config.attachmentsBucket}",
+            optThrowable  = None,
+            severity      = WARN
+          )))
         case Some(source) => source._1.runFold(ByteString(ByteString.empty))(_ ++ _).map(bytes => Right(AttachmentContent(attachment, bytes)))
       }
     }.withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
