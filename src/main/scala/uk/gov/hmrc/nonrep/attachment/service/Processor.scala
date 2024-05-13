@@ -23,7 +23,7 @@ trait Processor[A] {
   def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed]
 
   def unpackBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed]
-
+  def verifyBundle: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed]
   def repackBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed]
 
   def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed]
@@ -78,6 +78,10 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
     .log(name = "unpackBundle")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
+  override def verifyBundle: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = bundle.verifyBundle
+    .log(name = "verifyBundle")
+    .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+
   override def repackBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] = bundle.createBundle
     .log(name = "repackBundle")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
@@ -103,7 +107,7 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
       sink =>
         import GraphDSL.Implicits._
 
-        getMessages ~> parseMessage ~> downloadBundle ~> unpackBundle ~> signAttachment ~> repackBundle ~> archiveBundle ~> updateMetastore ~> deleteMessage ~> deleteBundle ~> sink
+        getMessages ~> parseMessage ~> downloadBundle ~> unpackBundle ~> verifyBundle ~> signAttachment ~> repackBundle ~> archiveBundle ~> updateMetastore ~> deleteMessage ~> deleteBundle ~> sink
 
         ClosedShape
   })

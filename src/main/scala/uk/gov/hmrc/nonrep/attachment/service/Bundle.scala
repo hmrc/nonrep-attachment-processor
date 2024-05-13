@@ -3,12 +3,12 @@ package service
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
-
 import akka.NotUsed
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 import spray.json.DefaultJsonProtocol._
 import spray.json._
+import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
 import scala.util.{Try, Using}
 
@@ -17,10 +17,12 @@ trait Bundle {
 
   def extractBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed]
 
+  def verifyBundle: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed]
+
   def extractMetadataField(zip: ZipContent, field: String): Option[String]
 }
 
-class BundleService extends Bundle {
+class BundleService()(implicit val config: ServiceConfig) extends Bundle {
 
   override def extractMetadataField(zip: ZipContent, field: String): Option[String] = {
     Try {
@@ -68,8 +70,31 @@ class BundleService extends Bundle {
           })
           ZipContent(attachment.info, content)
         }.toEither.left.flatMap(exception =>
-          Left(ErrorMessage(s"Failure of extracting zip archive for ${attachment.info.key} with ${exception.getCause}", Some(exception)))
+          Left(ErrorMessage(
+            s"Failure of extracting zip archive for attachment ${attachment.info.key} relating to ${attachment.info.submissionId.getOrElse("INVALID")} with ${exception.getCause}", Some(exception)
+          ))
         ).filterOrElse(_.files.nonEmpty, ErrorMessage(s"Failure of extracting zip archive for ${attachment.info.key} with no files found"))
       })
     }
+
+  override def verifyBundle: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = {
+    def containsFile(files: Seq[(String, Attachment)], expectedFilename: String): Boolean = {
+      files.toMap.keys.toList.contains(expectedFilename)
+    }
+    Flow[EitherErr[ZipContent]].map {
+      _.flatMap { content =>
+        val containsMetadataFile = containsFile(content.files, METADATA_FILE)
+        val containsAttachmentDataFile = containsFile(content.files, ATTACHMENT_FILE)
+        if (containsMetadataFile && containsAttachmentDataFile) {
+          Right(content)
+        } else {
+          Left(ErrorMessage(
+            message       = s"MISSING_FILE_ERROR: ${content.info.key} inside ${config.attachmentsBucket} does not contain the expected files to continue this process: USER INPUT REQUIRED",
+            optThrowable  = None,
+            severity      = ERROR
+          ))
+        }
+      }
+    }
+  }
 }
