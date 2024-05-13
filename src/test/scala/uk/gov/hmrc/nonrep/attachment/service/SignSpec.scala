@@ -56,7 +56,7 @@ class SignSpec extends BaseSpec {
       val source = TestSource.probe[EitherErr[ZipContent]]
       val sink = TestSink.probe[EitherErr[ZipContent]]
       val (pub, sub) = source.via(signService.signing).toMat(sink)(Keep.both).run()
-      pub.sendNext(Left(ErrorMessage("test", ERROR))).sendComplete()
+      pub.sendNext(Left(ErrorMessage("test", None, ERROR))).sendComplete()
       val result = sub
         .request(1)
         .expectNext()

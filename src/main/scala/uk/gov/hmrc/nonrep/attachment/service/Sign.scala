@@ -69,14 +69,15 @@ class SignService()(implicit val config: ServiceConfig,
         case (httpResponse, request) =>
           httpResponse match {
             case Success(response) => parse(request, response)
-            case Failure(exception) => Future.successful(Left(ErrorMessage(s"Failure connection to ${config.signaturesServiceHost} with ${exception.getMessage}")))
+            case Failure(exception) =>
+              Future.successful(Left(ErrorMessage(s"Failure connection to ${config.signaturesServiceHost} with ${exception.getMessage}", Some(exception))))
           }
       }
       .withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
 
   val remapErrorSeverity: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] =
     Flow[EitherErr[ZipContent]].map {
-      _.left.map(error => ErrorMessage(error.message, WARN))
+      _.left.map(error => ErrorMessage(error.message, None, WARN))
     }
 
   override def signing: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] =

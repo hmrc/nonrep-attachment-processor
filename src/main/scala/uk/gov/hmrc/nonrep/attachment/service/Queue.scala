@@ -17,6 +17,7 @@ import software.amazon.awssdk.services.sqs.model.{DeleteMessageRequest, Message}
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
+import uk.gov.hmrc.nonrep.attachment.utils.ErrorHandler
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -31,12 +32,10 @@ trait Queue {
   def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed]
 
   def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]
-
-  def invalidMessage: Sink[EitherErr[AttachmentInfo], NotUsed]
 }
 
 class QueueService()(implicit val config: ServiceConfig,
-                     implicit val system: ActorSystem[_]) extends Queue {
+                     implicit val system: ActorSystem[_]) extends Queue with ErrorHandler {
 
   implicit val ec: ExecutionContextExecutor = system.executionContext
 
@@ -62,12 +61,6 @@ class QueueService()(implicit val config: ServiceConfig,
 
   override def getMessages: Source[Message, NotUsed] = SqsSource(config.queueUrl, settings)
 
-  override def invalidMessage: Sink[EitherErr[AttachmentInfo], NotUsed] =
-    Flow[EitherErr[AttachmentInfo]]
-      .map(_.left.flatMap(err => Right(AttachmentInfo(err.message, err.message))))
-      .via(deleteMessage)
-      .to(Sink.foreach[EitherErr[AttachmentInfo]](_ => system.log.error("Invalid SQS message removed")))
-
   override def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed] =
     Flow[Message].map { message =>
       val messageHandle = message.receiptHandle()
@@ -83,16 +76,21 @@ class QueueService()(implicit val config: ServiceConfig,
           .replaceFirst(".zip", "")
         AttachmentInfo(messageHandle, attachmentId)
       }.toEither.left.map(thr => {
-        system.log.error(s"Parsing SQS message failure ${message.body()}", thr)
-        ErrorMessage(messageHandle)
+        ErrorMessageWithDeleteSQSMessage(messageHandle, s"Parsing SQS message failure ${message.body()}", Some(thr))
       })
-    }.divertTo(invalidMessage, _.isLeft)
+    }
 
-  override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
+  override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = {
+    def delete(receiptHandle: String) = {
+      val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(receiptHandle).build()
+      client.deleteMessage(request).asScala
+    }
     Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) {
+      case Right(info) => delete(info.message).map(_ => Right(info))
+      case Left(error: ErrorMessageWithDeleteSQSMessage) =>
+        system.log.error(s"failure caused by: ${error.message}, SQS message to be removed")
+        delete(error.messageId).map(_ => Left(error))
       case Left(error) => Future.successful(Left(error))
-      case Right(info) =>
-        val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(info.message).build()
-        client.deleteMessage(request).asScala.map(_ => Right(info))
     }.withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
+  }
 }

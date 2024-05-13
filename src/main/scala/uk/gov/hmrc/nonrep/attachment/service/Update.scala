@@ -77,8 +77,8 @@ class UpdateService()(implicit val config: ServiceConfig,
     Flow[(Try[HttpResponse], EitherErr[ArchivedAttachment])].map {
       case (httpResponse, request) =>
         httpResponse match {
-          case Success(response) => parse(request, response)
-          case Failure(exception) => Left(ErrorMessage(s"Failure connection to ${config.elasticSearchHost} with ${exception.getMessage}"))
+          case Success(response)  => parse(request, response)
+          case Failure(exception) => Left(ErrorMessage(s"Failure connection to ${config.elasticSearchHost} with ${exception.getMessage}", Some(exception)))
         }
     }
       .withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))

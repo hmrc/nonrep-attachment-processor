@@ -18,9 +18,18 @@ package object attachment {
 
   case class ClientData(businessId: String, notableEvent: String, retentionPeriod: Int)
 
-  type EitherErr[T] = Either[ErrorMessage, T]
 
-  case class ErrorMessage(message: String, severity: Severity = ERROR)
+  sealed trait AttachmentError {
+    def message: String
+
+    def severity: Severity
+  }
+
+  type EitherErr[T] = Either[AttachmentError, T]
+
+  case class ErrorMessageWithDeleteSQSMessage(messageId: String, message: String, optThrowable: Option[Throwable]= None, severity: Severity = ERROR) extends AttachmentError
+
+  case class ErrorMessage(message: String, optThrowable: Option[Throwable] = None, severity: Severity = ERROR) extends AttachmentError
 
   case class AttachmentInfo(message: String, key: String, notableEvent: String = "vat-registration", submissionId: Option[String] = None)
 

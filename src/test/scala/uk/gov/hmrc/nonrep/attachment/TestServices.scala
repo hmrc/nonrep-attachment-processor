@@ -160,12 +160,14 @@ object TestServices {
       override def deleteAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
         Flow[EitherErr[AttachmentInfo]].map { _ => Left(ErrorMessage("failure")) }
     }
+
     val signService: Sign = new SignService() {
       override val callDigitalSignatures: Flow[(HttpRequest, EitherErr[ZipContent]), (Try[HttpResponse], EitherErr[ZipContent]), Any] =
         Flow[(HttpRequest, EitherErr[ZipContent])].map {
           case (_, request) => (Try(HttpResponse(InternalServerError)), request)
         }
     }
+
     val glacierService: GlacierService = new GlacierService() {
       override def eventuallyUploadArchive(uploadArchiveRequest: UploadArchiveRequest,
                                            asyncRequestBody: AsyncRequestBody): Future[UploadArchiveResponse] =

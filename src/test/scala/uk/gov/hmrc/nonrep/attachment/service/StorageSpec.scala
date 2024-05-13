@@ -70,7 +70,8 @@ class StorageSpec extends BaseSpec {
         .expectNext()
 
       result.isRight shouldBe false
-      result.left.toOption.get.message shouldBe s"Error getting attachment ${attachment.toOption.get.key} from S3 ${config.attachmentsBucket}"
+      result.left.toOption.get shouldBe a [ErrorMessageWithDeleteSQSMessage]
+      result.left.toOption.get.message shouldBe s"failed to download 738bcba6-7f9e-11ec-8768-3f8498104f38 attachment bundle from s3 ${config.attachmentsBucket}"
     }
 
     "report when deleting file from S3 fails" in {

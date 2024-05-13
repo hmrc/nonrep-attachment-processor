@@ -57,11 +57,14 @@ class GlacierService()(implicit val config: ServiceConfig, implicit val system: 
       AsyncRequestBody.fromBytes(content.bytes))
       .map(uploadResponse => Right(uploadResponse.archiveId()))
       .recoverWith[EitherErr[String]] {
-        case _: ResourceNotFoundException =>
-          Future successful Left(
-            ErrorMessage(s"Vault $vaultName not found for attachment $content. The sign service should create the vault in due course.", WARN))
-        case _ =>
-          Future successful Left(ErrorMessage(s"Error uploading attachment $content to glacier $vaultName"))
+        case exception: ResourceNotFoundException =>
+          Future.successful(Left(
+            ErrorMessage(
+              s"Vault $vaultName not found for attachment $content. The sign service should create the vault in due course.",
+              Some(exception),
+              WARN)))
+        case exception =>
+          Future.successful(Left(ErrorMessage(s"Error uploading attachment $content to glacier $vaultName", Some(exception))))
       }
 
   private[service] def eventuallyUploadArchive(uploadArchiveRequest: UploadArchiveRequest,

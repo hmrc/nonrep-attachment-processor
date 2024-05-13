@@ -7,18 +7,16 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.http.scaladsl.Http
 import akka.stream.scaladsl.Sink
 import uk.gov.hmrc.nonrep.attachment.service.Processor
+import uk.gov.hmrc.nonrep.attachment.utils.ErrorHandler
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
-class NonrepMicroservice()(implicit val system: ActorSystem[_], config: ServiceConfig) {
+class NonrepMicroservice()(implicit val system: ActorSystem[_], config: ServiceConfig) extends ErrorHandler {
 
   val applicationSink: Sink[EitherErr[AttachmentInfo], Future[Done]] = Sink.foreach[EitherErr[AttachmentInfo]] {
     _.fold(
-      {
-        case ErrorMessage(message, WARN) => system.log.warn(message)
-        case ErrorMessage(message, ERROR) => system.log.error(message)
-      },
+      errorHandler,
       attachmentInfo =>
         system.log.info(s"Successful processing of attachment ${attachmentInfo.key}")
     )
