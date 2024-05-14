@@ -17,10 +17,10 @@ class SignSpec extends BaseSpec {
       val messageId = UUID.randomUUID().toString
 
       val attachmentInfo = AttachmentInfo(messageId, testAttachmentId)
-      val zip = Right(ZipContent(attachmentInfo, Seq((ATTACHMENT_FILE, sampleAttachmentContent))))
+      val zip = Right(ZipContent(attachmentInfo, sampleAttachmentContent, sampleAttachmentMetadata))
 
       val source = TestSource.probe[EitherErr[ZipContent]]
-      val sink = TestSink.probe[EitherErr[ZipContent]]
+      val sink = TestSink.probe[EitherErr[SignedZipContent]]
       val (pub, sub) = source.via(signService.signing).toMat(sink)(Keep.both).run()
       pub.sendNext(zip).sendComplete()
       val result = sub
@@ -34,27 +34,9 @@ class SignSpec extends BaseSpec {
       result.toOption.get.files.filter(_._1 == SIGNED_ATTACHMENT_FILE).head._2 shouldBe sampleSignedAttachmentContent
     }
 
-    "fail on incorrect attachment bundle" in {
-      val messageId = UUID.randomUUID().toString
-
-      val attachmentInfo = AttachmentInfo(messageId, testAttachmentId)
-      val zip = Right(ZipContent(attachmentInfo, Seq(("xxx", sampleAttachmentContent))))
-
-      val source = TestSource.probe[EitherErr[ZipContent]]
-      val sink = TestSink.probe[EitherErr[ZipContent]]
-      val (pub, sub) = source.via(signService.signing).toMat(sink)(Keep.both).run()
-      pub.sendNext(zip).sendComplete()
-      val result = sub
-        .request(1)
-        .expectNext()
-
-      result.isLeft shouldBe true
-      result.left.toOption.get.message should startWith("Invalid attachment bundle")
-    }
-
     "leave original error messages severity level" in {
       val source = TestSource.probe[EitherErr[ZipContent]]
-      val sink = TestSink.probe[EitherErr[ZipContent]]
+      val sink = TestSink.probe[EitherErr[SignedZipContent]]
       val (pub, sub) = source.via(signService.signing).toMat(sink)(Keep.both).run()
       pub.sendNext(Left(ErrorMessage("test", None, ERROR))).sendComplete()
       val result = sub
@@ -70,10 +52,10 @@ class SignSpec extends BaseSpec {
       val messageId = UUID.randomUUID().toString
 
       val attachmentInfo = AttachmentInfo(messageId, testAttachmentId)
-      val zip = Right(ZipContent(attachmentInfo, Seq((ATTACHMENT_FILE, sampleAttachmentContent))))
+      val zip = Right(ZipContent(attachmentInfo, sampleAttachmentContent, sampleAttachmentMetadata))
 
       val source = TestSource.probe[EitherErr[ZipContent]]
-      val sink = TestSink.probe[EitherErr[ZipContent]]
+      val sink = TestSink.probe[EitherErr[SignedZipContent]]
       val (pub, sub) = source.via(signService.signing).toMat(sink)(Keep.both).run()
       pub.sendNext(zip).sendComplete()
       val result = sub

@@ -19,7 +19,7 @@ import scala.util.{Failure, Success, Try}
 trait Sign {
   val TransactionIdHeader = "x-transaction-id"
 
-  def signing: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed]
+  def signing: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed]
 }
 
 class SignService()(implicit val config: ServiceConfig,
@@ -31,13 +31,13 @@ class SignService()(implicit val config: ServiceConfig,
       case Right(_) => 1
     })
 
-  protected def parse(zip: EitherErr[ZipContent], response: HttpResponse): Future[EitherErr[ZipContent]] = {
+  protected def parse(zip: EitherErr[ZipContent], response: HttpResponse): Future[EitherErr[SignedZipContent]] = {
     import system.executionContext
     if (response.status == OK) {
       response.entity.dataBytes
         .runFold(ByteString.empty)(_ ++ _)
         .map(_.toArray[Byte])
-        .map(signed => zip.map(content => content.copy(files = content.files :+ (SIGNED_ATTACHMENT_FILE, signed))))
+        .map(signed => zip.map(SignedZipContent(_, signed)))
     } else {
       response.discardEntityBytes()
       val error = s"Response status ${response.status} from signatures service ${config.signaturesServiceHost}"
@@ -53,17 +53,19 @@ class SignService()(implicit val config: ServiceConfig,
       .buffer(config.signServiceBufferSize, OverflowStrategy.backpressure).async
 
   val createRequest: Flow[EitherErr[ZipContent], (HttpRequest, EitherErr[ZipContent]), NotUsed] =
-    Flow[EitherErr[ZipContent]].map { zip =>
-      zip.filterOrElse(_.files.exists(_._1 == ATTACHMENT_FILE), ErrorMessage(s"Invalid attachment bundle for $zip")).fold(
-        error => (HttpRequest(), Left(error)),
-        content => {
-          val headers = List(RawHeader(TransactionIdHeader, content.info.key))
-          val request = HttpRequest(HttpMethods.POST, s"/${config.signaturesServiceHost}/cades/${config.signingProfile}", headers, HttpEntity(content.files.filter(_._1 == ATTACHMENT_FILE).head._2))
-          (request, zip)
-        })
-    }
+    Flow[EitherErr[ZipContent]].map(zip =>
+      zip.fold(
+        error => HttpRequest() -> Left(error), //Have to keep http request outside either due to contract of HttpMethod
+        {
+          content =>
+            val headers = List(RawHeader(TransactionIdHeader, content.info.key))
+            val request = HttpRequest(HttpMethods.POST, s"/${config.signaturesServiceHost}/cades/${config.signingProfile}", headers, HttpEntity(content.attachment))
+            (request, zip)
+        }
+      )
+    )
 
-  val parseResponse: Flow[(Try[HttpResponse], EitherErr[ZipContent]), EitherErr[ZipContent], NotUsed] =
+  val parseResponse: Flow[(Try[HttpResponse], EitherErr[ZipContent]), EitherErr[SignedZipContent], NotUsed] =
     Flow[(Try[HttpResponse], EitherErr[ZipContent])]
       .mapAsyncUnordered(8) {
         case (httpResponse, request) =>
@@ -75,20 +77,27 @@ class SignService()(implicit val config: ServiceConfig,
       }
       .withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
 
-  val remapErrorSeverity: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] =
-    Flow[EitherErr[ZipContent]].map {
+  private val remapErrorSeverity: Flow[EitherErr[SignedZipContent], EitherErr[SignedZipContent], NotUsed] =
+    Flow[EitherErr[SignedZipContent]].map {
       _.left.map(error => ErrorMessage(error.message, None, WARN))
     }
 
-  override def signing: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] =
+  private val errorTransform: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] =
+    Flow[EitherErr[ZipContent]]
+      .map(_.fold[EitherErr[SignedZipContent]](
+        error => Left(error),
+        content => Left(ErrorMessage(s"partition failed for ${content.info.key}, this attachment should be getting signed", None, ERROR))
+      ))
+
+  override def signing: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] =
     Flow.fromGraph(
       GraphDSL.create() { implicit builder =>
         import GraphDSL.Implicits._
 
         val input = builder.add(partitionRequests[ZipContent]())
-        val merge = builder.add(Merge[EitherErr[ZipContent]](2))
+        val merge = builder.add(Merge[EitherErr[SignedZipContent]](2))
 
-        input ~> merge
+        input ~> errorTransform ~> merge
         input ~> createRequest ~> callDigitalSignatures ~> parseResponse ~> remapErrorSeverity ~> merge
 
         FlowShape(input.in, merge.out)

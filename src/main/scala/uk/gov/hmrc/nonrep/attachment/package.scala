@@ -39,5 +39,23 @@ package object attachment {
 
   case class ArchivedAttachment(info: AttachmentInfo, archiveId: String, vaultName: String)
 
-  case class ZipContent(info: AttachmentInfo, files: Seq[(String, Attachment)])
+  case class ZipContent(info: AttachmentInfo, attachment: Array[Byte], metadata: Array[Byte])
+  case class SignedZipContent(info: AttachmentInfo, signedAttachment: Array[Byte], attachment: Array[Byte], metadata: Array[Byte]) {
+    lazy val files = Seq(
+      SIGNED_ATTACHMENT_FILE -> signedAttachment,
+      ATTACHMENT_FILE -> attachment,
+      METADATA_FILE -> metadata
+    )
+  }
+
+  object SignedZipContent {
+    def apply(content: ZipContent, signedAttachment: Array[Byte]): SignedZipContent = {
+      SignedZipContent(
+        content.info,
+        signedAttachment,
+        content.attachment,
+        content.metadata
+      )
+    }
+  }
 }
