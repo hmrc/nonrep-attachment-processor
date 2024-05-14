@@ -28,7 +28,7 @@ class StorageService()(implicit val config: ServiceConfig,
 
   protected def s3DownloadSource(attachment: AttachmentInfo):
   Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
-    S3.download(config.attachmentsBucket, s"${attachment.key}.zip")
+    S3.download(config.attachmentsBucket, attachment.s3ObjectKey)
 
   override def downloadAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = {
     Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) {
@@ -37,7 +37,7 @@ class StorageService()(implicit val config: ServiceConfig,
         case None         =>
           Future.successful(Left(ErrorMessageWithDeleteSQSMessage(
             messageId     = attachment.message,
-            message       = s"failed to download ${attachment.key} attachment bundle from s3 ${config.attachmentsBucket}",
+            message       = s"failed to download ${attachment.s3ObjectKey} attachment bundle from s3 ${config.attachmentsBucket}",
             optThrowable  = None,
             severity      = WARN
           )))
@@ -47,7 +47,7 @@ class StorageService()(implicit val config: ServiceConfig,
   }
 
   protected def s3DeleteSource(attachment: AttachmentInfo): Source[Done, NotUsed] =
-    S3.deleteObject(config.attachmentsBucket, s"${attachment.key}.zip")
+    S3.deleteObject(config.attachmentsBucket, attachment.s3ObjectKey)
 
   override def deleteAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
     Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) {
