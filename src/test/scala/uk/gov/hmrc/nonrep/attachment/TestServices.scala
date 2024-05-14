@@ -44,6 +44,8 @@ object TestServices {
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(METADATA_FILE).getFile).toPath)
   val sampleAttachment: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.zip").getFile).toPath)
+  val sampleErrorAttachmentMissingMetadata: Array[Byte] =
+    Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"${testAttachmentId}_missing_metadata.zip").getFile).toPath)
   val sampleAttachmentContent: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(testAttachmentId).getFile).toPath)
   val sampleSignedAttachmentContent: Array[Byte] =

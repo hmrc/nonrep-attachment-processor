@@ -97,7 +97,26 @@ class BundleSpec extends BaseSpec {
         .expectNext()
 
       result.isLeft shouldBe true
-      result.left.toOption.get.message shouldBe s"Failure of extracting zip archive for $testAttachmentId with file attachment.data not found"
+      result.left.toOption.get.message shouldBe s"ADMIN_REQUIRED: Failure of extracting zip archive for $testAttachmentId with file attachment.data not found"
+    }
+
+    "fail on extracting missing metadata.json file archive" in {
+      val messageId = testSQSMessageIds.head
+      val file = ByteString(sampleErrorAttachmentMissingMetadata)
+      val info = AttachmentInfo(messageId, testAttachmentId)
+      val content = AttachmentContent(info, file)
+
+      val source = TestSource.probe[EitherErr[AttachmentContent]]
+      val sink = TestSink.probe[EitherErr[ZipContent]]
+
+      val (pub, sub) = source.via(zipper.extractBundle).toMat(sink)(Keep.both).run()
+      pub.sendNext(Right(content)).sendComplete()
+      val result = sub
+        .request(1)
+        .expectNext()
+
+      result.isLeft shouldBe true
+      result.left.toOption.get.message shouldBe s"ADMIN_REQUIRED: Failure of extracting zip archive for $testAttachmentId with file attachment.data not found"
     }
 
   }
