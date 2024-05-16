@@ -39,6 +39,7 @@ object TestServices {
     entity.dataBytes.runFold(ByteString(""))(_ ++ _).map(_.utf8String)
 
   val testAttachmentId = "738bcba6-7f9e-11ec-8768-3f8498104f38"
+  val testS3ObjectKey = s"$testAttachmentId.zip"
   val archiveId = "archiveId"
   val sampleAttachmentMetadata: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(METADATA_FILE).getFile).toPath)
@@ -113,7 +114,7 @@ object TestServices {
 
       override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
         Flow[EitherErr[AttachmentInfo]].map {
-          _.map(_ => AttachmentInfo(testSQSMessageIds.head, testAttachmentId))
+          _.map(_ => AttachmentInfo(testAttachmentId, testSQSMessageIds.head, testS3ObjectKey))
         }
     }
 

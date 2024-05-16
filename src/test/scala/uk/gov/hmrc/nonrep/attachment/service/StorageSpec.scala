@@ -1,8 +1,6 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import java.util.UUID
-
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
@@ -17,7 +15,7 @@ class StorageSpec extends BaseSpec {
     "download file from S3" in {
       val messageId = testSQSMessageIds.head
       val attachmentContent = ByteString(sampleAttachment)
-      val attachment = Right(AttachmentInfo(messageId, testAttachmentId))
+      val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
 
       val source = TestSource.probe[EitherErr[AttachmentInfo]]
       val sink = TestSink.probe[EitherErr[AttachmentContent]]
@@ -29,14 +27,15 @@ class StorageSpec extends BaseSpec {
         .expectNext()
 
       result.isRight shouldBe true
-      result.toOption.get.info.key shouldBe attachment.toOption.get.key
+      result.toOption.get.info.attachmentId shouldBe attachment.toOption.get.attachmentId
+      result.toOption.get.info.s3ObjectKey shouldBe attachment.toOption.get.s3ObjectKey
       result.toOption.get.info.message shouldBe messageId
       result.toOption.get.content shouldBe attachmentContent
     }
 
     "delete file from S3" in {
       val messageId = testSQSMessageIds.head
-      val attachment = Right(AttachmentInfo(messageId, testAttachmentId))
+      val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
 
       val source = TestSource.probe[EitherErr[AttachmentInfo]]
       val sink = TestSink.probe[EitherErr[AttachmentInfo]]
@@ -48,7 +47,8 @@ class StorageSpec extends BaseSpec {
         .expectNext()
 
       result.isRight shouldBe true
-      result.toOption.get.key shouldBe attachment.toOption.get.key
+      result.toOption.get.attachmentId shouldBe attachment.toOption.get.attachmentId
+      result.toOption.get.s3ObjectKey shouldBe attachment.toOption.get.s3ObjectKey
       result.toOption.get.message shouldBe messageId
     }
   }
@@ -58,7 +58,7 @@ class StorageSpec extends BaseSpec {
 
     "report when downloading file from S3 fails" in {
       val messageId = testSQSMessageIds.head
-      val attachment = Right(AttachmentInfo(messageId, testAttachmentId))
+      val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
 
       val source = TestSource.probe[EitherErr[AttachmentInfo]]
       val sink = TestSink.probe[EitherErr[AttachmentContent]]
@@ -71,12 +71,12 @@ class StorageSpec extends BaseSpec {
 
       result.isRight shouldBe false
       result.left.toOption.get shouldBe a [ErrorMessageWithDeleteSQSMessage]
-      result.left.toOption.get.message shouldBe s"failed to download 738bcba6-7f9e-11ec-8768-3f8498104f38 attachment bundle from s3 ${config.attachmentsBucket}"
+      result.left.toOption.get.message shouldBe s"failed to download 738bcba6-7f9e-11ec-8768-3f8498104f38.zip attachment bundle from s3 ${config.attachmentsBucket}"
     }
 
     "report when deleting file from S3 fails" in {
       val messageId = testSQSMessageIds.head
-      val attachment = Right(AttachmentInfo(messageId, testAttachmentId))
+      val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
 
       val source = TestSource.probe[EitherErr[AttachmentInfo]]
       val sink = TestSink.probe[EitherErr[AttachmentInfo]]

@@ -1,12 +1,12 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import java.io.ByteArrayInputStream
-import java.util.zip.ZipInputStream
-
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
+
+import java.io.ByteArrayInputStream
+import java.util.zip.ZipInputStream
 
 class BundleSpec extends BaseSpec {
 
@@ -18,7 +18,7 @@ class BundleSpec extends BaseSpec {
     "create a zip archive from content given" in {
       val attachmentId = testAttachmentId
       val messageId = testSQSMessageIds.head
-      val info = AttachmentInfo(messageId, attachmentId)
+      val info = AttachmentInfo(attachmentId, messageId, s"$attachmentId.zip")
       val zipContent = SignedZipContent(info, Array.fill[Byte](1000)(Byte.MaxValue), Array.fill[Byte](1000)(Byte.MaxValue), sampleAttachmentMetadata)
 
       val source = TestSource.probe[EitherErr[SignedZipContent]]
@@ -31,7 +31,8 @@ class BundleSpec extends BaseSpec {
 
       println(result)
       result.isRight shouldBe true
-      result.toOption.get.info.key shouldBe attachmentId
+      result.toOption.get.info.attachmentId shouldBe attachmentId
+      result.toOption.get.info.s3ObjectKey shouldBe testS3ObjectKey
       result.toOption.get.content.size should be > 0
 
       val zip = new ZipInputStream(new ByteArrayInputStream(result.toOption.get.content.toArray[Byte]))
@@ -45,7 +46,7 @@ class BundleSpec extends BaseSpec {
     "extract content from zip archive" in {
       val messageId = testSQSMessageIds.head
       val file = ByteString(sampleAttachment)
-      val info = AttachmentInfo(messageId, testAttachmentId)
+      val info = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
       val content = AttachmentContent(info, file)
 
       val source = TestSource.probe[EitherErr[AttachmentContent]]
@@ -58,14 +59,15 @@ class BundleSpec extends BaseSpec {
         .expectNext()
 
       result.isRight shouldBe true
-      result.toOption.get.info.key shouldBe info.key
+      result.toOption.get.info.attachmentId shouldBe info.attachmentId
+      result.toOption.get.info.s3ObjectKey shouldBe info.s3ObjectKey
       result.toOption.get.info.message shouldBe messageId
     }
 
     "extract nrSubmissionId field from metadata" in {
       val attachmentId = testAttachmentId
       val messageId = testSQSMessageIds.head
-      val info = AttachmentInfo(messageId, attachmentId)
+      val info = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
       val zipContent = SignedZipContent(info, Array.fill[Byte](1000)(Byte.MaxValue), Array.fill[Byte](1000)(Byte.MaxValue), sampleAttachmentMetadata)
 
       val source = TestSource.probe[EitherErr[SignedZipContent]]
@@ -84,7 +86,7 @@ class BundleSpec extends BaseSpec {
     "fail on extracting non-zip archive" in {
       val messageId = testSQSMessageIds.head
       val file = ByteString(Array.fill[Byte](10)(77))
-      val info = AttachmentInfo(messageId, testAttachmentId)
+      val info = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
       val content = AttachmentContent(info, file)
 
       val source = TestSource.probe[EitherErr[AttachmentContent]]
@@ -97,13 +99,13 @@ class BundleSpec extends BaseSpec {
         .expectNext()
 
       result.isLeft shouldBe true
-      result.left.toOption.get.message shouldBe s"ADMIN_REQUIRED: Failure of extracting zip archive for $testAttachmentId with file attachment.data not found"
+      result.left.toOption.get.message shouldBe s"ADMIN_REQUIRED: Failure of extracting zip archive for $testS3ObjectKey with file attachment.data not found"
     }
 
     "fail on extracting missing metadata.json file archive" in {
       val messageId = testSQSMessageIds.head
       val file = ByteString(sampleErrorAttachmentMissingMetadata)
-      val info = AttachmentInfo(messageId, testAttachmentId)
+      val info = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
       val content = AttachmentContent(info, file)
 
       val source = TestSource.probe[EitherErr[AttachmentContent]]
@@ -116,7 +118,7 @@ class BundleSpec extends BaseSpec {
         .expectNext()
 
       result.isLeft shouldBe true
-      result.left.toOption.get.message shouldBe s"ADMIN_REQUIRED: Failure of extracting zip archive for $testAttachmentId with file attachment.data not found"
+      result.left.toOption.get.message shouldBe s"ADMIN_REQUIRED: Failure of extracting zip archive for $testS3ObjectKey with file attachment.data not found"
     }
 
   }
