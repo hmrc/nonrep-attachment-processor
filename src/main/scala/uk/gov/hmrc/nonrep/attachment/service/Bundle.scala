@@ -3,41 +3,37 @@ package service
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
-
 import akka.NotUsed
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 import spray.json.DefaultJsonProtocol._
 import spray.json._
+import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
+import uk.gov.hmrc.nonrep.attachment.utils.ZipUtils
 
 import scala.util.{Try, Using}
 
 trait Bundle {
-  def createBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed]
+  def createBundle: Flow[EitherErr[SignedZipContent], EitherErr[AttachmentContent], NotUsed]
 
   def extractBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed]
 
-  def extractMetadataField(zip: ZipContent, field: String): Option[String]
+  def extractMetadataField(metadata: Array[Byte], field: String): EitherErr[String]
 }
 
-class BundleService extends Bundle {
+class BundleService()(implicit val config: ServiceConfig) extends Bundle {
 
-  override def extractMetadataField(zip: ZipContent, field: String): Option[String] = {
+  override def extractMetadataField(metadata: Array[Byte], field: String): EitherErr[String] =
     Try {
-      zip
-        .files
-        .filter(_._1 == METADATA_FILE)
-        .map(m => new String(m._2, "utf-8"))
-        .head
+      new String(metadata, "utf-8")
         .parseJson
         .asJsObject
         .fields(field)
         .convertTo[String]
-    }.toOption
-  }
+    }.toEither.left.map(error => ErrorMessage(s"failed to extract $field from metadata.json file because ${error.getMessage}", Some(error), ERROR))
 
-  override def createBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] =
-    Flow[EitherErr[ZipContent]].map {
+  override def createBundle: Flow[EitherErr[SignedZipContent], EitherErr[AttachmentContent], NotUsed] =
+    Flow[EitherErr[SignedZipContent]].map {
       _.flatMap(content => {
         Using.Manager { use =>
           val bytes = use(new ByteArrayOutputStream())
@@ -49,27 +45,28 @@ class BundleService extends Bundle {
               zip.write(file)
               zip.closeEntry()
           }
-          AttachmentContent(content.info.copy(submissionId = extractMetadataField(content, "nrSubmissionId")) , ByteString(bytes.toByteArray))
+          extractMetadataField(content.metadata, "nrSubmissionId")
+            .map(extractedValue => AttachmentContent(content.info.copy(submissionId = Some(extractedValue)) , ByteString(bytes.toByteArray)))
         }
       }.toEither.left.flatMap(exception =>
         Left(ErrorMessage(s"Failure of creating zip archive for ${content.info.key} with ${exception.getCause}", Some(exception)))
-      ))
+      )).flatten
     }
 
   override def extractBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] =
     Flow[EitherErr[AttachmentContent]].map {
       _.flatMap(attachment => {
-        Using.Manager { use =>
-          val zip = use(new ZipInputStream(new ByteArrayInputStream(attachment.content.toArray[Byte])))
-          val content = LazyList.continually(zip.getNextEntry).takeWhile(_ != null).filter(!_.isDirectory).foldLeft(Seq[(String, Array[Byte])]())((seq, entry) => {
-            val output = new ByteArrayOutputStream()
-            zip.transferTo(output)
-            seq :+ (entry.getName, output.toByteArray)
-          })
-          ZipContent(attachment.info, content)
-        }.toEither.left.flatMap(exception =>
-          Left(ErrorMessage(s"Failure of extracting zip archive for ${attachment.info.key} with ${exception.getCause}", Some(exception)))
-        ).filterOrElse(_.files.nonEmpty, ErrorMessage(s"Failure of extracting zip archive for ${attachment.info.key} with no files found"))
+        val contentByteArray = attachment.content.toArray[Byte]
+        for {
+          data      <- handleFileExtraction(attachment.info, ATTACHMENT_FILE, ZipUtils.readFileFromZip(contentByteArray, _))
+          metadata  <- handleFileExtraction(attachment.info, METADATA_FILE, ZipUtils.readFileFromZip(contentByteArray, _))
+        } yield ZipContent(attachment.info, data, metadata)
       })
     }
+
+  private def handleFileExtraction(attachment: AttachmentInfo, filename: String, responseF: String => Either[Throwable, Option[Array[Byte]]]): EitherErr[Array[Byte]] = {
+    responseF(filename)
+      .left.map(e => ErrorMessage(s"Failure of extracting zip archive for attachment ${attachment.key} relating to ${attachment.submissionId.getOrElse("INVALID")} with ${e.getCause}", Some(e), ERROR))
+      .flatMap(_.toRight(ErrorMessage(s"ADMIN_REQUIRED: Failure of extracting zip archive for ${attachment.key} with file $filename not found", None, ERROR)))
+  }
 }

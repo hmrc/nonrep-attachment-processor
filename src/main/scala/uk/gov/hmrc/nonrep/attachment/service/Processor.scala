@@ -23,10 +23,8 @@ trait Processor[A] {
   def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed]
 
   def unpackBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed]
-
-  def repackBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed]
-
-  def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed]
+  def signAttachment: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed]
+  def repackBundle: Flow[EitherErr[SignedZipContent], EitherErr[AttachmentContent], NotUsed]
 
   def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed]
 
@@ -77,13 +75,11 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
   override def unpackBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] = bundle.extractBundle
     .log(name = "unpackBundle")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
-
-  override def repackBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] = bundle.createBundle
-    .log(name = "repackBundle")
-    .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
-
-  override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = sign.signing
+  override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] = sign.signing
     .log(name = "signAttachment")
+    .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+  override def repackBundle: Flow[EitherErr[SignedZipContent], EitherErr[AttachmentContent], NotUsed] = bundle.createBundle
+    .log(name = "repackBundle")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
   override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacier.archive

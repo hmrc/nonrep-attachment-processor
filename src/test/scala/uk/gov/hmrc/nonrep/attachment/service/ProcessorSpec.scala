@@ -20,8 +20,8 @@ class ProcessorSpec extends BaseSpec {
         override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = queueService.deleteMessage
         override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
         override def unpackBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] = zipperService.extractBundle
-        override def repackBundle: Flow[EitherErr[ZipContent], EitherErr[AttachmentContent], NotUsed] = zipperService.createBundle
-        override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = signService.signing
+        override def repackBundle: Flow[EitherErr[SignedZipContent], EitherErr[AttachmentContent], NotUsed] = zipperService.createBundle
+        override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] = signService.signing
         override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacierService.archive
         override def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = updateService.updateMetastore
         override def deleteBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = storageService.deleteAttachment
@@ -60,7 +60,7 @@ class ProcessorSpec extends BaseSpec {
         new ProcessorService(testApplicationSink) {
           override def getMessages: Source[Message, NotUsed] = queueService.getMessages
           override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
-          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = failure.signService.signing
+          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] = failure.signService.signing
         }
 
       val result = processor.execute.run()
@@ -77,7 +77,7 @@ class ProcessorSpec extends BaseSpec {
         new ProcessorService(testApplicationSink) {
           override def getMessages: Source[Message, NotUsed] = queueService.getMessages
           override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
-          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = signService.signing
+          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] = signService.signing
           override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = failure.glacierService.archive
         }
 
@@ -94,7 +94,7 @@ class ProcessorSpec extends BaseSpec {
         new ProcessorService(testApplicationSink) {
           override def getMessages: Source[Message, NotUsed] = queueService.getMessages
           override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
-          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = signService.signing
+          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] = signService.signing
           override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacierService.archive
           override def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = failure.updateService.updateMetastore
         }
@@ -128,7 +128,7 @@ class ProcessorSpec extends BaseSpec {
           override def getMessages: Source[Message, NotUsed] = queueService.getMessages
           override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = failure.queueService.deleteMessage
           override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
-          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = signService.signing
+          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] = signService.signing
           override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacierService.archive
           override def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = updateService.updateMetastore
         }
@@ -146,7 +146,7 @@ class ProcessorSpec extends BaseSpec {
           override def getMessages: Source[Message, NotUsed] = queueService.getMessages
           override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = queueService.deleteMessage
           override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] = storageService.downloadAttachment
-          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[ZipContent], NotUsed] = signService.signing
+          override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] = signService.signing
           override def archiveBundle: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] = glacierService.archive
           override def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] = updateService.updateMetastore
 
