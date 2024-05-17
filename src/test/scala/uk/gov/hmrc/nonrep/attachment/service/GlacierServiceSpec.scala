@@ -42,7 +42,7 @@ class GlacierServiceSpec extends BaseSpec {
   "eventuallyCreateVaultIfNecessaryAndUpload" should {
     val archiveId = "archiveId"
     val vaultName = s"local-vat-registration-${now().year()}"
-    val content = AttachmentContent(AttachmentInfo("messageId", testAttachmentId), ByteString(sampleAttachment))
+    val content = AttachmentContent(AttachmentInfo(testAttachmentId, "messageId", testS3ObjectKey), ByteString(sampleAttachment))
 
     val uploadArchiveRequest =
       UploadArchiveRequest

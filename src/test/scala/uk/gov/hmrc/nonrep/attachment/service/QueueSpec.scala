@@ -46,7 +46,7 @@ class QueueSpec extends BaseSpec {
 
         result.isLeft shouldBe true
         result.left.toOption.get shouldBe a [ErrorMessageWithDeleteSQSMessage]
-        result.left.toOption.get.message shouldBe "failed to download 738bcba6-7f9e-11ec-8768-3f8498104f38 attachment bundle from s3 local-nonrep-attachment-data"
+        result.left.toOption.get.message shouldBe "failed to download 738bcba6-7f9e-11ec-8768-3f8498104f38.zip attachment bundle from s3 local-nonrep-attachment-data"
       }
 
       "completed processing" in {
@@ -62,7 +62,7 @@ class QueueSpec extends BaseSpec {
           .expectNext()
 
         result.isRight shouldBe true
-        result.toOption.get.key shouldBe testAttachmentId
+        result.toOption.get.attachmentId shouldBe testAttachmentId
       }
     }
 
@@ -80,7 +80,7 @@ class QueueSpec extends BaseSpec {
         .expectNext()
 
       result.isRight shouldBe true
-      result.toOption.get.key shouldBe testAttachmentId
+      result.toOption.get.attachmentId shouldBe testAttachmentId
     }
 
     "For failure scenarios Queue service" should {
@@ -106,7 +106,7 @@ class QueueSpec extends BaseSpec {
         val source = TestSource.probe[EitherErr[AttachmentInfo]]
         val sink = TestSink.probe[EitherErr[AttachmentInfo]]
         val messageId = testSQSMessageIds.head
-        val attachment = Right(AttachmentInfo(messageId, testAttachmentId))
+        val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
 
         val (pub, sub) = source.via(queueService.deleteMessage).toMat(sink)(Keep.both).run()
         pub.sendNext(attachment).sendComplete()

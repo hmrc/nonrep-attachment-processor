@@ -31,7 +31,7 @@ package object attachment {
 
   case class ErrorMessage(message: String, optThrowable: Option[Throwable] = None, severity: Severity = ERROR) extends AttachmentError
 
-  case class AttachmentInfo(message: String, key: String, notableEvent: String = "vat-registration", submissionId: Option[String] = None)
+  case class AttachmentInfo(attachmentId: String, message: String, s3ObjectKey: String, notableEvent: String = "vat-registration", submissionId: Option[String] = None)
 
   case class AttachmentContent(info: AttachmentInfo, content: ByteString) {
     val bytes: Array[Byte] = content.toArray

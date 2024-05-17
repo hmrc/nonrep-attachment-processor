@@ -58,7 +58,7 @@ class SignService()(implicit val config: ServiceConfig,
         error => HttpRequest() -> Left(error), //Have to keep http request outside either due to contract of HttpMethod
         {
           content =>
-            val headers = List(RawHeader(TransactionIdHeader, content.info.key))
+            val headers = List(RawHeader(TransactionIdHeader, content.info.attachmentId))
             val request = HttpRequest(HttpMethods.POST, s"/${config.signaturesServiceHost}/cades/${config.signingProfile}", headers, HttpEntity(content.attachment))
             (request, zip)
         }
@@ -86,7 +86,7 @@ class SignService()(implicit val config: ServiceConfig,
     Flow[EitherErr[ZipContent]]
       .map(_.fold[EitherErr[SignedZipContent]](
         error => Left(error),
-        content => Left(ErrorMessage(s"partition failed for ${content.info.key}, this attachment should be getting signed", None, ERROR))
+        content => Left(ErrorMessage(s"partition failed for ${content.info.attachmentId}, this attachment should be getting signed", None, ERROR))
       ))
 
   override def signing: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] =

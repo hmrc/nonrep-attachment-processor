@@ -16,7 +16,7 @@ class ServiceIntSpec extends BaseSpec with Inside {
   import TestServices._
 
   var server: NonrepMicroservice = null
-  implicit val config: ServiceConfig = new ServiceConfig(servicePort = 9000)
+  implicit val config: ServiceConfig = new ServiceConfig(servicePort = 9342)
   val hostUrl = s"http://localhost:${config.port}"
   val service = config.appName
 

@@ -30,7 +30,8 @@ class ProcessorSpec extends BaseSpec {
     "process attachments" in {
       val result = processor.execute.run().request(1).expectNext().toOption.get
 
-      result.key shouldBe testAttachmentId
+      result.attachmentId shouldBe testAttachmentId
+      result.s3ObjectKey shouldBe testS3ObjectKey
       result.message shouldBe testSQSMessageIds.head
     }
   }
@@ -52,7 +53,7 @@ class ProcessorSpec extends BaseSpec {
       result.isLeft shouldBe true
       result.left.toOption.get shouldBe a [ErrorMessageWithDeleteSQSMessage]
       result.left.toOption.get.severity shouldBe WARN
-      result.left.toOption.get.message shouldBe s"failed to download 738bcba6-7f9e-11ec-8768-3f8498104f38 attachment bundle from s3 ${config.attachmentsBucket}"
+      result.left.toOption.get.message shouldBe s"failed to download 738bcba6-7f9e-11ec-8768-3f8498104f38.zip attachment bundle from s3 ${config.attachmentsBucket}"
     }
 
     "report a warning for signing failure" in {

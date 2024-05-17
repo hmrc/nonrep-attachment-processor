@@ -1,3 +1,6 @@
+import sbt.Def
+import sbtassembly.AssemblyPlugin.autoImport.assembly
+
 enablePlugins(GitVersioning)
 
 val akkaHttpVersion = "10.2.7"
@@ -81,8 +84,11 @@ lazy val root = (project in file(".")).
       case PathList("META-INF", "BCKEY.DSA") => MergeStrategy.discard
       case "reference.conf" => MergeStrategy.concat
       case _ => MergeStrategy.first
-    }
-
+    },
+    assembly / test := Def.sequential(
+      Test / test,
+      IntegrationTest / test
+    ).value
   )
 
 Compile / scalacOptions ++= Seq("-deprecation", "-feature")

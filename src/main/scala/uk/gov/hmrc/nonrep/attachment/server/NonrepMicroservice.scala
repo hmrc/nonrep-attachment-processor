@@ -18,7 +18,7 @@ class NonrepMicroservice()(implicit val system: ActorSystem[_], config: ServiceC
     _.fold(
       errorHandler,
       attachmentInfo =>
-        system.log.info(s"Successful processing of attachment ${attachmentInfo.key}")
+        system.log.info(s"Successful processing of attachment ${attachmentInfo.attachmentId}")
     )
   }
 
