@@ -1,7 +1,7 @@
 import sbt.Def
 import sbtassembly.AssemblyPlugin.autoImport.assembly
 
-enablePlugins(GitVersioning)
+enablePlugins(SbtGitVersioning)
 
 val akkaHttpVersion = "10.2.7"
 val akkaVersion = "2.6.18"
@@ -29,7 +29,7 @@ lazy val root = (project in file(".")).
     Defaults.itSettings,
     inThisBuild(List(
       organization := "uk.gov",
-      git.useGitDescribe := true,
+      majorVersion := 0,
       scalaVersion := "2.13.8"
     )),
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
