@@ -128,7 +128,7 @@ class GlacierServiceSpec extends BaseSpec {
   "sha256TreeHashHex" should {
     "calculate a checksum" when {
       "the payload size is less than or equal to the chunk size" in {
-        sha256TreeHashHex(sampleAttachment) shouldBe "029048240bcbd99128624f8e0ed1a456dff34eebbe911663e7800fd3f6c0c9e4"
+        sha256TreeHashHex(sampleAttachment) shouldBe "eed701e348197b3fd82a0cf9e11659a689ea0840e6f05a5bd31e4a145c2a3e7c"
       }
 
       "the payload size is greater than the chunk size" in {
