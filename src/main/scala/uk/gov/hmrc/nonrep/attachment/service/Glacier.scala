@@ -1,11 +1,11 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import akka.NotUsed
-import akka.actor.typed.ActorSystem
-import akka.stream.ActorAttributes
-import akka.stream.Supervision.restartingDecider
-import akka.stream.scaladsl.Flow
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.stream.ActorAttributes
+import org.apache.pekko.stream.Supervision.restartingDecider
+import org.apache.pekko.stream.scaladsl.Flow
 import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region.EU_WEST_2

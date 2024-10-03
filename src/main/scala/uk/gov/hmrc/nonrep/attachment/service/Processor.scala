@@ -1,13 +1,13 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import akka.NotUsed
-import akka.actor.typed.ActorSystem
-import akka.stream.Attributes.LogLevels.{Error, Info}
-import akka.stream.Attributes.logLevels
-import akka.stream.ClosedShape
-import akka.stream.scaladsl.RunnableGraph.fromGraph
-import akka.stream.scaladsl.{Flow, GraphDSL, RunnableGraph, Sink, Source}
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.stream.Attributes.LogLevels.{Error, Info}
+import org.apache.pekko.stream.Attributes.logLevels
+import org.apache.pekko.stream.ClosedShape
+import org.apache.pekko.stream.scaladsl.RunnableGraph.fromGraph
+import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, RunnableGraph, Sink, Source}
 import software.amazon.awssdk.services.sqs.model.Message
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 

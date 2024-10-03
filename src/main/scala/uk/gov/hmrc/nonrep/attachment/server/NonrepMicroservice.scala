@@ -1,11 +1,11 @@
 package uk.gov.hmrc.nonrep.attachment
 package server
 
-import akka.Done
-import akka.actor.typed.ActorSystem
-import akka.actor.typed.scaladsl.Behaviors
-import akka.http.scaladsl.Http
-import akka.stream.scaladsl.Sink
+import org.apache.pekko.Done
+import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.actor.typed.scaladsl.Behaviors
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.stream.scaladsl.Sink
 import uk.gov.hmrc.nonrep.attachment.service.Processor
 import uk.gov.hmrc.nonrep.attachment.utils.ErrorHandler
 

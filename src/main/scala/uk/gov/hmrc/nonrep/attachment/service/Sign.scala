@@ -1,16 +1,16 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import akka.NotUsed
-import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.StatusCodes.OK
-import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.model.{HttpEntity, HttpMethods, HttpRequest, HttpResponse}
-import akka.stream.Supervision.restartingDecider
-import akka.stream.scaladsl.{Flow, GraphDSL, Merge, Partition}
-import akka.stream.{ActorAttributes, FlowShape, OverflowStrategy}
-import akka.util.ByteString
+import org.apache.pekko.NotUsed
+import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
+import org.apache.pekko.http.scaladsl.model.headers.RawHeader
+import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpMethods, HttpRequest, HttpResponse}
+import org.apache.pekko.stream.Supervision.restartingDecider
+import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Merge, Partition}
+import org.apache.pekko.stream.{ActorAttributes, FlowShape, OverflowStrategy}
+import org.apache.pekko.util.ByteString
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
 import scala.concurrent.Future

@@ -1,9 +1,9 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import akka.NotUsed
-import akka.stream.scaladsl.{Flow, Source}
-import akka.stream.testkit.TestSubscriber
+import org.apache.pekko.NotUsed
+import org.apache.pekko.stream.scaladsl.{Flow, Source}
+import org.apache.pekko.stream.testkit.TestSubscriber
 import software.amazon.awssdk.services.sqs.model.Message
 
 class ProcessorSpec extends BaseSpec {

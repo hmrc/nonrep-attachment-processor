@@ -4,7 +4,7 @@ package service
 import java.time.temporal.{ChronoUnit, TemporalUnit}
 import java.time.{Clock, Instant, ZoneId}
 
-import akka.http.scaladsl.model.HttpMethods
+import org.apache.pekko.http.scaladsl.model.HttpMethods
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.auth.signer.internal.Aws4SignerUtils
 import software.amazon.awssdk.auth.signer.params.Aws4SignerParams

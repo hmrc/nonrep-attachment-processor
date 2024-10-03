@@ -1,14 +1,14 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import akka.actor.typed.ActorSystem
-import akka.stream.ActorAttributes
-import akka.stream.Supervision.restartingDecider
-import akka.stream.alpakka.s3.ObjectMetadata
-import akka.stream.alpakka.s3.scaladsl.S3
-import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-import akka.util.ByteString
-import akka.{Done, NotUsed}
+import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.stream.ActorAttributes
+import org.apache.pekko.stream.Supervision.restartingDecider
+import org.apache.pekko.stream.connectors.s3.ObjectMetadata
+import org.apache.pekko.stream.connectors.s3.scaladsl.S3
+import org.apache.pekko.stream.scaladsl.{Flow, Keep, Sink, Source}
+import org.apache.pekko.util.ByteString
+import org.apache.pekko.{Done, NotUsed}
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
 import scala.concurrent.{ExecutionContext, Future}

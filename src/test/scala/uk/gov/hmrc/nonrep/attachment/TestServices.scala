@@ -5,16 +5,16 @@ import java.nio.file.Files
 import java.time.temporal.{ChronoUnit, TemporalUnit}
 import java.util.UUID
 
-import akka.actor.testkit.typed.scaladsl.ActorTestKit
-import akka.actor.typed.ActorSystem
-import akka.http.scaladsl.model.StatusCodes.{InternalServerError, OK}
-import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, ResponseEntity}
-import akka.stream.alpakka.s3.ObjectMetadata
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import akka.stream.testkit.TestSubscriber
-import akka.stream.testkit.scaladsl.TestSink
-import akka.util.ByteString
-import akka.{Done, NotUsed}
+import org.apache.pekko.actor.testkit.typed.scaladsl.ActorTestKit
+import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.http.scaladsl.model.StatusCodes.{InternalServerError, OK}
+import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, ResponseEntity}
+import org.apache.pekko.stream.connectors.s3.ObjectMetadata
+import org.apache.pekko.stream.scaladsl.{Flow, Sink, Source}
+import org.apache.pekko.stream.testkit.TestSubscriber
+import org.apache.pekko.stream.testkit.scaladsl.TestSink
+import org.apache.pekko.util.ByteString
+import org.apache.pekko.{Done, NotUsed}
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.auth.signer.params.Aws4SignerParams
 import software.amazon.awssdk.core.async.AsyncRequestBody

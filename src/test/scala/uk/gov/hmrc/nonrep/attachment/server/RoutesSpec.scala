@@ -1,14 +1,14 @@
 package uk.gov.hmrc.nonrep.attachment
 package server
 
-import akka.Done
-import akka.actor.testkit.typed.scaladsl.ActorTestKit
-import akka.actor.typed.scaladsl.adapter._
-import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import akka.http.scaladsl.model.{ContentTypes, StatusCodes}
-import akka.http.scaladsl.server.Directives.handleExceptions
-import akka.http.scaladsl.testkit.RouteTestTimeout
+import org.apache.pekko.Done
+import org.apache.pekko.actor.testkit.typed.scaladsl.ActorTestKit
+import org.apache.pekko.actor.typed.scaladsl.adapter._
+import org.apache.pekko.http.scaladsl.model.{ContentTypes, StatusCodes}
+import org.apache.pekko.http.scaladsl.server.Directives.handleExceptions
+import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import uk.gov.hmrc.nonrep.BuildInfo
+import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
 import uk.gov.hmrc.nonrep.attachment.utils.JsonFormats._
 
 import scala.concurrent.Future
@@ -18,7 +18,8 @@ class RoutesSpec extends BaseSpec {
 
   lazy val testKit = ActorTestKit()
   implicit def typedSystem = testKit.system
-  override def createActorSystem(): akka.actor.ActorSystem = testKit.system.toClassic
+  override def createActorSystem(): org.apache.pekko.actor.ActorSystem = testKit.system.toClassic
+
   implicit val timeout = RouteTestTimeout(10 second span)
 
   implicit val config: ServiceConfig = new ServiceConfig()

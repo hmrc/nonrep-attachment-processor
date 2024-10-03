@@ -2,7 +2,7 @@ package uk.gov.hmrc.nonrep.attachment.metrics
 
 import com.codahale.metrics.jvm.{GarbageCollectorMetricSet, MemoryUsageGaugeSet, ThreadStatesGaugeSet}
 import com.codahale.metrics.{JvmAttributeGaugeSet, SharedMetricRegistries}
-import fr.davit.akka.http.metrics.prometheus.{Buckets, PrometheusRegistry, PrometheusSettings, Quantiles}
+import fr.davit.pekko.http.metrics.prometheus.{Buckets, PrometheusRegistry, PrometheusSettings, Quantiles}
 import io.prometheus.client.CollectorRegistry
 import io.prometheus.client.dropwizard.DropwizardExports
 import io.prometheus.client.hotspot.DefaultExports

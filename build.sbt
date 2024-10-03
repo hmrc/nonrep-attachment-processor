@@ -3,13 +3,15 @@ import sbtassembly.AssemblyPlugin.autoImport.assembly
 
 enablePlugins(SbtGitVersioning)
 
-val akkaHttpVersion = "10.2.7"
-val akkaVersion = "2.6.18"
+
 val awsSdkVersion = "2.17.+"
-val logbackVersion = "1.2.10"
-val metricsVersion = "1.6.0"
+val logbackVersion = "1.2.3"
+val metricsVersion = "1.0.0"
 val jvmMetricsVersion = "3.0.2"
-val prometheusClientsVersion = "0.15.0"
+
+val pekkoVersion = "1.0.2"
+val pekkoHttpVersion = "1.0.1"
+val prometheusClientsVersion = "0.16.0"
 
 val projectName = "attachment-processor"
 
@@ -42,15 +44,17 @@ lazy val root = (project in file(".")).
     ),
 
     libraryDependencies ++= Seq(
-      // Akka
-      "com.typesafe.akka"    %% "akka-http"            % akkaHttpVersion,
-      "com.typesafe.akka"    %% "akka-http-xml"        % akkaHttpVersion,
-      "com.typesafe.akka"    %% "akka-http-spray-json" % akkaHttpVersion,
-      "com.typesafe.akka"    %% "akka-actor-typed"     % akkaVersion,
-      "com.typesafe.akka"    %% "akka-stream"          % akkaVersion,
+      // Pekko
+      "org.apache.pekko"    %% "pekko-http"            % pekkoHttpVersion,
+      "org.apache.pekko"    %% "pekko-http-xml"        % pekkoHttpVersion,
+      "org.apache.pekko"    %% "pekko-http-spray-json" % pekkoHttpVersion,
+      "org.apache.pekko"    %% "pekko-actor-typed"     % pekkoVersion,
+      "org.apache.pekko"    %% "pekko-stream"          % pekkoVersion,
 
-      "com.lightbend.akka" %% "akka-stream-alpakka-sqs" % "3.0.4",
-      "com.lightbend.akka" %% "akka-stream-alpakka-s3" % "3.0.4",
+      "org.apache.pekko" %% "pekko-connectors-sqs" % pekkoVersion,
+      "org.apache.pekko" %% "pekko-connectors-s3" % pekkoVersion,
+
+      "org.scala-lang.modules" %% "scala-java8-compat"  % "1.0.2",
 
       // AWS
       "software.amazon.awssdk" % "s3"      % awsSdkVersion,
@@ -59,21 +63,21 @@ lazy val root = (project in file(".")).
       // Logging
       "ch.qos.logback"       %  "logback-classic"          % logbackVersion,
       "ch.qos.logback"       %  "logback-core"             % logbackVersion,
-      "com.typesafe.akka"    %% "akka-slf4j"               % akkaVersion,
+      "org.apache.pekko"    %% "pekko-slf4j"               % pekkoVersion,
       "org.slf4j"            %  "slf4j-api"                % "1.7.30",
       "net.logstash.logback" %  "logstash-logback-encoder" % "6.6",
 
       // Metrics
-      "fr.davit"             %% "akka-http-metrics-prometheus" % metricsVersion,
+      "fr.davit"             %% "pekko-http-metrics-prometheus" % metricsVersion,
       "com.codahale.metrics" %  "metrics-jvm"                  % jvmMetricsVersion,
       "io.prometheus"        %  "simpleclient_common"          % prometheusClientsVersion,
       "io.prometheus"        %  "simpleclient_dropwizard"      % prometheusClientsVersion,
       "io.prometheus"        %  "simpleclient_hotspot"         % prometheusClientsVersion,
 
       // Test dependencies
-      "com.typesafe.akka"    %% "akka-http-testkit"        % akkaHttpVersion % Test,
-      "com.typesafe.akka"    %% "akka-actor-testkit-typed" % akkaVersion     % Test,
-      "com.typesafe.akka"    %% "akka-stream-testkit"      % akkaVersion     % Test,
+      "org.apache.pekko"    %% "pekko-http-testkit"        % pekkoHttpVersion % Test,
+      "org.apache.pekko"    %% "pekko-actor-testkit-typed" % pekkoVersion     % Test,
+      "org.apache.pekko"    %% "pekko-stream-testkit"      % pekkoVersion     % Test,
       "org.scalatest"        %% "scalatest"                % "3.2.11"        % Test,
       "org.mockito"          %% "mockito-scala-scalatest"  % "1.17.0"        % Test
     ),

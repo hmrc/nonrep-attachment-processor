@@ -1,15 +1,15 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import akka.actor.CoordinatedShutdown
-import akka.actor.typed.ActorSystem
-import akka.stream.ActorAttributes
-import akka.stream.Supervision.restartingDecider
-import akka.stream.alpakka.sqs.SqsSourceSettings
-import akka.stream.alpakka.sqs.scaladsl.SqsSource
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import akka.util.Timeout
-import akka.{Done, NotUsed}
+import org.apache.pekko.actor.CoordinatedShutdown
+import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.stream.ActorAttributes
+import org.apache.pekko.stream.Supervision.restartingDecider
+import org.apache.pekko.stream.connectors.sqs.scaladsl.SqsSource
+import org.apache.pekko.stream.connectors.sqs.SqsSourceSettings
+import org.apache.pekko.stream.scaladsl.{Flow, Sink, Source}
+import org.apache.pekko.util.Timeout
+import org.apache.pekko.{Done, NotUsed}
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region.EU_WEST_2
 import software.amazon.awssdk.services.sqs.SqsAsyncClient

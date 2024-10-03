@@ -3,9 +3,9 @@ package service
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
-import akka.util.ByteString
+import org.apache.pekko.NotUsed
+import org.apache.pekko.stream.scaladsl.Flow
+import org.apache.pekko.util.ByteString
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig

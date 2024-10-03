@@ -1,8 +1,8 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import akka.stream.scaladsl.Keep
-import akka.stream.testkit.scaladsl.{TestSink, TestSource}
+import org.apache.pekko.stream.scaladsl.Keep
+import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
 import software.amazon.awssdk.services.sqs.model.Message
 
 class QueueSpec extends BaseSpec {
