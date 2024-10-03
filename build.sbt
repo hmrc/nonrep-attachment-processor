@@ -32,13 +32,14 @@ lazy val root = (project in file(".")).
     inThisBuild(List(
       organization := "uk.gov",
       majorVersion := 0,
-      scalaVersion := "2.13.8"
+      scalaVersion := "2.13.12"
     )),
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
     buildInfoPackage := "uk.gov.hmrc.nonrep",
     name := projectName,
 
     resolvers ++= Seq(
+      MavenRepository("HMRC-open-artefacts-maven2", "https://open.artefacts.tax.service.gov.uk/maven2"),
       Resolver.bintrayRepo("lonelyplanet", "maven"),
       Resolver.bintrayRepo("hmrc", "releases")
     ),
@@ -66,6 +67,8 @@ lazy val root = (project in file(".")).
       "org.apache.pekko"    %% "pekko-slf4j"               % pekkoVersion,
       "org.slf4j"            %  "slf4j-api"                % "1.7.30",
       "net.logstash.logback" %  "logstash-logback-encoder" % "6.6",
+
+      "uk.gov.hmrc"      %% "logback-json-logger"  % "5.3.0",
 
       // Metrics
       "fr.davit"             %% "pekko-http-metrics-prometheus" % metricsVersion,
