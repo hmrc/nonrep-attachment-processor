@@ -3,12 +3,10 @@ import sbtassembly.AssemblyPlugin.autoImport.assembly
 
 enablePlugins(SbtGitVersioning)
 
-
 val awsSdkVersion = "2.17.+"
-val logbackVersion = "1.2.3"
+val logbackVersion = "1.2.10"
 val metricsVersion = "1.0.0"
 val jvmMetricsVersion = "3.0.2"
-
 val pekkoVersion = "1.0.2"
 val pekkoHttpVersion = "1.0.1"
 val prometheusClientsVersion = "0.16.0"
