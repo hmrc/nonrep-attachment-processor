@@ -1,9 +1,9 @@
 package uk.gov.hmrc.nonrep.attachment
 
-import akka.actor.testkit.typed.scaladsl.ActorTestKit
-import akka.actor.typed.scaladsl.adapter._
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
+import org.apache.pekko.actor.testkit.typed.scaladsl.ActorTestKit
+import org.apache.pekko.actor.typed.scaladsl.adapter._
+import org.apache.pekko.http.scaladsl.Http
+import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import org.scalatest.Inside
 import org.scalatest.time.{Millis, Span}
 import uk.gov.hmrc.nonrep.BuildInfo
@@ -22,8 +22,7 @@ class ServiceIntSpec extends BaseSpec with Inside {
 
   lazy val testKit = ActorTestKit()
   implicit val typedSystem = testKit.system
-
-  override def createActorSystem(): akka.actor.ActorSystem = testKit.system.toClassic
+  override def createActorSystem(): org.apache.pekko.actor.ActorSystem = testKit.system.toClassic
 
   implicit val patience: PatienceConfig = PatienceConfig(Span(5000, Millis), Span(100, Millis))
 

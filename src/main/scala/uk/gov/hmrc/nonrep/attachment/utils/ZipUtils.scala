@@ -1,10 +1,8 @@
 package uk.gov.hmrc.nonrep.attachment.utils
 
-import uk.gov.hmrc.nonrep.attachment.{ERROR, EitherErr, ErrorMessage, ZipContent}
-
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
-import java.util.zip.{ZipEntry, ZipInputStream, ZipOutputStream}
-import scala.util.{Try, Using}
+import java.util.zip.ZipInputStream
+import scala.util.Using
 
 object ZipUtils {
 

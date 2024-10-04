@@ -6,8 +6,8 @@ import java.net.URI
 import java.time.Instant
 import java.time.temporal.{ChronoUnit, TemporalUnit}
 
-import akka.http.scaladsl.model.headers.RawHeader
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpMethod, HttpRequest}
+import org.apache.pekko.http.scaladsl.model.headers.RawHeader
+import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpEntity, HttpMethod, HttpRequest}
 import org.apache.http.client.utils.URIBuilder
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import software.amazon.awssdk.auth.signer.Aws4Signer

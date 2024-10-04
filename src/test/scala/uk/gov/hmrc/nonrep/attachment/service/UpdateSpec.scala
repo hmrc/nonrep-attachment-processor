@@ -3,8 +3,8 @@ package service
 
 import java.util.UUID
 
-import akka.stream.scaladsl.Keep
-import akka.stream.testkit.scaladsl.{TestSink, TestSource}
+import org.apache.pekko.stream.scaladsl.Keep
+import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
 
 import scala.concurrent.duration.DurationInt
 

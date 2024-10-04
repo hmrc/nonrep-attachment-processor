@@ -1,6 +1,6 @@
 package uk.gov.hmrc.nonrep.attachment.utils
 
-import akka.actor.typed.ActorSystem
+import org.apache.pekko.actor.typed.ActorSystem
 import uk.gov.hmrc.nonrep.attachment.{AttachmentError, ERROR, ErrorMessage, ErrorMessageWithDeleteSQSMessage, WARN}
 
 trait ErrorHandler {

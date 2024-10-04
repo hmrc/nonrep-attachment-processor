@@ -1,6 +1,6 @@
 package uk.gov.hmrc.nonrep
 
-import akka.util.ByteString
+import org.apache.pekko.util.ByteString
 
 package object attachment {
 
