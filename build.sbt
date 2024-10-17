@@ -58,6 +58,7 @@ lazy val root = (project in file(".")).
       // AWS
       "software.amazon.awssdk" % "s3"      % awsSdkVersion,
       "software.amazon.awssdk" % "glacier" % awsSdkVersion,
+      "software.amazon.awssdk" % "sts" % awsSdkVersion,
 
       // Logging
       "ch.qos.logback"       %  "logback-classic"          % logbackVersion,
