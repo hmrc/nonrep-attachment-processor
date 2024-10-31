@@ -1,6 +1,7 @@
 package uk.gov.hmrc.nonrep.attachment
 
 import org.apache.pekko.actor.testkit.typed.scaladsl.ActorTestKit
+import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.actor.typed.scaladsl.adapter._
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
@@ -21,7 +22,7 @@ class ServiceIntSpec extends BaseSpec with Inside {
   val service = config.appName
 
   lazy val testKit = ActorTestKit()
-  implicit val typedSystem = testKit.system
+  implicit val typedSystem: ActorSystem[Nothing] = testKit.system
   override def createActorSystem(): org.apache.pekko.actor.ActorSystem = testKit.system.toClassic
 
   implicit val patience: PatienceConfig = PatienceConfig(Span(5000, Millis), Span(100, Millis))

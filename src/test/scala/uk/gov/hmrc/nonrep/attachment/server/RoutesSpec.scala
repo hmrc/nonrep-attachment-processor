@@ -3,6 +3,7 @@ package server
 
 import org.apache.pekko.Done
 import org.apache.pekko.actor.testkit.typed.scaladsl.ActorTestKit
+import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.actor.typed.scaladsl.adapter._
 import org.apache.pekko.http.scaladsl.model.{ContentTypes, StatusCodes}
 import org.apache.pekko.http.scaladsl.server.Directives.handleExceptions
@@ -17,10 +18,10 @@ import scala.concurrent.duration._
 class RoutesSpec extends BaseSpec {
 
   lazy val testKit = ActorTestKit()
-  implicit def typedSystem = testKit.system
+  implicit def typedSystem: ActorSystem[Nothing] = testKit.system
   override def createActorSystem(): org.apache.pekko.actor.ActorSystem = testKit.system.toClassic
 
-  implicit val timeout = RouteTestTimeout(10 second span)
+  implicit val timeout: RouteTestTimeout = RouteTestTimeout(10 second span)
 
   implicit val config: ServiceConfig = new ServiceConfig()
 
