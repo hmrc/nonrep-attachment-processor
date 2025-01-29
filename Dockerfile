@@ -13,4 +13,4 @@ RUN DEBIAN_FRONTEND=noninteractive \
 
 COPY target/scala-2.13/attachment-processor.jar /bin
 
-CMD java $JAVA_OPTS -jar /bin/attachment-processor.jar
+ENTRYPOINT exec java $JAVA_OPTS -jar /bin/attachment-processor.jar
