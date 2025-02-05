@@ -46,10 +46,6 @@ object Main {
   def main(args: Array[String]): Unit = {
     import system.executionContext
 
-    val scheduler = system.scheduler.scheduleAtFixedRate(config.initialReadingDelay.millis, config.readingRate.millis) { () =>
-      system.log.info("initiating scheduler")
-    }
-
     service.serverBinding.onComplete {
       case Success(binding) =>
         val address = binding.localAddress
@@ -67,8 +63,6 @@ object Main {
     CoordinatedShutdown(system).addTask(CoordinatedShutdown.PhaseBeforeServiceUnbind, "logShutdownInitiated") { () =>
       Future {
         system.log.info("initiating shutdown")
-        val schedulerCanceled = scheduler.cancel()
-        system.log.info(s"scheduler cancelled: $schedulerCanceled")
         Done
       }
     }

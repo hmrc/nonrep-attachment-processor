@@ -50,9 +50,6 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val signServiceBufferSize: Int = systemParams.getInt("signServiceBufferSize")
   val esServiceBufferSize: Int = systemParams.getInt("esServiceBufferSize")
 
-  val initialReadingDelay: Int = systemParams.getInt("initialReadingDelay")
-  val readingRate: Int = systemParams.getInt("readingRate")
-  
   override def toString =
     s"""
     appName: $appName
