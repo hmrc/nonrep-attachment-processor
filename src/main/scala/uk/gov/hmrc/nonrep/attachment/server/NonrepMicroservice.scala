@@ -2,6 +2,7 @@ package uk.gov.hmrc.nonrep.attachment
 package server
 
 import org.apache.pekko.Done
+import org.apache.pekko.actor.CoordinatedShutdown
 import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.http.scaladsl.Http
@@ -10,6 +11,7 @@ import uk.gov.hmrc.nonrep.attachment.service.Processor
 import uk.gov.hmrc.nonrep.attachment.utils.ErrorHandler
 
 import scala.concurrent.Future
+import scala.concurrent.duration.DurationInt
 import scala.util.{Failure, Success}
 
 class NonrepMicroservice()(implicit val system: ActorSystem[_], config: ServiceConfig) extends ErrorHandler {
@@ -56,6 +58,13 @@ object Main {
     service.attachmentsProcessor.onComplete {
       case Success(result) => system.log.info(s"Attachments processor finished its work ${result.toString}")
       case Failure(ex) => system.log.error(s"Attachments processor failed with ${ex.getMessage}", ex)
+    }
+
+    CoordinatedShutdown(system).addTask(CoordinatedShutdown.PhaseBeforeServiceUnbind, "logShutdownInitiated") { () =>
+      Future {
+        system.log.info("initiating shutdown")
+        Done
+      }
     }
   }
 }

@@ -49,7 +49,7 @@ class ServiceConfig(val servicePort: Int = 8000) {
 
   val signServiceBufferSize: Int = systemParams.getInt("signServiceBufferSize")
   val esServiceBufferSize: Int = systemParams.getInt("esServiceBufferSize")
-  
+
   override def toString =
     s"""
     appName: $appName
