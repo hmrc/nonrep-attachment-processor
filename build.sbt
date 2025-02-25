@@ -3,12 +3,13 @@ import sbtassembly.AssemblyPlugin.autoImport.assembly
 
 enablePlugins(SbtGitVersioning)
 
-val awsSdkVersion = "2.29.+"
+//val awsSdkVersion = "2.29.+"
+val awsSdkVersion = "2.21.+"
 val logbackVersion = "1.2.10"
 val metricsVersion = "1.0.0"
 val jvmMetricsVersion = "3.0.2"
-val pekkoVersion = "1.0.2"
-val pekkoHttpVersion = "1.0.1"
+val pekkoVersion = "1.1.0"
+val pekkoHttpVersion = "1.1.0"
 val prometheusClientsVersion = "0.16.0"
 
 val projectName = "attachment-processor"
@@ -47,8 +48,8 @@ lazy val root = (project in file(".")).
       "org.apache.pekko"    %% "pekko-http"            % pekkoHttpVersion,
       "org.apache.pekko"    %% "pekko-http-xml"        % pekkoHttpVersion,
       "org.apache.pekko"    %% "pekko-http-spray-json" % pekkoHttpVersion,
-      "org.apache.pekko"    %% "pekko-actor-typed"     % pekkoVersion,
-      "org.apache.pekko"    %% "pekko-stream"          % pekkoVersion,
+      "org.apache.pekko"    %% "pekko-actor-typed"     % "1.1.3",
+      "org.apache.pekko"    %% "pekko-stream"          % "1.1.3",
 
       "org.apache.pekko" %% "pekko-connectors-sqs" % pekkoVersion,
       "org.apache.pekko" %% "pekko-connectors-s3" % pekkoVersion,
@@ -78,8 +79,8 @@ lazy val root = (project in file(".")).
 
       // Test dependencies
       "org.apache.pekko"    %% "pekko-http-testkit"        % pekkoHttpVersion % Test,
-      "org.apache.pekko"    %% "pekko-actor-testkit-typed" % pekkoVersion     % Test,
-      "org.apache.pekko"    %% "pekko-stream-testkit"      % pekkoVersion     % Test,
+      "org.apache.pekko"    %% "pekko-actor-testkit-typed" % "1.1.3"     % Test,
+      "org.apache.pekko"    %% "pekko-stream-testkit"      % "1.1.3"     % Test,
       "org.scalatest"        %% "scalatest"                % "3.2.11"        % Test,
       "org.mockito"          %% "mockito-scala-scalatest"  % "1.17.0"        % Test
     ),
