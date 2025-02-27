@@ -3,12 +3,13 @@ import sbtassembly.AssemblyPlugin.autoImport.assembly
 
 enablePlugins(SbtGitVersioning)
 
-val awsSdkVersion = "2.29.+"
-val logbackVersion = "1.2.10"
-val metricsVersion = "1.0.0"
+val awsSdkVersion = "2.21.+"
+val logbackVersion = "1.5.17"
+val metricsVersion = "1.0.1"
 val jvmMetricsVersion = "3.0.2"
-val pekkoVersion = "1.0.2"
-val pekkoHttpVersion = "1.0.1"
+val pekkoVersion = "1.1.3"
+val pekkoHttpVersion = "1.1.0"
+val pekkoConnectors = "1.1.0"
 val prometheusClientsVersion = "0.16.0"
 
 val projectName = "attachment-processor"
@@ -47,11 +48,11 @@ lazy val root = (project in file(".")).
       "org.apache.pekko"    %% "pekko-http"            % pekkoHttpVersion,
       "org.apache.pekko"    %% "pekko-http-xml"        % pekkoHttpVersion,
       "org.apache.pekko"    %% "pekko-http-spray-json" % pekkoHttpVersion,
-      "org.apache.pekko"    %% "pekko-actor-typed"     % pekkoVersion,
+      "org.apache.pekko"    %% "pekko-actor-typed"     % "1.1.3",
       "org.apache.pekko"    %% "pekko-stream"          % pekkoVersion,
 
-      "org.apache.pekko" %% "pekko-connectors-sqs" % pekkoVersion,
-      "org.apache.pekko" %% "pekko-connectors-s3" % pekkoVersion,
+      "org.apache.pekko" %% "pekko-connectors-sqs" % pekkoConnectors,
+      "org.apache.pekko" %% "pekko-connectors-s3" % pekkoConnectors,
 
       "org.scala-lang.modules" %% "scala-java8-compat"  % "1.0.2",
 
@@ -63,9 +64,9 @@ lazy val root = (project in file(".")).
       // Logging
       "ch.qos.logback"       %  "logback-classic"          % logbackVersion,
       "ch.qos.logback"       %  "logback-core"             % logbackVersion,
-      "org.apache.pekko"    %% "pekko-slf4j"               % pekkoVersion,
-      "org.slf4j"            %  "slf4j-api"                % "1.7.30",
-      "net.logstash.logback" %  "logstash-logback-encoder" % "6.6",
+      "org.apache.pekko"    %%  "pekko-slf4j"              % "1.1.3",
+      "org.slf4j"            %  "slf4j-api"                % "2.0.17",
+      "net.logstash.logback" %  "logstash-logback-encoder" % "8.0",
 
       "uk.gov.hmrc"      %% "logback-json-logger"  % "5.3.0",
 
