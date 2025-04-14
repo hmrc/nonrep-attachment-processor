@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-        <remoteHost>${LOGSTASH_URL}</remoteHost>
-        <port>${LOGSTASH_PORT}</port>
+        <destination>${LOGSTASH_URL}:${LOGSTASH_PORT}</destination>
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <customFields>{"appname":"attachment-processor", "env":"${ENV}"}</customFields>
         </encoder>
