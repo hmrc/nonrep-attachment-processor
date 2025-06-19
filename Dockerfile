@@ -8,7 +8,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
     && apt-get update \
     && apt-get upgrade -y \
     && apt-get install -y ca-certificates-java \
-    && apt-get install -y openjdk-17-jre-headless \
+    && apt-get install -y openjdk-21-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
 COPY target/scala-2.13/attachment-processor.jar /bin
