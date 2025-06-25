@@ -31,7 +31,7 @@ lazy val root = (project in file(".")).
     inThisBuild(List(
       organization := "uk.gov",
       majorVersion := 0,
-      scalaVersion := "2.13.12"
+      scalaVersion := "2.13.16"
     )),
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
     buildInfoPackage := "uk.gov.hmrc.nonrep",
