@@ -1,14 +1,16 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import java.time.temporal.{ChronoUnit, TemporalUnit}
-import java.time.{Clock, Instant, ZoneId}
-
 import org.apache.pekko.http.scaladsl.model.HttpMethods
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.auth.signer.internal.Aws4SignerUtils
-import software.amazon.awssdk.auth.signer.params.Aws4SignerParams
+import software.amazon.awssdk.http.auth.aws.signer.{AwsV4FamilyHttpSigner, AwsV4HttpSigner}
+import software.amazon.awssdk.http.auth.spi.signer.HttpSigner
+import software.amazon.awssdk.http.{SdkHttpFullRequest, SdkHttpMethod}
 import software.amazon.awssdk.regions.Region
+
+import java.time.temporal.{ChronoUnit, TemporalUnit}
+import java.time.{Clock, Instant, ZoneId}
 
 class RequestsSignerSpec extends BaseSpec {
 
@@ -23,12 +25,12 @@ class RequestsSignerSpec extends BaseSpec {
       val region = Region.EU_WEST_2
       val signingClock = Clock.fixed(Instant.parse("2021-03-10T12:13:14.15Z"), ZoneId.of("Europe/London"))
       val credentials = StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, "xxx"))
-      val signerParams = Aws4SignerParams.builder()
-        .awsCredentials(credentials.resolveCredentials()).ensure
-        .signingRegion(region).ensure
-        .signingName(service).ensure
-        .signingClockOverride(signingClock).ensure
-        .build()
+      val signerParams = new RequestsSignerParams(credentials.resolveCredentials())
+
+      signerParams.builder
+        .putProperty(AwsV4FamilyHttpSigner.SERVICE_SIGNING_NAME, service)
+        .putProperty(AwsV4HttpSigner.REGION_NAME, region.id())
+        .putProperty(HttpSigner.SIGNING_CLOCK, signingClock)
 
       val path = "/test"
       val body = """{"query": {"match_all":{}}"""
@@ -39,7 +41,7 @@ class RequestsSignerSpec extends BaseSpec {
         res shouldBe body
       }
 
-      val expectedAuthHeader = s"AWS4-HMAC-SHA256 Credential=$accessKeyId/${Aws4SignerUtils.formatDateStamp(signingClock.millis())}/${region.id()}/$service/aws4_request, SignedHeaders=host;x-amz-date, Signature=bb03af1fe55354a99fc951b2c61afae153ea4faf6d4ee9a0eeaa1ed158c54485"
+      val expectedAuthHeader = s"AWS4-HMAC-SHA256 Credential=$accessKeyId/${Aws4SignerUtils.formatDateStamp(signingClock.millis())}/${region.id()}/$service/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=6e37481b369aa5053b559c22c33bded0fe80089c0ffa3a8f0247ab08994fe8f9"
 
       request.headers.find(_.name() == "Host").get.value() shouldBe config.elasticSearchHost
       request.headers.find(_.name() == "X-Amz-Date").get.value() shouldBe "20210310T121314Z"
@@ -48,7 +50,9 @@ class RequestsSignerSpec extends BaseSpec {
   }
 
   "requests signer parameters class" should {
-    val params = new RequestsSignerParams() {
+    val accessKeyId = "ASIAXXX"
+    val credentials = StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, "xxx"))
+    val params = new RequestsSignerParams(credentials.resolveCredentials()) {
       override val amountToAdd: Long = 1
       override val unit: TemporalUnit = ChronoUnit.SECONDS
     }
