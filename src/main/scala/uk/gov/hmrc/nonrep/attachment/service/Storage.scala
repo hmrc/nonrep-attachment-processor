@@ -38,12 +38,15 @@ class StorageService()(implicit val config: ServiceConfig,
         metadata
           .flatMap(_ => stream.map(content => Right(AttachmentContent(attachment, content)).withLeft[AttachmentError]))
           .recover {
-            case e => Left(ErrorMessageWithDeleteSQSMessage(
-              messageId     = attachment.message,
-              message       = s"failed to download ${attachment.s3ObjectKey} attachment bundle from s3 ${config.attachmentsBucket}",
-              optThrowable  = Some(e.getCause),
-              severity      = WARN
-            ))
+            case e => {
+              system.log.error(s"Error getting object ${attachment.s3ObjectKey} from s3 ${config.attachmentsBucket}", e)
+              Left(ErrorMessageWithDeleteSQSMessage(
+                messageId     = attachment.message,
+                message       = s"failed to download ${attachment.s3ObjectKey} attachment bundle from s3 ${config.attachmentsBucket}",
+                optThrowable  = Some(e),
+                severity      = WARN
+              ))
+            }
           }
     }.withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
   }
