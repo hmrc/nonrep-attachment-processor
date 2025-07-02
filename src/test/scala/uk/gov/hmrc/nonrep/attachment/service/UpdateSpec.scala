@@ -1,11 +1,10 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
-import java.util.UUID
-
 import org.apache.pekko.stream.scaladsl.Keep
 import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
 
+import java.util.UUID
 import scala.concurrent.duration.DurationInt
 
 class UpdateSpec extends BaseSpec {
@@ -65,8 +64,8 @@ class UpdateSpec extends BaseSpec {
       val sink = TestSink.probe[RequestsSignerParams]
       val sub = updateService.signerParams.throttle(1, 1.second).runWith(sink)
 
-      val key1 = sub.request(1).expectNext().params.awsCredentials().accessKeyId()
-      val key2 = sub.request(1).expectNext().params.awsCredentials().accessKeyId()
+      val key1 = sub.request(1).expectNext().credentials.accessKeyId()
+      val key2 = sub.request(1).expectNext().credentials.accessKeyId()
 
       key1 != key2 shouldBe true
     }

@@ -3,7 +3,7 @@ import sbtassembly.AssemblyPlugin.autoImport.assembly
 
 enablePlugins(SbtGitVersioning)
 
-val awsSdkVersion = "2.21.+"
+val awsSdkVersion = "2.31.+"
 val logbackVersion = "1.5.17"
 val metricsVersion = "1.0.1"
 val jvmMetricsVersion = "3.0.2"

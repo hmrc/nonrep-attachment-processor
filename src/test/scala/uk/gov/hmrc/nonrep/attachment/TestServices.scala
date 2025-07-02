@@ -1,10 +1,5 @@
 package uk.gov.hmrc.nonrep.attachment
 
-import java.io.File
-import java.nio.file.Files
-import java.time.temporal.{ChronoUnit, TemporalUnit}
-import java.util.UUID
-
 import org.apache.pekko.actor.testkit.typed.scaladsl.ActorTestKit
 import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{InternalServerError, OK}
@@ -15,15 +10,20 @@ import org.apache.pekko.stream.testkit.TestSubscriber
 import org.apache.pekko.stream.testkit.scaladsl.TestSink
 import org.apache.pekko.util.ByteString
 import org.apache.pekko.{Done, NotUsed}
-import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
-import software.amazon.awssdk.auth.signer.params.Aws4SignerParams
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, AwsCredentials}
 import software.amazon.awssdk.core.async.AsyncRequestBody
+import software.amazon.awssdk.http.auth.aws.signer.{AwsV4FamilyHttpSigner, AwsV4HttpSigner}
+import software.amazon.awssdk.http.auth.spi.signer.SignRequest
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.glacier.model.{UploadArchiveRequest, UploadArchiveResponse}
 import software.amazon.awssdk.services.sqs.model.Message
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import uk.gov.hmrc.nonrep.attachment.service._
 
+import java.io.File
+import java.nio.file.Files
+import java.time.temporal.{ChronoUnit, TemporalUnit}
+import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -101,8 +101,8 @@ object TestServices {
 
   object success {
     val storageService: Storage = new StorageService() {
-      override def s3DownloadSource(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
-        Source.single(Some(Source.single(ByteString(sampleAttachment)), ObjectMetadata(Seq())))
+      override def s3DownloadSource(attachment: AttachmentInfo): Source[ByteString, Future[ObjectMetadata]] =
+        Source.single(ByteString(sampleAttachment)).mapMaterializedValue(_ => Future.successful(ObjectMetadata(Seq())))
 
       override def s3DeleteSource(attachment: AttachmentInfo): Source[Done, NotUsed] =
         Source.single(Done)
@@ -137,18 +137,17 @@ object TestServices {
           case (_, request) => (Try(HttpResponse(OK, entity = HttpEntity(""))), request)
         }
 
-      override def createRequestsSignerParams: RequestsSignerParams = new RequestsSignerParams() {
-
-        import RequestsSigner._
+      override def createRequestsSignerParams: RequestsSignerParams = new RequestsSignerParams(AwsBasicCredentials.create(UUID.randomUUID().toString, "xxx")) {
 
         override val amountToAdd: Long = 999
         override val unit: TemporalUnit = ChronoUnit.MILLIS
 
-        override def params: Aws4SignerParams = Aws4SignerParams.builder()
-          .awsCredentials(StaticCredentialsProvider.create(AwsBasicCredentials.create(UUID.randomUUID().toString, "xxx")).resolveCredentials()).ensure
-          .signingRegion(Region.EU_WEST_2).ensure
-          .signingName("es").ensure
-          .build()
+        override val builder: RequestBuilder = {
+          SignRequest
+            .builder[AwsCredentials](credentials)
+            .putProperty(AwsV4FamilyHttpSigner.SERVICE_SIGNING_NAME, "es")
+            .putProperty(AwsV4HttpSigner.REGION_NAME, Region.EU_WEST_2.id())
+        }
       }
     }
 
@@ -157,8 +156,8 @@ object TestServices {
 
   object failure {
     val storageService: Storage = new StorageService() {
-      override def s3DownloadSource(attachment: AttachmentInfo): Source[Option[(Source[ByteString, NotUsed], ObjectMetadata)], NotUsed] =
-        Source.single(None)
+      override def s3DownloadSource(attachment: AttachmentInfo): Source[ByteString, Future[ObjectMetadata]] =
+        Source.single(ByteString.empty).mapMaterializedValue(_ => Future.failed(new RuntimeException()))
 
       override def deleteAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
         Flow[EitherErr[AttachmentInfo]].map { _ => Left(ErrorMessage("failure")) }

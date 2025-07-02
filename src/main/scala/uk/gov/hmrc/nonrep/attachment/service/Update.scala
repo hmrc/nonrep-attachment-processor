@@ -10,6 +10,7 @@ import org.apache.pekko.stream.Supervision.restartingDecider
 import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Merge, Partition, Source}
 import org.apache.pekko.stream.{ActorAttributes, FlowShape, OverflowStrategy}
 import org.apache.pekko.util.ByteString
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import uk.gov.hmrc.nonrep.attachment.service.RequestsSigner._
 
@@ -24,10 +25,9 @@ trait Update {
 class UpdateService()(implicit val config: ServiceConfig,
                       implicit val system: ActorSystem[_]) extends Update {
 
-
   private[service] def createRequestsSignerParams = {
-    system.log.info("AWS Signer parameters has been refreshed")
-    new RequestsSignerParams()
+    system.log.info("AWS Signer has been refreshed")
+    new RequestsSignerParams(DefaultCredentialsProvider.builder().build().resolveCredentials)
   }
 
   override val signerParams: Source[RequestsSignerParams, NotUsed] =
@@ -60,7 +60,7 @@ class UpdateService()(implicit val config: ServiceConfig,
         val submissionId = archived.info.submissionId.getOrElse(new IllegalStateException("Submission ID must be present"))
         val path = s"/${archived.info.notableEvent}-attachments/index/${archived.info.attachmentId}"
         val body = s"""{ "attachmentId": "${archived.info.attachmentId}", "nrSubmissionId": "$submissionId", "glacier": { "vaultName": "${archived.vaultName}", "archiveId": "${archived.archiveId}"}}"""
-        val request = createSignedRequest(HttpMethods.POST, config.elasticSearchUri, path, body, signerParams.params)
+        val request = createSignedRequest(HttpMethods.POST, config.elasticSearchUri, path, body, signerParams)
         system.log.info(s"Update metastore request for: [${archived.info.attachmentId}], path: [$path], body: [$body] and request: [$request]")
         request
       }).getOrElse(throw new RuntimeException("Error creating ES request")), attachment)

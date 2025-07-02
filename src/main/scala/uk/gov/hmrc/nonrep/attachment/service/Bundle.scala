@@ -66,7 +66,7 @@ class BundleService()(implicit val config: ServiceConfig) extends Bundle {
 
   private def handleFileExtraction(attachment: AttachmentInfo, filename: String, responseF: String => Either[Throwable, Option[Array[Byte]]]): EitherErr[Array[Byte]] = {
     responseF(filename)
-      .left.map(e => ErrorMessage(s"Failure of extracting zip archive for attachment ${attachment.s3ObjectKey} relating to ${attachment.submissionId.getOrElse("INVALID")} with ${e.getCause}", Some(e), ERROR))
+      .left.map(e => ErrorMessage(s"Failure of extracting ${filename} from zip archive for attachment ${attachment.s3ObjectKey} relating to ${attachment.submissionId.getOrElse("INVALID")} with ${e.getCause}", Some(e), ERROR))
       .flatMap(_.toRight(ErrorMessage(s"ADMIN_REQUIRED: Failure of extracting zip archive for ${attachment.s3ObjectKey} with file $filename not found", None, ERROR)))
   }
 }
