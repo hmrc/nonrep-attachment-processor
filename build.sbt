@@ -98,6 +98,7 @@ lazy val root = (project in file(".")).
     ).value
   )
 
+run / fork := true
 Compile / scalacOptions ++= Seq("-deprecation", "-feature")
 Test / testOptions += Tests.Argument("-oF")
 Test / fork := true
