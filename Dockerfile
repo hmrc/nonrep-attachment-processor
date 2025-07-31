@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM 979211549557.dkr.ecr.eu-west-2.amazonaws.com/docker.io/library/ubuntu:20.04
 
 ENV TZ=Europe/London
 RUN ln -snf "/usr/share/zoneinfo/$TZ" /etc/localtime
