@@ -33,6 +33,8 @@ class ServiceConfig(val servicePort: Int = 8000) {
     if (configFile.exists()) ConfigFactory.parseFile(configFile)
     else ConfigFactory.load("application.conf")
 
+  val refreshPolicy: String = config.getConfig("metastore").getString("refresh_policy")
+
   private val signaturesParams = config.getObject(s"$appName.signatures").toConfig
   private val signaturesServiceUri = URI.create(signaturesParams.getString("service-url"))
   val isSignaturesServiceSecure: Boolean = signaturesServiceUri.toURL.getProtocol == "https"
