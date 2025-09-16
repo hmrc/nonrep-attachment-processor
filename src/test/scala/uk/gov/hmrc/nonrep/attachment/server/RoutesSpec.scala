@@ -10,7 +10,7 @@ import org.apache.pekko.http.scaladsl.server.Directives.handleExceptions
 import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import uk.gov.hmrc.nonrep.BuildInfo
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
-import uk.gov.hmrc.nonrep.attachment.utils.JsonFormats._
+import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats._
 
 import scala.concurrent.Future
 import scala.concurrent.duration._

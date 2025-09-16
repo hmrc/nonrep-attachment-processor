@@ -13,8 +13,8 @@ import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.{m
 import fr.davit.pekko.http.metrics.prometheus.marshalling.PrometheusMarshallers._
 import org.slf4j.Logger
 import uk.gov.hmrc.nonrep.BuildInfo
-import uk.gov.hmrc.nonrep.attachment.metrics.Prometheus._
-import uk.gov.hmrc.nonrep.attachment.utils.JsonFormats._
+import uk.gov.hmrc.nonrep.attachment.app.metrics.Prometheus._
+import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats._
 
 import scala.concurrent.Future
 

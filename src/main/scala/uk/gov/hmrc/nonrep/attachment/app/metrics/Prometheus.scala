@@ -1,4 +1,4 @@
-package uk.gov.hmrc.nonrep.attachment.metrics
+package uk.gov.hmrc.nonrep.attachment.app.metrics
 
 import com.codahale.metrics.jvm.{GarbageCollectorMetricSet, MemoryUsageGaugeSet, ThreadStatesGaugeSet}
 import com.codahale.metrics.{JvmAttributeGaugeSet, SharedMetricRegistries}
