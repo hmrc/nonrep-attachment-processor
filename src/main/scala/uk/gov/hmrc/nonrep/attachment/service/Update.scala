@@ -25,13 +25,10 @@ trait Update {
 class UpdateService()(implicit val config: ServiceConfig,
                       implicit val system: ActorSystem[_]) extends Update {
 
-  private[service] def createRequestsSignerParams = {
-    system.log.info("AWS Signer has been refreshed")
+  private[service] def createRequestsSignerParams =
     new RequestsSignerParams(DefaultCredentialsProvider.builder().build().resolveCredentials)
-  }
 
-  override val signerParams: Source[RequestsSignerParams, NotUsed] =
-    Source.unfold(createRequestsSignerParams)(params => Some(if (params.expired()) createRequestsSignerParams else params, params))
+  override def signerParams: Source[RequestsSignerParams, NotUsed] = Source.single(createRequestsSignerParams)
 
   private def partitionRequests[A]() =
     Partition[EitherErr[A]](2, {
