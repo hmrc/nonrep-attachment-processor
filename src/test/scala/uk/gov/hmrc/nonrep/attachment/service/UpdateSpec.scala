@@ -58,14 +58,14 @@ class UpdateSpec extends BaseSpec {
       result.left.toOption.get.message shouldBe "failure"
     }
 
-    "use new request signing parameters when needed" in {
+    "use new request signing parameters with current credentials" in {
       import TestServices.success._
 
       val sink = TestSink.probe[RequestsSignerParams]
-      val sub = updateService.signerParams.throttle(1, 1.second).runWith(sink)
-
-      val key1 = sub.request(1).expectNext().credentials.accessKeyId()
-      val key2 = sub.request(1).expectNext().credentials.accessKeyId()
+      val sub1 = updateService.signerParams.runWith(sink)
+      val key1 = sub1.request(1).expectNext().credentials.accessKeyId()
+      val sub2 = updateService.signerParams.runWith(sink)
+      val key2 = sub2.request(1).expectNext().credentials.accessKeyId()
 
       key1 != key2 shouldBe true
     }
