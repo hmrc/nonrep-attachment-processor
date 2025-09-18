@@ -9,7 +9,7 @@ import org.scalatest.Inside
 import org.scalatest.time.{Millis, Span}
 import uk.gov.hmrc.nonrep.BuildInfo
 import uk.gov.hmrc.nonrep.attachment.server.{NonrepMicroservice, ServiceConfig}
-import uk.gov.hmrc.nonrep.attachment.utils.JsonFormats._
+import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats._
 
 import scala.concurrent.Future
 

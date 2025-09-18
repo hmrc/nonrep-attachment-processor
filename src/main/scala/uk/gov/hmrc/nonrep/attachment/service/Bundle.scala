@@ -8,8 +8,8 @@ import org.apache.pekko.stream.scaladsl.Flow
 import org.apache.pekko.util.ByteString
 import spray.json.DefaultJsonProtocol._
 import spray.json._
+import uk.gov.hmrc.nonrep.attachment.app.zip.ZipUtils
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
-import uk.gov.hmrc.nonrep.attachment.utils.ZipUtils
 
 import scala.util.{Try, Using}
 

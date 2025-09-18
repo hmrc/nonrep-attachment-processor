@@ -1,4 +1,4 @@
-package uk.gov.hmrc.nonrep.attachment.utils
+package uk.gov.hmrc.nonrep.attachment.app.zip
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.util.zip.ZipInputStream
