@@ -28,7 +28,7 @@ class UpdateService()(implicit val config: ServiceConfig,
   private[service] def createRequestsSignerParams =
     new RequestsSignerParams(DefaultCredentialsProvider.builder().build().resolveCredentials)
 
-  override def signerParams: Source[RequestsSignerParams, NotUsed] = Source.single(createRequestsSignerParams)
+  override def signerParams: Source[RequestsSignerParams, NotUsed] = Source.repeat(createRequestsSignerParams)
 
   private def partitionRequests[A]() =
     Partition[EitherErr[A]](2, {
