@@ -88,7 +88,7 @@ class GlacierServiceSpec extends BaseSpec {
         glacierService().eventuallyArchive(content, vaultName).futureValue match {
           case Left(error) =>
             error.message shouldBe
-              s"Vault $vaultName not found for attachment $content. The sign service should create the vault in due course."
+              s"Vault $vaultName not found for attachment $content. The attachment-processor service should create the vault in due course."
             error.severity shouldBe WARN
           case Right(_) =>
             fail("an error was expected")

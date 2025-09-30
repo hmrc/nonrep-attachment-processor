@@ -3,6 +3,7 @@ package service
 
 import org.apache.pekko.NotUsed
 import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.event.slf4j.Logger
 import org.apache.pekko.stream.ActorAttributes
 import org.apache.pekko.stream.Supervision.restartingDecider
 import org.apache.pekko.stream.scaladsl.Flow
@@ -26,6 +27,9 @@ trait Glacier {
 }
 
 class GlacierService()(implicit val config: ServiceConfig, implicit val system: ActorSystem[_]) extends Glacier {
+
+  private val logger = Logger(this.getClass.getName)
+
   private[service] lazy val client: GlacierAsyncClient = GlacierAsyncClient
     .builder()
     .region(EU_WEST_2)
@@ -43,7 +47,8 @@ class GlacierService()(implicit val config: ServiceConfig, implicit val system: 
           archiveIdOrError.map(archiveId => ArchivedAttachment(attachmentContent.info, archiveId, datedVaultName))
         }
       case Left(e) =>
-        Future successful Left(e)
+        logger.warn(s"Not archiving attachment due to previous error: ${e.message}")
+        Future.successful(Left(e))
     }.withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
 
   private[service] def eventuallyArchive(content: AttachmentContent, vaultName: String): Future[EitherErr[String]] =
@@ -58,12 +63,14 @@ class GlacierService()(implicit val config: ServiceConfig, implicit val system: 
       .map(uploadResponse => Right(uploadResponse.archiveId()))
       .recoverWith[EitherErr[String]] {
         case exception: ResourceNotFoundException =>
+          logger.warn(s"Vault $vaultName not found. the attachment-processor service should create the vault in due course", exception)
           Future.successful(Left(
             ErrorMessage(
-              s"Vault $vaultName not found for attachment $content. The sign service should create the vault in due course.",
+              s"Vault $vaultName not found for attachment $content. The attachment-processor service should create the vault in due course.",
               Some(exception),
               WARN)))
         case exception =>
+          logger.warn(s"Error uploading attachment ${content.info.attachmentId} to glacier", exception)
           Future.successful(Left(ErrorMessage(s"Error uploading attachment $content to glacier $vaultName", Some(exception))))
       }
 
