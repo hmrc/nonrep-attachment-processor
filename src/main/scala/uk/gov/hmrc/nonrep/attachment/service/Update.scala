@@ -19,16 +19,14 @@ import scala.util.{Failure, Success, Try}
 trait Update {
   def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed]
 
-  def signerParams: Source[RequestsSignerParams, NotUsed]
+  def createRequestsSignerParams: RequestsSignerParams
 }
 
 class UpdateService()(implicit val config: ServiceConfig,
                       implicit val system: ActorSystem[_]) extends Update {
 
-  private[service] def createRequestsSignerParams =
+  override def createRequestsSignerParams =
     new RequestsSignerParams(DefaultCredentialsProvider.builder().build().resolveCredentials)
-
-  override def signerParams: Source[RequestsSignerParams, NotUsed] = Source.repeat(createRequestsSignerParams)
 
   private def partitionRequests[A]() =
     Partition[EitherErr[A]](2, {
@@ -51,13 +49,13 @@ class UpdateService()(implicit val config: ServiceConfig,
     }
   }
 
-  val createRequest: Flow[(EitherErr[ArchivedAttachment], RequestsSignerParams), (HttpRequest, EitherErr[ArchivedAttachment]), NotUsed] =
-    Flow[(EitherErr[ArchivedAttachment], RequestsSignerParams)].map { case (attachment, signerParams) =>
+  val createRequest: Flow[EitherErr[ArchivedAttachment], (HttpRequest, EitherErr[ArchivedAttachment]), NotUsed] =
+    Flow[EitherErr[ArchivedAttachment]].map { attachment =>
       (attachment.toOption.map(archived => {
         val submissionId = archived.info.submissionId.getOrElse(new IllegalStateException("Submission ID must be present"))
         val path = s"/${archived.info.notableEvent}-attachments/index/${archived.info.attachmentId}?refresh=${config.refreshPolicy}"
         val body = s"""{ "attachmentId": "${archived.info.attachmentId}", "nrSubmissionId": "$submissionId", "glacier": { "vaultName": "${archived.vaultName}", "archiveId": "${archived.archiveId}"}}"""
-        val request = createSignedRequest(HttpMethods.POST, config.elasticSearchUri, path, body, signerParams)
+        val request = createSignedRequest(HttpMethods.POST, config.elasticSearchUri, path, body, createRequestsSignerParams)
         system.log.info(s"Update metastore request for: [${archived.info.attachmentId}], path: [$path], body: [$body] and request: [$request]")
         request
       }).getOrElse(throw new RuntimeException("Error creating ES request")), attachment)
@@ -95,7 +93,7 @@ class UpdateService()(implicit val config: ServiceConfig,
         val remapAttachmentInfoShape = builder.add(remapAttachmentInfo)
 
         input ~> merge
-        input.zip(signerParams) ~> createRequest ~> callMetastore ~> parseResponse ~> merge ~> remapAttachmentInfoShape.in
+        input ~> createRequest ~> callMetastore ~> parseResponse ~> merge ~> remapAttachmentInfoShape.in
 
         FlowShape(input.in, remapAttachmentInfoShape.out)
       }
