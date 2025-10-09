@@ -1,10 +1,12 @@
 package uk.gov.hmrc.nonrep.attachment
 package service
 
+import io.prometheus.client.CollectorRegistry
 import org.apache.pekko.NotUsed
 import org.apache.pekko.stream.scaladsl.{Flow, Source}
 import org.apache.pekko.stream.testkit.TestSubscriber
 import software.amazon.awssdk.services.sqs.model.Message
+import uk.gov.hmrc.nonrep.attachment.app.metrics.Prometheus.attachmentSizeBucket
 
 class ProcessorSpec extends BaseSpec {
 
@@ -33,6 +35,20 @@ class ProcessorSpec extends BaseSpec {
       result.attachmentId shouldBe testAttachmentId
       result.s3ObjectKey shouldBe testS3ObjectKey
       result.message shouldBe testSQSMessageIds.head
+    }
+
+    "record processing time" in {
+
+      val metric = CollectorRegistry.defaultRegistry.getSampleValue(
+        "attachment_processor_processing_time_sum",
+        Array("service"),
+        Array(s"/attachment-processor:size=${attachmentSizeBucket(sampleAttachment.length.toLong)}")
+      )
+
+      processor.execute.run().request(1).expectNext().toOption.get
+
+      metric should not be null
+      metric.doubleValue() should be > 0.0
     }
   }
 

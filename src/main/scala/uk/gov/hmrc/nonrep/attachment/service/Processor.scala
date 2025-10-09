@@ -9,9 +9,10 @@ import org.apache.pekko.stream.ClosedShape
 import org.apache.pekko.stream.scaladsl.RunnableGraph.fromGraph
 import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, RunnableGraph, Sink, Source}
 import software.amazon.awssdk.services.sqs.model.Message
+import uk.gov.hmrc.nonrep.attachment.app.metrics.Prometheus.{attachmentProcessingDuration, attachmentSizeBucket}
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{DurationInt, FiniteDuration, NANOSECONDS, SECONDS}
 
 trait Processor[A] {
   def getMessages: Source[Message, NotUsed]
@@ -94,12 +95,23 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
     .log(name = "deleteBundle")
     .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
+  private [service] def recordProcessingTime: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
+    Flow[EitherErr[AttachmentInfo]].map {
+      _.map { attachment =>
+        val processingEnd = System.nanoTime()
+        val total = new FiniteDuration(processingEnd - attachment.processingStart, NANOSECONDS)
+        val label = attachment.attachmentSize.fold("/attachment-processor")(size => s"/attachment-processor:size=${attachmentSizeBucket(size)}")
+        attachmentProcessingDuration.labels(label).observe(total.toUnit(SECONDS))
+        attachment
+      }
+    }
+
   val execute: RunnableGraph[A] = fromGraph(GraphDSL.createGraph(applicationSink) {
     implicit builder =>
       sink =>
         import GraphDSL.Implicits._
 
-        getMessages ~> parseMessage ~> downloadBundle ~> unpackBundle ~> signAttachment ~> repackBundle ~> archiveBundle ~> updateMetastore ~> deleteMessage ~> deleteBundle ~> sink
+        getMessages ~> parseMessage ~> downloadBundle ~> unpackBundle ~> signAttachment ~> repackBundle ~> archiveBundle ~> updateMetastore ~> deleteMessage ~> deleteBundle ~> recordProcessingTime ~> sink
 
         ClosedShape
   })

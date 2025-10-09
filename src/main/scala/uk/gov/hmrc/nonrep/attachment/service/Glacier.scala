@@ -40,7 +40,9 @@ class GlacierService()(implicit val config: ServiceConfig, implicit val system: 
     Flow[EitherErr[AttachmentContent]].mapAsyncUnordered(8) {
       case Right(attachmentContent) =>
         eventuallyArchive(attachmentContent, datedVaultName).map { archiveIdOrError: EitherErr[String] =>
-          archiveIdOrError.map(archiveId => ArchivedAttachment(attachmentContent.info, archiveId, datedVaultName))
+          archiveIdOrError.map{ archiveId =>
+            ArchivedAttachment(attachmentContent.info.copy(attachmentSize = Some(attachmentContent.length)), archiveId, datedVaultName)
+          }
         }
       case Left(e) =>
         Future successful Left(e)
