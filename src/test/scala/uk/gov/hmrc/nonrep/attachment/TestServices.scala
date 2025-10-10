@@ -114,7 +114,7 @@ object TestServices {
 
       override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
         Flow[EitherErr[AttachmentInfo]].map {
-          _.map(_ => AttachmentInfo(testAttachmentId, testSQSMessageIds.head, testS3ObjectKey))
+          _.map(_ => AttachmentInfo(testAttachmentId, testSQSMessageIds.head, testS3ObjectKey, attachmentSize = Some(sampleAttachment.length.toLong)))
         }
     }
 

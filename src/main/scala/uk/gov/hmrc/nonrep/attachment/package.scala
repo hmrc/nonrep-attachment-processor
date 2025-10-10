@@ -31,10 +31,17 @@ package object attachment {
 
   case class ErrorMessage(message: String, optThrowable: Option[Throwable] = None, severity: Severity = ERROR) extends AttachmentError
 
-  case class AttachmentInfo(attachmentId: String, message: String, s3ObjectKey: String, notableEvent: String = "vat-registration", submissionId: Option[String] = None)
+  case class AttachmentInfo(attachmentId: String,
+                            message: String,
+                            s3ObjectKey: String,
+                            notableEvent: String = "vat-registration",
+                            submissionId: Option[String] = None,
+                            processingStart: Long = System.nanoTime(),
+                            attachmentSize: Option[Long] = None)
 
   case class AttachmentContent(info: AttachmentInfo, content: ByteString) {
     val bytes: Array[Byte] = content.toArray
+    val length: Long = bytes.length.toLong
   }
 
   case class ArchivedAttachment(info: AttachmentInfo, archiveId: String, vaultName: String)
