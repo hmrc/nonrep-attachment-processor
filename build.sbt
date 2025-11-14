@@ -57,7 +57,6 @@ lazy val root = (project in file(".")).
       "org.scala-lang.modules" %% "scala-java8-compat"  % "1.0.2",
 
       // AWS
-      "software.amazon.awssdk" % "s3"      % awsSdkVersion,
       "software.amazon.awssdk" % "glacier" % awsSdkVersion,
       "software.amazon.awssdk" % "sts"     % awsSdkVersion,
 
