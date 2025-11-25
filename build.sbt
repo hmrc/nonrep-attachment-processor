@@ -100,10 +100,7 @@ lazy val root = (project in file(".")).
 run / fork := true
 Compile / scalacOptions ++= Seq(
   "-deprecation",
-  "-feature",
-  "-rewrite",
-  "-source", "3.4-migration"
-
+  "-feature"
 )
 Test / testOptions += Tests.Argument("-oF")
 Test / fork := true
