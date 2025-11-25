@@ -2,13 +2,15 @@ package uk.gov.hmrc.nonrep.attachment
 
 import org.apache.pekko.actor.testkit.typed.scaladsl.ActorTestKit
 import org.apache.pekko.actor.typed.ActorSystem
-import org.apache.pekko.actor.typed.scaladsl.adapter._
+import org.apache.pekko.actor.typed.scaladsl.adapter.*
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import org.scalatest.Inside
+import org.scalatest.time.{Millis, Seconds, Span}
 import uk.gov.hmrc.nonrep.BuildInfo
 import uk.gov.hmrc.nonrep.attachment.server.{NonrepMicroservice, ServiceConfig}
 import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats.buildVersionJsonFormat
+
 import scala.concurrent.Future
 
 class ServiceIntSpec extends BaseSpec with Inside {
@@ -30,6 +32,9 @@ class ServiceIntSpec extends BaseSpec with Inside {
       _.unbind()
     }
 
+  implicit val defaultPatience: PatienceConfig =
+    PatienceConfig(timeout = Span(5, Seconds), interval = Span(500, Millis))
+    
   "attachment-processor service" should {
 
     "return version information for GET request to service /version endpoint" in {

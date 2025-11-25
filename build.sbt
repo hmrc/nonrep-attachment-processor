@@ -38,9 +38,7 @@ lazy val root = (project in file(".")).
     name := projectName,
 
     resolvers ++= Seq(
-      MavenRepository("HMRC-open-artefacts-maven2", "https://open.artefacts.tax.service.gov.uk/maven2"),
-      Resolver.bintrayRepo("lonelyplanet", "maven"),
-      Resolver.bintrayRepo("hmrc", "releases")
+      MavenRepository("HMRC-open-artefacts-maven2", "https://open.artefacts.tax.service.gov.uk/maven2")
     ),
 
     libraryDependencies ++= Seq(
