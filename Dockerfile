@@ -11,6 +11,6 @@ RUN DEBIAN_FRONTEND=noninteractive \
     && apt-get install -y openjdk-21-jre-headless \
     && rm -rf /var/lib/apt/lists/*
 
-COPY target/scala-2.13/attachment-processor.jar /bin
+COPY target/scala-3.7.4/attachment-processor.jar /bin
 
 ENTRYPOINT exec java $JAVA_OPTS -jar /bin/attachment-processor.jar
