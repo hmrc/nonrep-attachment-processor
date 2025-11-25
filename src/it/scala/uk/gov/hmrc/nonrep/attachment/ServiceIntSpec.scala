@@ -32,9 +32,8 @@ class ServiceIntSpec extends BaseSpec with Inside {
       _.unbind()
     }
 
-  implicit val defaultPatience: PatienceConfig =
-    PatienceConfig(timeout = Span(5, Seconds), interval = Span(500, Millis))
-    
+  implicit val _: PatienceConfig = PatienceConfig(timeout = Span(5, Seconds), interval = Span(500, Millis))
+
   "attachment-processor service" should {
 
     "return version information for GET request to service /version endpoint" in {
