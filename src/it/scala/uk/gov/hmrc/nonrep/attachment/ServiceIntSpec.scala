@@ -8,7 +8,6 @@ import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCo
 import org.scalatest.Inside
 import uk.gov.hmrc.nonrep.BuildInfo
 import uk.gov.hmrc.nonrep.attachment.server.{NonrepMicroservice, ServiceConfig}
-import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats._
 import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats.buildVersionJsonFormat
 import scala.concurrent.Future
 
