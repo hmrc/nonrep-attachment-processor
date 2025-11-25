@@ -21,7 +21,7 @@ class ServiceIntSpec extends BaseSpec with Inside {
 
   lazy val testKit = ActorTestKit()
   override def createActorSystem(): org.apache.pekko.actor.ActorSystem = testKit.system.toClassic
-  
+
   override def beforeAll():Unit =
     server = NonrepMicroservice()(using system.toTyped, config)
 
