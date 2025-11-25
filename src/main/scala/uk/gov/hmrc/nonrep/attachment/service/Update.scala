@@ -1,5 +1,4 @@
-package uk.gov.hmrc.nonrep.attachment
-package service
+package uk.gov.hmrc.nonrep.attachment.service
 
 import org.apache.pekko.NotUsed
 import org.apache.pekko.actor.typed.ActorSystem
@@ -11,8 +10,9 @@ import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Merge, Partition, Sourc
 import org.apache.pekko.stream.{ActorAttributes, FlowShape, OverflowStrategy}
 import org.apache.pekko.util.ByteString
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
+import uk.gov.hmrc.nonrep.attachment.*
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
-import uk.gov.hmrc.nonrep.attachment.service.RequestsSigner._
+import uk.gov.hmrc.nonrep.attachment.service.RequestsSigner.*
 
 import scala.util.{Failure, Success, Try}
 
@@ -22,27 +22,30 @@ trait Update {
   def createRequestsSignerParams: RequestsSignerParams
 }
 
-class UpdateService()(implicit val config: ServiceConfig,
-                      implicit val system: ActorSystem[_]) extends Update {
+class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) extends Update {
 
   override def createRequestsSignerParams =
-    new RequestsSignerParams(DefaultCredentialsProvider.builder().build().resolveCredentials)
+    RequestsSignerParams(DefaultCredentialsProvider.builder().build().resolveCredentials)
 
   private def partitionRequests[A]() =
-    Partition[EitherErr[A]](2, {
-      case Left(_) => 0
-      case Right(_) => 1
-    })
+    Partition[EitherErr[A]](
+      2,
+      {
+        case Left(_)  => 0
+        case Right(_) => 1
+      }
+    )
 
   protected def parse(archived: EitherErr[ArchivedAttachment], response: HttpResponse): EitherErr[ArchivedAttachment] = {
     import system.executionContext
-    if (response.status == OK || response.status == Created) {
+    if response.status == OK || response.status == Created then {
       response.entity.dataBytes
         .runFold(ByteString.empty)(_ ++ _)
         .map(_.utf8String)
         .foreach(response => system.log.info(s"Metastore response $response"))
       archived
-    } else {
+    }
+    else {
       response.discardEntityBytes()
       val error = s"Response status ${response.status} from ES service ${config.elasticSearchHost}"
       Left(ErrorMessage(error))
@@ -51,31 +54,40 @@ class UpdateService()(implicit val config: ServiceConfig,
 
   val createRequest: Flow[EitherErr[ArchivedAttachment], (HttpRequest, EitherErr[ArchivedAttachment]), NotUsed] =
     Flow[EitherErr[ArchivedAttachment]].map { attachment =>
-      (attachment.toOption.map(archived => {
-        val submissionId = archived.info.submissionId.getOrElse(new IllegalStateException("Submission ID must be present"))
-        val path = s"/${archived.info.notableEvent}-attachments/index/${archived.info.attachmentId}?refresh=${config.refreshPolicy}"
-        val body = s"""{ "attachmentId": "${archived.info.attachmentId}", "nrSubmissionId": "$submissionId", "glacier": { "vaultName": "${archived.vaultName}", "archiveId": "${archived.archiveId}"}}"""
-        val request = createSignedRequest(HttpMethods.POST, config.elasticSearchUri, path, body, createRequestsSignerParams)
-        system.log.info(s"Update metastore request for: [${archived.info.attachmentId}], path: [$path], body: [$body] and request: [$request]")
-        request
-      }).getOrElse(throw new RuntimeException("Error creating ES request")), attachment)
+      (
+        attachment.toOption
+          .map { archived =>
+            val submissionId = archived.info.submissionId.getOrElse(new IllegalStateException("Submission ID must be present"))
+            val path         = s"/${archived.info.notableEvent}-attachments/index/${archived.info.attachmentId}?refresh=${config.refreshPolicy}"
+            val body         =
+              s"""{ "attachmentId": "${archived.info.attachmentId}", "nrSubmissionId": "$submissionId", "glacier": { "vaultName": "${archived.vaultName}", "archiveId": "${archived.archiveId}"}}"""
+            val request      = createSignedRequest(HttpMethods.POST, config.elasticSearchUri, path, body, createRequestsSignerParams)
+            system.log.info(
+              s"Update metastore request for: [${archived.info.attachmentId}], path: [$path], body: [$body] and request: [$request]"
+            )
+            request
+          }
+          .getOrElse(throw RuntimeException("Error creating ES request")),
+        attachment
+      )
     }
 
   val callMetastore: Flow[(HttpRequest, EitherErr[ArchivedAttachment]), (Try[HttpResponse], EitherErr[ArchivedAttachment]), Any] =
-    (if (config.isElasticSearchProtocolSecure)
-      Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]](config.elasticSearchHost)
-    else
-      Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost))
-      .buffer(config.esServiceBufferSize, OverflowStrategy.backpressure).async
+    (if config.isElasticSearchProtocolSecure then
+       Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]](config.elasticSearchHost)
+     else Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost))
+      .buffer(config.esServiceBufferSize, OverflowStrategy.backpressure)
+      .async
 
   val parseResponse: Flow[(Try[HttpResponse], EitherErr[ArchivedAttachment]), EitherErr[ArchivedAttachment], NotUsed] =
-    Flow[(Try[HttpResponse], EitherErr[ArchivedAttachment])].map {
-      case (httpResponse, request) =>
+    Flow[(Try[HttpResponse], EitherErr[ArchivedAttachment])]
+      .map { case (httpResponse, request) =>
         httpResponse match {
           case Success(response)  => parse(request, response)
-          case Failure(exception) => Left(ErrorMessage(s"Failure connection to ${config.elasticSearchHost} with ${exception.getMessage}", Some(exception)))
+          case Failure(exception) =>
+            Left(ErrorMessage(s"Failure connection to ${config.elasticSearchHost} with ${exception.getMessage}", Some(exception)))
         }
-    }
+      }
       .withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
 
   val remapAttachmentInfo: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] =
@@ -86,10 +98,10 @@ class UpdateService()(implicit val config: ServiceConfig,
   override def updateMetastore: Flow[EitherErr[ArchivedAttachment], EitherErr[AttachmentInfo], NotUsed] =
     Flow.fromGraph(
       GraphDSL.create() { implicit builder =>
-        import GraphDSL.Implicits._
+        import GraphDSL.Implicits.*
 
-        val input = builder.add(partitionRequests[ArchivedAttachment]())
-        val merge = builder.add(Merge[EitherErr[ArchivedAttachment]](2))
+        val input                    = builder.add(partitionRequests[ArchivedAttachment]())
+        val merge                    = builder.add(Merge[EitherErr[ArchivedAttachment]](2))
         val remapAttachmentInfoShape = builder.add(remapAttachmentInfo)
 
         input ~> merge
@@ -98,5 +110,4 @@ class UpdateService()(implicit val config: ServiceConfig,
         FlowShape(input.in, remapAttachmentInfoShape.out)
       }
     )
-
 }

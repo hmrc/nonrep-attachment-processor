@@ -15,16 +15,16 @@ import java.time.{Clock, Instant, ZoneId}
 class RequestsSignerSpec extends BaseSpec {
 
   "request signer" should {
-    import RequestsSigner._
-    import TestServices._
+    import RequestsSigner.*
+    import TestServices.*
 
     "create signed http request" in {
 
-      val accessKeyId = "ASIAXXX"
-      val service = "es"
-      val region = Region.EU_WEST_2
+      val accessKeyId  = "ASIAXXX"
+      val service      = "es"
+      val region       = Region.EU_WEST_2
       val signingClock = Clock.fixed(Instant.parse("2021-03-10T12:13:14.15Z"), ZoneId.of("Europe/London"))
-      val credentials = StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, "xxx"))
+      val credentials  = StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, "xxx"))
       val signerParams = new RequestsSignerParams(credentials.resolveCredentials())
 
       signerParams.builder
@@ -32,19 +32,20 @@ class RequestsSignerSpec extends BaseSpec {
         .putProperty(AwsV4HttpSigner.REGION_NAME, region.id())
         .putProperty(HttpSigner.SIGNING_CLOCK, signingClock)
 
-      val path = "/test"
-      val body = """{"query": {"match_all":{}}"""
+      val path    = "/test"
+      val body    = """{"query": {"match_all":{}}"""
       val request = createSignedRequest(HttpMethods.POST, config.elasticSearchUri, path, body, signerParams)
-      request.method shouldBe HttpMethods.POST
+      request.method       shouldBe HttpMethods.POST
       request.uri.toString shouldBe path
       whenReady(entityToString(request.entity)) { res =>
         res shouldBe body
       }
 
-      val expectedAuthHeader = s"AWS4-HMAC-SHA256 Credential=$accessKeyId/${Aws4SignerUtils.formatDateStamp(signingClock.millis())}/${region.id()}/$service/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=6e37481b369aa5053b559c22c33bded0fe80089c0ffa3a8f0247ab08994fe8f9"
+      val expectedAuthHeader =
+        s"AWS4-HMAC-SHA256 Credential=$accessKeyId/${Aws4SignerUtils.formatDateStamp(signingClock.millis())}/${region.id()}/$service/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature=6e37481b369aa5053b559c22c33bded0fe80089c0ffa3a8f0247ab08994fe8f9"
 
-      request.headers.find(_.name() == "Host").get.value() shouldBe config.elasticSearchHost
-      request.headers.find(_.name() == "X-Amz-Date").get.value() shouldBe "20210310T121314Z"
+      request.headers.find(_.name() == "Host").get.value()          shouldBe config.elasticSearchHost
+      request.headers.find(_.name() == "X-Amz-Date").get.value()    shouldBe "20210310T121314Z"
       request.headers.find(_.name() == "Authorization").get.value() shouldBe expectedAuthHeader
     }
   }
@@ -52,8 +53,8 @@ class RequestsSignerSpec extends BaseSpec {
   "requests signer parameters class" should {
     val accessKeyId = "ASIAXXX"
     val credentials = StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKeyId, "xxx"))
-    val params = new RequestsSignerParams(credentials.resolveCredentials()) {
-      override val amountToAdd: Long = 1
+    val params      = new RequestsSignerParams(credentials.resolveCredentials()) {
+      override val amountToAdd: Long  = 1
       override val unit: TemporalUnit = ChronoUnit.SECONDS
     }
     "not report expiry before defined time" in {
@@ -64,5 +65,4 @@ class RequestsSignerSpec extends BaseSpec {
       params.expired() shouldBe true
     }
   }
-
 }

@@ -6,41 +6,36 @@ import org.apache.pekko.actor.typed.scaladsl.adapter._
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import org.scalatest.Inside
-import org.scalatest.time.{Millis, Span}
 import uk.gov.hmrc.nonrep.BuildInfo
 import uk.gov.hmrc.nonrep.attachment.server.{NonrepMicroservice, ServiceConfig}
 import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats._
-
+import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats.buildVersionJsonFormat
 import scala.concurrent.Future
 
 class ServiceIntSpec extends BaseSpec with Inside {
   import TestServices._
 
   var server: NonrepMicroservice = null
-  implicit val config: ServiceConfig = new ServiceConfig(servicePort = 9342)
+  val config: ServiceConfig = new ServiceConfig(servicePort = 9342)
   val hostUrl = s"http://localhost:${config.port}"
-  val service = config.appName
+  val service: String = config.appName
 
   lazy val testKit = ActorTestKit()
-  implicit val typedSystem: ActorSystem[Nothing] = testKit.system
   override def createActorSystem(): org.apache.pekko.actor.ActorSystem = testKit.system.toClassic
+  
+  override def beforeAll():Unit =
+    server = NonrepMicroservice()(using system.toTyped, config)
 
-  implicit val patience: PatienceConfig = PatienceConfig(Span(5000, Millis), Span(100, Millis))
-
-  override def beforeAll() = {
-    server = new NonrepMicroservice()
-  }
-
-  override def afterAll(): Unit = {
+  override def afterAll(): Unit =
     whenReady(server.serverBinding) {
       _.unbind()
     }
-  }
 
   "attachment-processor service" should {
 
     "return version information for GET request to service /version endpoint" in {
-      val responseFuture: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = s"$hostUrl/${config.appName}/version"))
+      val http = Http(system)
+      val responseFuture: Future[HttpResponse] = http.singleRequest(HttpRequest(uri = s"$hostUrl/${config.appName}/version"))
       whenReady(responseFuture) { res =>
         res.status shouldBe StatusCodes.OK
         whenReady(entityToString(res.entity)) { body =>
@@ -50,7 +45,7 @@ class ServiceIntSpec extends BaseSpec with Inside {
     }
 
     "return a 'pong' response for GET requests to service /ping endpoint" in {
-      val responseFuture: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = s"$hostUrl/${config.appName}/ping"))
+      val responseFuture: Future[HttpResponse] = Http(system).singleRequest(HttpRequest(uri = s"$hostUrl/${config.appName}/ping"))
       whenReady(responseFuture) { res =>
         res.status shouldBe StatusCodes.OK
         whenReady(entityToString(res.entity)) { body =>
@@ -63,7 +58,7 @@ class ServiceIntSpec extends BaseSpec with Inside {
       import scala.jdk.FutureConverters._
       server.attachmentsProcessor.asJava.toCompletableFuture.cancel(true)
       Thread.sleep(1000)
-      val responseFuture: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = s"$hostUrl/${config.appName}/ping"))
+      val responseFuture: Future[HttpResponse] = Http(system).singleRequest(HttpRequest(uri = s"$hostUrl/${config.appName}/ping"))
       whenReady(responseFuture) { res =>
         res.status shouldBe StatusCodes.InternalServerError
         whenReady(entityToString(res.entity)) { body =>
@@ -73,7 +68,7 @@ class ServiceIntSpec extends BaseSpec with Inside {
     }
 
     "return a 'pong' response for GET requests to /ping endpoint" in {
-      val responseFuture: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = s"$hostUrl/ping"))
+      val responseFuture: Future[HttpResponse] = Http(system).singleRequest(HttpRequest(uri = s"$hostUrl/ping"))
       whenReady(responseFuture) { res =>
         res.status shouldBe StatusCodes.OK
         whenReady(entityToString(res.entity)) { body =>
@@ -83,7 +78,7 @@ class ServiceIntSpec extends BaseSpec with Inside {
     }
 
     "return jvm metrics" in {
-      val responseFuture: Future[HttpResponse] = Http().singleRequest(HttpRequest(uri = s"$hostUrl/metrics"))
+      val responseFuture: Future[HttpResponse] = Http(system).singleRequest(HttpRequest(uri = s"$hostUrl/metrics"))
       whenReady(responseFuture) { res =>
         res.status shouldBe StatusCodes.OK
         whenReady(entityToString(res.entity)) { body =>

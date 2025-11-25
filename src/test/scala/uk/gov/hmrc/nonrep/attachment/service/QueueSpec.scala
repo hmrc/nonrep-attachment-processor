@@ -7,21 +7,21 @@ import software.amazon.awssdk.services.sqs.model.Message
 
 class QueueSpec extends BaseSpec {
 
-  import TestServices._
+  import TestServices.*
 
   "Queue service" should {
-    import TestServices.success._
+    import TestServices.success.*
     "SqsSourceSettings should have" in {
-      queueService.settings.maxBatchSize shouldBe config.maxBatchSize
-      queueService.settings.maxBufferSize shouldBe config.maxBufferSize
-      queueService.settings.waitTimeSeconds shouldBe config.waitTimeSeconds
+      queueService.settings.maxBatchSize        shouldBe config.maxBatchSize
+      queueService.settings.maxBufferSize       shouldBe config.maxBufferSize
+      queueService.settings.waitTimeSeconds     shouldBe config.waitTimeSeconds
       queueService.settings.closeOnEmptyReceive shouldBe config.closeOnEmptyReceive
     }
 
     "Message from source should have" in {
       val sink = TestSink.probe[Message]
 
-      val sub = queueService.getMessages.runWith(sink)
+      val sub    = queueService.getMessages.runWith(sink)
       val result = sub
         .request(1)
         .expectNext()
@@ -31,7 +31,7 @@ class QueueSpec extends BaseSpec {
 
     "Delete messages" when {
       "the s3 object can not be downloaded" in {
-        val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+        val sink     = TestSink.probe[EitherErr[AttachmentInfo]]
         val (_, sub) = queueService.getMessages
           .via(queueService.parseMessages)
           .via(TestServices.failure.storageService.downloadAttachment)
@@ -44,13 +44,13 @@ class QueueSpec extends BaseSpec {
           .request(1)
           .expectNext()
 
-        result.isLeft shouldBe true
-        result.left.toOption.get shouldBe a [ErrorMessageWithDeleteSQSMessage]
+        result.isLeft                    shouldBe true
+        result.left.toOption.get         shouldBe a[ErrorMessageWithDeleteSQSMessage]
         result.left.toOption.get.message shouldBe "failed to download 738bcba6-7f9e-11ec-8768-3f8498104f38.zip attachment bundle from s3 local-nonrep-attachment-data"
       }
 
       "completed processing" in {
-        val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+        val sink     = TestSink.probe[EitherErr[AttachmentInfo]]
         val (_, sub) = queueService.getMessages
           .via(queueService.parseMessages)
           .via(queueService.deleteMessage)
@@ -61,7 +61,7 @@ class QueueSpec extends BaseSpec {
           .request(1)
           .expectNext()
 
-        result.isRight shouldBe true
+        result.isRight                   shouldBe true
         result.toOption.get.attachmentId shouldBe testAttachmentId
       }
     }
@@ -69,8 +69,7 @@ class QueueSpec extends BaseSpec {
     "Parse messages properly" in {
       val sink = TestSink.probe[EitherErr[AttachmentInfo]]
 
-      val (_, sub) = queueService
-        .getMessages
+      val (_, sub) = queueService.getMessages
         .via(queueService.parseMessages)
         .toMat(sink)(Keep.both)
         .run()
@@ -79,33 +78,32 @@ class QueueSpec extends BaseSpec {
         .request(1)
         .expectNext()
 
-      result.isRight shouldBe true
+      result.isRight                   shouldBe true
       result.toOption.get.attachmentId shouldBe testAttachmentId
     }
 
     "For failure scenarios Queue service" should {
-      import TestServices.failure._
+      import TestServices.failure.*
 
       "Report parsing message failure" in {
         val sink = TestSink.probe[EitherErr[AttachmentInfo]]
 
-        val (_, sub) = queueService
-          .getMessages
+        val (_, sub) = queueService.getMessages
           .via(queueService.parseMessages)
           .toMat(sink)(Keep.both)
           .run()
 
         val result = sub.request(1).expectNext()
 
-        result.isLeft shouldBe true
+        result.isLeft                     shouldBe true
         result.left.toOption.get.severity shouldBe ERROR
-        result.left.toOption.get.message should startWith regex "Parsing SQS message failure"
+        result.left.toOption.get.message    should startWith regex "Parsing SQS message failure"
       }
 
       "Report delete message failure" in {
-        val source = TestSource.probe[EitherErr[AttachmentInfo]]
-        val sink = TestSink.probe[EitherErr[AttachmentInfo]]
-        val messageId = testSQSMessageIds.head
+        val source     = TestSource.probe[EitherErr[AttachmentInfo]]
+        val sink       = TestSink.probe[EitherErr[AttachmentInfo]]
+        val messageId  = testSQSMessageIds.head
         val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
 
         val (pub, sub) = source.via(queueService.deleteMessage).toMat(sink)(Keep.both).run()
@@ -115,9 +113,9 @@ class QueueSpec extends BaseSpec {
           .request(1)
           .expectNext()
 
-        result.isLeft shouldBe true
+        result.isLeft                     shouldBe true
         result.left.toOption.get.severity shouldBe ERROR
-        result.left.toOption.get.message shouldBe "Delete SQS message failure"
+        result.left.toOption.get.message  shouldBe "Delete SQS message failure"
       }
     }
   }

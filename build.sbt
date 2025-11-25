@@ -31,7 +31,7 @@ lazy val root = (project in file(".")).
     inThisBuild(List(
       organization := "uk.gov",
       majorVersion := 0,
-      scalaVersion := "2.13.16"
+      scalaVersion := "3.7.4"
     )),
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
     buildInfoPackage := "uk.gov.hmrc.nonrep",
@@ -67,7 +67,7 @@ lazy val root = (project in file(".")).
       "org.slf4j"            %  "slf4j-api"                % "2.0.17",
       "net.logstash.logback" %  "logstash-logback-encoder" % "8.0",
 
-      "uk.gov.hmrc"      %% "logback-json-logger"  % "5.3.0",
+      "uk.gov.hmrc"      %% "logback-json-logger"  % "5.6.0",
 
       // Metrics
       "fr.davit"             %% "pekko-http-metrics-prometheus" % metricsVersion,
@@ -80,8 +80,8 @@ lazy val root = (project in file(".")).
       "org.apache.pekko"    %% "pekko-http-testkit"        % pekkoHttpVersion % Test,
       "org.apache.pekko"    %% "pekko-actor-testkit-typed" % pekkoVersion     % Test,
       "org.apache.pekko"    %% "pekko-stream-testkit"      % pekkoVersion     % Test,
-      "org.scalatest"        %% "scalatest"                % "3.2.11"        % Test,
-      "org.mockito"          %% "mockito-scala-scalatest"  % "1.17.0"        % Test
+      "org.scalatest"        %% "scalatest"                % "3.2.19"        % Test,
+      "org.scalatestplus"   %% "mockito-5-18"              % "3.2.19.0" % "test"
     ),
 
     assembly / assemblyJarName := s"$projectName.jar",
@@ -98,7 +98,13 @@ lazy val root = (project in file(".")).
   )
 
 run / fork := true
-Compile / scalacOptions ++= Seq("-deprecation", "-feature")
+Compile / scalacOptions ++= Seq(
+  "-deprecation",
+  "-feature",
+  "-rewrite",
+  "-source", "3.4-migration"
+
+)
 Test / testOptions += Tests.Argument("-oF")
 Test / fork := true
 Test / envVars := Map("WORKING_DIR" -> "/tmp/unit-tests")
