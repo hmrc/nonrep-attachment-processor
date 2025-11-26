@@ -44,8 +44,7 @@ class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) exten
         .map(_.utf8String)
         .foreach(response => system.log.info(s"Metastore response $response"))
       archived
-    }
-    else {
+    } else {
       response.discardEntityBytes()
       val error = s"Response status ${response.status} from ES service ${config.elasticSearchHost}"
       Left(ErrorMessage(error))

@@ -7,3 +7,4 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-git" % "1.0.0")
 // sbt-scoverage is not set to latest due to binary incompatibility with akka_http_xml
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.9.3")
 addSbtPlugin("uk.gov.hmrc" % "sbt-git-versioning" % "2.4.0")
+addSbtPlugin("org.scalameta"     % "sbt-scalafmt"       % "2.5.4")

@@ -35,7 +35,7 @@ object TestServices {
   val ec: ExecutionContext        = typedSystem.executionContext
   val config: ServiceConfig       = new ServiceConfig()
 
-  def entityToString(entity: ResponseEntity)(using system:ActorSystem[?] = typedSystem, context:ExecutionContext = ec ): Future[String] =
+  def entityToString(entity: ResponseEntity)(using system: ActorSystem[?] = typedSystem, context: ExecutionContext = ec): Future[String] =
     entity.dataBytes.runFold(ByteString(""))(_ ++ _).map(_.utf8String)
 
   val testAttachmentId                                  = "738bcba6-7f9e-11ec-8768-3f8498104f38"
@@ -103,7 +103,7 @@ object TestServices {
     .build()
 
   object success {
-    val storageService: Storage = new StorageService()(using config, typedSystem ) {
+    val storageService: Storage = new StorageService()(using config, typedSystem) {
       override def s3DownloadSource(attachment: AttachmentInfo): Source[ByteString, Future[ObjectMetadata]] =
         Source.single(ByteString(sampleAttachment)).mapMaterializedValue(_ => Future.successful(ObjectMetadata(Seq())))
 
@@ -160,7 +160,7 @@ object TestServices {
       }
     }
 
-    val zipperService = BundleService(using config )
+    val zipperService = BundleService(using config)
   }
 
   object failure {
@@ -172,7 +172,7 @@ object TestServices {
         Flow[EitherErr[AttachmentInfo]].map(_ => Left(ErrorMessage("failure")))
     }
 
-    val signService: Sign = new SignService()(using config, typedSystem ) {
+    val signService: Sign = new SignService()(using config, typedSystem) {
       override val callDigitalSignatures: Flow[(HttpRequest, EitherErr[ZipContent]), (Try[HttpResponse], EitherErr[ZipContent]), Any] =
         Flow[(HttpRequest, EitherErr[ZipContent])].map { case (_, request) =>
           (Try(HttpResponse(InternalServerError)), request)

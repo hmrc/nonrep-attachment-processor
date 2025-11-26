@@ -12,7 +12,7 @@ class BundleSpec extends BaseSpec {
 
   import TestServices.*
 
-  val zipper = new BundleService(using config )
+  val zipper = new BundleService(using config)
 
   "Zipping service" should {
     "create a zip archive from content given" in {

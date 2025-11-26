@@ -24,8 +24,8 @@ class GlacierServiceSpec extends BaseSpec {
   private val glacierAsyncClient = mock[GlacierAsyncClient]
 
   private def glacierService(sc: ServiceConfig = config): GlacierService =
-    new GlacierService()(using sc, typedSystem ) {
-       override lazy val client: GlacierAsyncClient = glacierAsyncClient
+    new GlacierService()(using sc, typedSystem) {
+      override lazy val client: GlacierAsyncClient = glacierAsyncClient
     }
 
   private def serviceConfig(environment: String) =

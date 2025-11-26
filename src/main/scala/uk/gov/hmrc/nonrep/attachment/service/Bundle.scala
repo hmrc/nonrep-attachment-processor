@@ -67,8 +67,7 @@ class BundleService()(using config: ServiceConfig) extends Bundle {
         for {
           data     <- handleFileExtraction(attachment.info, ATTACHMENT_FILE, ZipUtils.readFileFromZip(contentByteArray, _))
           metadata <- handleFileExtraction(attachment.info, METADATA_FILE, ZipUtils.readFileFromZip(contentByteArray, _))
-        }
-        yield ZipContent(attachment.info, data, metadata)
+        } yield ZipContent(attachment.info, data, metadata)
       }
     }
 

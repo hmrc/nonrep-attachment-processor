@@ -12,16 +12,16 @@ object Prometheus {
 
   private val prometheus: CollectorRegistry = CollectorRegistry.defaultRegistry
 
-  val settings: PrometheusSettings = 
+  val settings: PrometheusSettings =
     PrometheusSettings.default
-    .withNamespace(config.appName)
-    .withIncludePathDimension(true)
-    .withIncludeMethodDimension(true)
-    .withIncludeStatusDimension(true)
-    .withDurationConfig(Buckets(.1, .2, .3, .5, .8, 1, 1.5, 2, 2.5, 3, 5, 8, 13, 21))
-    .withReceivedBytesConfig(Quantiles(0.5, 0.75, 0.9, 0.95, 0.99))
-    .withSentBytesConfig(PrometheusSettings.DefaultQuantiles)
-    .withDefineError(_.status.isFailure)
+      .withNamespace(config.appName)
+      .withIncludePathDimension(true)
+      .withIncludeMethodDimension(true)
+      .withIncludeStatusDimension(true)
+      .withDurationConfig(Buckets(.1, .2, .3, .5, .8, 1, 1.5, 2, 2.5, 3, 5, 8, 13, 21))
+      .withReceivedBytesConfig(Quantiles(0.5, 0.75, 0.9, 0.95, 0.99))
+      .withSentBytesConfig(PrometheusSettings.DefaultQuantiles)
+      .withDefineError(_.status.isFailure)
 
   val registry: PrometheusRegistry = {
     DefaultExports.initialize()

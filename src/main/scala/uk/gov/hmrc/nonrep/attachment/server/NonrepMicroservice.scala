@@ -28,6 +28,7 @@ class NonrepMicroservice()(using system: ActorSystem[?], config: ServiceConfig) 
 }
 
 object Main {
+
   /**
    * https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/java-dg-jvm-ttl.html
    */

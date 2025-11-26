@@ -14,17 +14,17 @@ import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats.buildVersionJsonFormat
 import scala.concurrent.Future
 
 class ServiceIntSpec extends BaseSpec with Inside {
-  import TestServices._
+  import TestServices.*
 
   var server: NonrepMicroservice = null
-  val config: ServiceConfig = new ServiceConfig(servicePort = 9342)
-  val hostUrl = s"http://localhost:${config.port}"
-  val service: String = config.appName
+  val config: ServiceConfig      = new ServiceConfig(servicePort = 9342)
+  val hostUrl                    = s"http://localhost:${config.port}"
+  val service: String            = config.appName
 
-  lazy val testKit = ActorTestKit()
+  lazy val testKit                                                     = ActorTestKit()
   override def createActorSystem(): org.apache.pekko.actor.ActorSystem = testKit.system.toClassic
 
-  override def beforeAll():Unit =
+  override def beforeAll(): Unit =
     server = NonrepMicroservice()(using system.toTyped, config)
 
   override def afterAll(): Unit =
@@ -37,7 +37,7 @@ class ServiceIntSpec extends BaseSpec with Inside {
   "attachment-processor service" should {
 
     "return version information for GET request to service /version endpoint" in {
-      val http = Http(system)
+      val http                                 = Http(system)
       val responseFuture: Future[HttpResponse] = http.singleRequest(HttpRequest(uri = s"$hostUrl/${config.appName}/version"))
       whenReady(responseFuture) { res =>
         res.status shouldBe StatusCodes.OK
@@ -58,7 +58,7 @@ class ServiceIntSpec extends BaseSpec with Inside {
     }
 
     "return a 500 response for GET requests to service /ping endpoint when attachments processor has stopped" in {
-      import scala.jdk.FutureConverters._
+      import scala.jdk.FutureConverters.*
       server.attachmentsProcessor.asJava.toCompletableFuture.cancel(true)
       Thread.sleep(1000)
       val responseFuture: Future[HttpResponse] = Http(system).singleRequest(HttpRequest(uri = s"$hostUrl/${config.appName}/ping"))
