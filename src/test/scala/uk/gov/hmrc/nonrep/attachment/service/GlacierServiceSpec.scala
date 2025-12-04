@@ -6,43 +6,40 @@ import org.apache.pekko.util.ByteString
 import org.mockito.ArgumentMatchers
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
-import org.mockito.MockitoSugar.mock
+import org.scalatestplus.mockito.MockitoSugar.mock
 import org.mockito.internal.stubbing.answers.Returns
 import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.services.glacier.GlacierAsyncClient
-import software.amazon.awssdk.services.glacier.model._
+import software.amazon.awssdk.services.glacier.model.*
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import uk.gov.hmrc.nonrep.attachment.service.ChecksumUtils.{chunkSize, sha256TreeHashHex}
 
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletableFuture.completedFuture
-import scala.concurrent.ExecutionContext
 
 class GlacierServiceSpec extends BaseSpec {
 
-  import TestServices._
+  import TestServices.*
 
   private val glacierAsyncClient = mock[GlacierAsyncClient]
 
-  private def glacierService(sc: ServiceConfig = config): GlacierService = new GlacierService()(sc, typedSystem) {
-    override lazy val client: GlacierAsyncClient = glacierAsyncClient
-  }
+  private def glacierService(sc: ServiceConfig = config): GlacierService =
+    new GlacierService()(using sc, typedSystem) {
+      override lazy val client: GlacierAsyncClient = glacierAsyncClient
+    }
 
-  private def serviceConfig(environment: String) = {
+  private def serviceConfig(environment: String) =
     new ServiceConfig() {
-      override val env: String = environment
+      override val env: String       = environment
       override def sqsSystemProperty = "local"
     }
-  }
-
-  private implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.Implicits.global
 
   private def future(result: Object) = new Returns(completedFuture(result))
 
   "eventuallyCreateVaultIfNecessaryAndUpload" should {
     val archiveId = "archiveId"
     val vaultName = s"local-vat-registration-${now().year()}"
-    val content = AttachmentContent(AttachmentInfo(testAttachmentId, "messageId", testS3ObjectKey), ByteString(sampleAttachment))
+    val content   = AttachmentContent(AttachmentInfo(testAttachmentId, "messageId", testS3ObjectKey), ByteString(sampleAttachment))
 
     val uploadArchiveRequest =
       UploadArchiveRequest
@@ -74,9 +71,9 @@ class GlacierServiceSpec extends BaseSpec {
 
         glacierService().eventuallyArchive(content, vaultName).futureValue match {
           case Left(error) =>
-            error.message shouldBe s"Error uploading attachment $content to glacier $vaultName"
+            error.message  shouldBe s"Error uploading attachment $content to glacier $vaultName"
             error.severity shouldBe ERROR
-          case Right(_) =>
+          case Right(_)    =>
             fail("an error was expected")
         }
       }
@@ -87,10 +84,10 @@ class GlacierServiceSpec extends BaseSpec {
 
         glacierService().eventuallyArchive(content, vaultName).futureValue match {
           case Left(error) =>
-            error.message shouldBe
+            error.message  shouldBe
               s"Vault $vaultName not found for attachment $content. The sign service should create the vault in due course."
             error.severity shouldBe WARN
-          case Right(_) =>
+          case Right(_)    =>
             fail("an error was expected")
         }
       }
@@ -133,7 +130,7 @@ class GlacierServiceSpec extends BaseSpec {
 
       "the payload size is greater than the chunk size" in {
         val payloadLargerThanChunkSize = Range(0, chunkSize).mkString.getBytes
-        payloadLargerThanChunkSize.size > chunkSize shouldBe true
+        payloadLargerThanChunkSize.size > chunkSize   shouldBe true
         sha256TreeHashHex(payloadLargerThanChunkSize) shouldBe "ead1616b46a4a09a998d0c0c014bffe385a6c09977bd504bbe805310775f131f"
       }
     }

@@ -1,5 +1,4 @@
-package uk.gov.hmrc.nonrep.attachment
-package service
+package uk.gov.hmrc.nonrep.attachment.service
 
 import org.apache.http.client.utils.URIBuilder
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
@@ -25,10 +24,11 @@ trait RequestsParams {
 }
 
 class RequestsSignerParams(val credentials: AwsCredentials) extends RequestsParams {
-  override val amountToAdd: Long = 60
-  override val unit: TemporalUnit = ChronoUnit.MINUTES
+  override val amountToAdd: Long       = 60
+  override val unit: TemporalUnit      = ChronoUnit.MINUTES
   override val builder: RequestBuilder =
-    SignRequest.builder[AwsCredentials](credentials)
+    SignRequest
+      .builder[AwsCredentials](credentials)
       .putProperty(AwsV4FamilyHttpSigner.SERVICE_SIGNING_NAME, "es") // "es" is the signing name for Elasticsearch
       .putProperty(AwsV4HttpSigner.REGION_NAME, Region.EU_WEST_2.id())
 }
@@ -36,17 +36,13 @@ class RequestsSignerParams(val credentials: AwsCredentials) extends RequestsPara
 object RequestsSigner {
   private lazy val signer: AwsV4HttpSigner = AwsV4HttpSigner.create()
 
-  def createSignedRequest(method: HttpMethod,
-                          uri: URI,
-                          path: String,
-                          body: String,
-                          params: RequestsParams): HttpRequest = {
+  def createSignedRequest(method: HttpMethod, uri: URI, path: String, body: String, params: RequestsParams): HttpRequest = {
 
-    import scala.jdk.CollectionConverters._
+    import scala.jdk.CollectionConverters.*
 
     val uriBuilder = new URIBuilder(path)
     val httpMethod = SdkHttpMethod.fromValue(method.value)
-    val builder = SdkHttpFullRequest
+    val builder    = SdkHttpFullRequest
       .builder()
       .uri(uri)
       .encodedPath(uriBuilder.build().getRawPath)
@@ -54,24 +50,28 @@ object RequestsSigner {
 
     uriBuilder.getQueryParams.asScala.foreach(param => builder.putRawQueryParameter(param.getName, param.getValue))
 
-    val request = HttpRequest(method, path)
+    val request    = HttpRequest(method, path)
     request.headers.foreach(header => builder.putHeader(header.name(), header.value()))
-    builder.contentStreamProvider(() => new ByteArrayInputStream(body.getBytes))
+    builder.contentStreamProvider(() => ByteArrayInputStream(body.getBytes))
     val awsRequest = builder.build()
 
     val signRequest = params.builder
       .request(awsRequest)
-      .payload(awsRequest.contentStreamProvider().orElseGet(() => () => new ByteArrayInputStream(Array[Byte]())))
+      .payload(awsRequest.contentStreamProvider().orElseGet(() => () => ByteArrayInputStream(Array[Byte]())))
       .build()
 
     val signedRequest = signer.sign(signRequest)
 
-    val headers = signedRequest.request().headers.asScala.map {
-      case (name, values) => RawHeader(name, values.asScala.mkString(","))
-    }.toList
+    val headers = signedRequest
+      .request()
+      .headers
+      .asScala
+      .map { case (name, values) =>
+        RawHeader(name, values.asScala.mkString(","))
+      }
+      .toList
 
-    val is = signedRequest.payload().orElseGet(() => () => new ByteArrayInputStream(Array[Byte]())).newStream()
+    val is = signedRequest.payload().orElseGet(() => () => ByteArrayInputStream(Array[Byte]())).newStream()
     request.withHeadersAndEntity(headers, HttpEntity(ContentTypes.`application/json`, scala.io.Source.fromInputStream(is).mkString))
   }
-
 }

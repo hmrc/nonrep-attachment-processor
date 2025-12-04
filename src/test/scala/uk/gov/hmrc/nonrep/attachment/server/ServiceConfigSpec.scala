@@ -6,7 +6,7 @@ import org.scalatest.wordspec.AnyWordSpec
 
 class ServiceConfigSpec extends AnyWordSpec with Matchers {
 
-  implicit val config: ServiceConfig = new ServiceConfig()
+  implicit val config: ServiceConfig = ServiceConfig()
 
   "ServiceConfig" should {
     "specify app name" in {

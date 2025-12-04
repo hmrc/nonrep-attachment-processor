@@ -5,5 +5,5 @@ import uk.gov.hmrc.nonrep.attachment.BuildVersion
 
 object JsonFormats extends DefaultJsonProtocol {
 
-  implicit val buildVersionJsonFormat: RootJsonFormat[BuildVersion] = jsonFormat1(BuildVersion)
+  given buildVersionJsonFormat: RootJsonFormat[BuildVersion] = jsonFormat1(BuildVersion.apply)
 }
