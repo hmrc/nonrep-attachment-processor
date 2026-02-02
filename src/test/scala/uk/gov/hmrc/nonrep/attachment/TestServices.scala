@@ -29,6 +29,8 @@ import scala.util.Try
 
 object TestServices {
 
+  val METADATA_FILE_WITHOUT_NOTABLEEVENT = "metadata-without-notableEvent.json"
+
   lazy val testKit: ActorTestKit = ActorTestKit()
 
   val typedSystem: ActorSystem[?] = testKit.internalSystem

@@ -11,7 +11,6 @@ package object attachment {
   case object WARN extends Severity
 
   val METADATA_FILE          = "metadata.json"
-  val METADATA_FILE_WITHOUT_NOTABLEEVENT          = "metadata-without-notableEvent.json"
   val ATTACHMENT_FILE        = "attachment.data"
   val SIGNED_ATTACHMENT_FILE = "signed-attachment.p7m"
 
