@@ -29,7 +29,7 @@ trait Queue {
 
   def getMessages: Source[Message, NotUsed]
 
-  def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed]
+  def parseMessages: Flow[Message, EitherErr[AttachmentInfoMessage], NotUsed]
 
   def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]
 }
@@ -62,29 +62,25 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
   override def getMessages: Source[Message, NotUsed] =
     SqsSource(config.queueUrl, settings)
 
-  override def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed] =
+  override def parseMessages: Flow[Message, EitherErr[AttachmentInfoMessage], NotUsed] =
     Flow[Message].map { message =>
       val messageHandle = message.receiptHandle()
 
       Try {
         val s3ObjectKey = message
-          .body()
-          .parseJson
-          .asJsObject
-          .fields("Records")
+          .body().parseJson
+          .asJsObject.fields("Records")
           .convertTo[List[JsValue]]
           .head
-          .asJsObject
-          .fields("s3")
-          .asJsObject
-          .fields("object")
-          .asJsObject
+          .asJsObject.fields("s3")
+          .asJsObject.fields("object").asJsObject
           .fields("key")
           .convertTo[String]
 
         val attachmentId = s3ObjectKey
           .replaceFirst(".zip", "")
-        AttachmentInfo(attachmentId, messageHandle, s3ObjectKey)
+        
+        AttachmentInfoMessage(attachmentId, messageHandle, s3ObjectKey)
       }.toEither.left.map(thr =>
         ErrorMessageWithDeleteSQSMessage(messageHandle, s"Parsing SQS message failure ${message.body()}", Some(thr))
       )

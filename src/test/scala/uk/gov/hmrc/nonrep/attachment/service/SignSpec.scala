@@ -16,7 +16,7 @@ class SignSpec extends BaseSpec {
     "send attachment for signing with selected profile" in {
       val messageId = UUID.randomUUID().toString
 
-      val attachmentInfo = AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip")
+      val attachmentInfo = AttachmentInfoMessage(testAttachmentId, messageId, s"$testAttachmentId.zip")
       val zip            = Right(ZipContent(attachmentInfo, sampleAttachmentContent, sampleAttachmentMetadata))
 
       val source     = TestSource.probe[EitherErr[ZipContent]]
@@ -52,7 +52,7 @@ class SignSpec extends BaseSpec {
       import TestServices.failure.*
       val messageId = UUID.randomUUID().toString
 
-      val attachmentInfo = AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip")
+      val attachmentInfo = AttachmentInfoMessage(testAttachmentId, messageId, s"$testAttachmentId.zip")
       val zip            = Right(ZipContent(attachmentInfo, sampleAttachmentContent, sampleAttachmentMetadata))
 
       val source     = TestSource.probe[EitherErr[ZipContent]]

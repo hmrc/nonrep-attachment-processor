@@ -35,6 +35,8 @@ object TestServices {
   val ec: ExecutionContext        = typedSystem.executionContext
   val config: ServiceConfig       = new ServiceConfig()
 
+  val TestNotableEvent = "TEST_NE"
+
   def entityToString(entity: ResponseEntity)(using system: ActorSystem[?] = typedSystem, context: ExecutionContext = ec): Future[String] =
     entity.dataBytes.runFold(ByteString(""))(_ ++ _).map(_.utf8String)
 
@@ -43,6 +45,8 @@ object TestServices {
   val archiveId                                         = "archiveId"
   val sampleAttachmentMetadata: Array[Byte]             =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(METADATA_FILE).getFile).toPath)
+  val sampleAttachmentMetadataWithoutNotableEvent: Array[Byte]             =
+    Files.readAllBytes(new File(getClass.getClassLoader.getResource(METADATA_FILE_WITHOUT_NOTABLEEVENT).getFile).toPath)
   val sampleAttachment: Array[Byte]                     =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.zip").getFile).toPath)
   val sampleErrorAttachmentMissingMetadata: Array[Byte] =
@@ -104,7 +108,7 @@ object TestServices {
 
   object success {
     val storageService: Storage = new StorageService()(using config, typedSystem) {
-      override def s3DownloadSource(attachment: AttachmentInfo): Source[ByteString, Future[ObjectMetadata]] =
+      override def s3DownloadSource(attachment: AttachmentInfoMessage): Source[ByteString, Future[ObjectMetadata]] =
         Source.single(ByteString(sampleAttachment)).mapMaterializedValue(_ => Future.successful(ObjectMetadata(Seq())))
 
       override def s3DeleteSource(attachment: AttachmentInfo): Source[Done, NotUsed] =
@@ -117,8 +121,8 @@ object TestServices {
 
       override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
         Flow[EitherErr[AttachmentInfo]].map {
-          _.map(_ =>
-            AttachmentInfo(testAttachmentId, testSQSMessageIds.head, testS3ObjectKey, attachmentSize = Some(sampleAttachment.length.toLong))
+          _.map(attachmentInfo =>
+            AttachmentInfo(testAttachmentId, testSQSMessageIds.head, testS3ObjectKey, attachmentSize = Some(sampleAttachment.length.toLong), notableEvent = attachmentInfo.notableEvent)
           )
         }
     }
@@ -165,7 +169,7 @@ object TestServices {
 
   object failure {
     val storageService: Storage = new StorageService()(using config, typedSystem) {
-      override def s3DownloadSource(attachment: AttachmentInfo): Source[ByteString, Future[ObjectMetadata]] =
+      override def s3DownloadSource(attachment: AttachmentInfoMessage): Source[ByteString, Future[ObjectMetadata]] =
         Source.single(ByteString.empty).mapMaterializedValue(_ => Future.failed(new RuntimeException()))
 
       override def deleteAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =

@@ -15,10 +15,10 @@ class StorageSpec extends BaseSpec {
     "download file from S3" in {
       val messageId         = testSQSMessageIds.head
       val attachmentContent = ByteString(sampleAttachment)
-      val attachment        = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
+      val attachment        = Right(AttachmentInfoMessage(testAttachmentId, messageId, s"$testAttachmentId.zip"))
 
-      val source = TestSource.probe[EitherErr[AttachmentInfo]]
-      val sink   = TestSink.probe[EitherErr[AttachmentContent]]
+      val source = TestSource.probe[EitherErr[AttachmentInfoMessage]]
+      val sink   = TestSink.probe[EitherErr[AttachmentContentMessage]]
 
       val (pub, sub) = source.via(storageService.downloadAttachment).toMat(sink)(Keep.both).run()
       pub.sendNext(attachment).sendComplete()
@@ -35,7 +35,7 @@ class StorageSpec extends BaseSpec {
 
     "delete file from S3" in {
       val messageId  = testSQSMessageIds.head
-      val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
+      val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip", TestNotableEvent))
 
       val source = TestSource.probe[EitherErr[AttachmentInfo]]
       val sink   = TestSink.probe[EitherErr[AttachmentInfo]]
@@ -58,10 +58,10 @@ class StorageSpec extends BaseSpec {
 
     "report when downloading file from S3 fails" in {
       val messageId  = testSQSMessageIds.head
-      val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
+      val attachment = Right(AttachmentInfoMessage(testAttachmentId, messageId, s"$testAttachmentId.zip"))
 
-      val source = TestSource.probe[EitherErr[AttachmentInfo]]
-      val sink   = TestSink.probe[EitherErr[AttachmentContent]]
+      val source = TestSource.probe[EitherErr[AttachmentInfoMessage]]
+      val sink   = TestSink.probe[EitherErr[AttachmentContentMessage]]
 
       val (pub, sub) = source.via(storageService.downloadAttachment).toMat(sink)(Keep.both).run()
       pub.sendNext(attachment).sendComplete()
@@ -76,7 +76,7 @@ class StorageSpec extends BaseSpec {
 
     "report when deleting file from S3 fails" in {
       val messageId  = testSQSMessageIds.head
-      val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
+      val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip", TestNotableEvent))
 
       val source = TestSource.probe[EitherErr[AttachmentInfo]]
       val sink   = TestSink.probe[EitherErr[AttachmentInfo]]

@@ -39,7 +39,7 @@ class GlacierServiceSpec extends BaseSpec {
   "eventuallyCreateVaultIfNecessaryAndUpload" should {
     val archiveId = "archiveId"
     val vaultName = s"local-vat-registration-${now().year()}"
-    val content   = AttachmentContent(AttachmentInfo(testAttachmentId, "messageId", testS3ObjectKey), ByteString(sampleAttachment))
+    val content   = AttachmentContent(AttachmentInfo(testAttachmentId, "messageId", testS3ObjectKey, TestNotableEvent), ByteString(sampleAttachment))
 
     val uploadArchiveRequest =
       UploadArchiveRequest
@@ -99,25 +99,25 @@ class GlacierServiceSpec extends BaseSpec {
       val vaultNameWithNoPrefix = s"vat-registration-${now().year()}"
 
       "running in dev" in {
-        glacierService(serviceConfig("dev")).datedVaultName shouldBe vaultNameWithNoPrefix
+        glacierService(serviceConfig("dev")).datedVaultName("vat-registration") shouldBe vaultNameWithNoPrefix
       }
 
       "running in qa" in {
-        glacierService(serviceConfig("qa")).datedVaultName shouldBe vaultNameWithNoPrefix
+        glacierService(serviceConfig("qa")).datedVaultName("vat-registration") shouldBe vaultNameWithNoPrefix
       }
 
       "running in staging" in {
-        glacierService(serviceConfig("staging")).datedVaultName shouldBe vaultNameWithNoPrefix
+        glacierService(serviceConfig("staging")).datedVaultName("vat-registration") shouldBe vaultNameWithNoPrefix
       }
 
       "running in production" in {
-        glacierService(serviceConfig("production")).datedVaultName shouldBe vaultNameWithNoPrefix
+        glacierService(serviceConfig("production")).datedVaultName("vat-registration") shouldBe vaultNameWithNoPrefix
       }
     }
 
     "return a vault name with the environment name as prefix" when {
       "running in another environment" in {
-        glacierService(serviceConfig("sandbox1")).datedVaultName shouldBe s"sandbox1-vat-registration-${now().year()}"
+        glacierService(serviceConfig("sandbox1")).datedVaultName("vat-registration") shouldBe s"sandbox1-vat-registration-${now().year()}"
       }
     }
   }
@@ -125,7 +125,7 @@ class GlacierServiceSpec extends BaseSpec {
   "sha256TreeHashHex" should {
     "calculate a checksum" when {
       "the payload size is less than or equal to the chunk size" in {
-        sha256TreeHashHex(sampleAttachment) shouldBe "eed701e348197b3fd82a0cf9e11659a689ea0840e6f05a5bd31e4a145c2a3e7c"
+        sha256TreeHashHex(sampleAttachment) shouldBe "609ed9775dffad5f33fceea18c7f7ee47116f1cff5120774ec672ed2b89b945f"
       }
 
       "the payload size is greater than the chunk size" in {

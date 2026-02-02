@@ -35,7 +35,7 @@ class QueueSpec extends BaseSpec {
         val (_, sub) = queueService.getMessages
           .via(queueService.parseMessages)
           .via(TestServices.failure.storageService.downloadAttachment)
-          .map(_.map(_.info))
+          .map(_.map(_.info.toAttachmentInfo("TEST")))
           .via(queueService.deleteMessage)
           .toMat(sink)(Keep.both)
           .run()
@@ -53,6 +53,7 @@ class QueueSpec extends BaseSpec {
         val sink     = TestSink.probe[EitherErr[AttachmentInfo]]
         val (_, sub) = queueService.getMessages
           .via(queueService.parseMessages)
+          .map(_.map(_.toAttachmentInfo("TEST")))
           .via(queueService.deleteMessage)
           .toMat(sink)(Keep.both)
           .run()
@@ -67,7 +68,7 @@ class QueueSpec extends BaseSpec {
     }
 
     "Parse messages properly" in {
-      val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+      val sink = TestSink.probe[EitherErr[AttachmentInfoMessage]]
 
       val (_, sub) = queueService.getMessages
         .via(queueService.parseMessages)
@@ -86,7 +87,7 @@ class QueueSpec extends BaseSpec {
       import TestServices.failure.*
 
       "Report parsing message failure" in {
-        val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+        val sink = TestSink.probe[EitherErr[AttachmentInfoMessage]]
 
         val (_, sub) = queueService.getMessages
           .via(queueService.parseMessages)
@@ -104,7 +105,7 @@ class QueueSpec extends BaseSpec {
         val source     = TestSource.probe[EitherErr[AttachmentInfo]]
         val sink       = TestSink.probe[EitherErr[AttachmentInfo]]
         val messageId  = testSQSMessageIds.head
-        val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
+        val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip", TestNotableEvent))
 
         val (pub, sub) = source.via(queueService.deleteMessage).toMat(sink)(Keep.both).run()
         pub.sendNext(attachment).sendComplete()

@@ -16,7 +16,7 @@ import scala.util.{Try, Using}
 trait Bundle {
   def createBundle: Flow[EitherErr[SignedZipContent], EitherErr[AttachmentContent], NotUsed]
 
-  def extractBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed]
+  def extractBundle: Flow[EitherErr[AttachmentContentMessage], EitherErr[ZipContent], NotUsed]
 
   def extractMetadataField(metadata: Array[Byte], field: String): EitherErr[String]
 }
@@ -45,10 +45,13 @@ class BundleService()(using config: ServiceConfig) extends Bundle {
               zip.write(file)
               zip.closeEntry()
             }
-            extractMetadataField(content.metadata, "nrSubmissionId")
-              .map(extractedValue =>
-                AttachmentContent(content.info.copy(submissionId = Some(extractedValue)), ByteString(bytes.toByteArray))
-              )
+            extractMetadataField(content.metadata, "notableEvent")
+              .flatMap(notableEvent => {
+                extractMetadataField(content.metadata, "nrSubmissionId")
+                  .map(extractedValue =>
+                    AttachmentContent(content.info.toAttachmentInfo(notableEvent).copy(submissionId = Some(extractedValue) ), ByteString(bytes.toByteArray))
+                  )
+              })
           }
           .toEither
           .left
@@ -60,8 +63,8 @@ class BundleService()(using config: ServiceConfig) extends Bundle {
       ).flatten
     }
 
-  override def extractBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed] =
-    Flow[EitherErr[AttachmentContent]].map {
+  override def extractBundle: Flow[EitherErr[AttachmentContentMessage], EitherErr[ZipContent], NotUsed] =
+    Flow[EitherErr[AttachmentContentMessage]].map {
       _.flatMap { attachment =>
         val contentByteArray = attachment.content.toArray[Byte]
         for {
@@ -72,9 +75,9 @@ class BundleService()(using config: ServiceConfig) extends Bundle {
     }
 
   private def handleFileExtraction(
-    attachment: AttachmentInfo,
-    filename: String,
-    responseF: String => Either[Throwable, Option[Array[Byte]]]
+                                    attachment: AttachmentInfoMessage,
+                                    filename: String,
+                                    responseF: String => Either[Throwable, Option[Array[Byte]]]
   ): EitherErr[Array[Byte]] =
     responseF(filename).left
       .map(e =>

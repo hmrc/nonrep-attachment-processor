@@ -17,13 +17,13 @@ import scala.concurrent.duration.{DurationInt, FiniteDuration, NANOSECONDS, SECO
 trait Processor[A] {
   def getMessages: Source[Message, NotUsed]
 
-  def parseMessage: Flow[Message, EitherErr[AttachmentInfo], NotUsed]
+  def parseMessage: Flow[Message, EitherErr[AttachmentInfoMessage], NotUsed]
 
   def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]
 
-  def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed]
+  def downloadBundle: Flow[EitherErr[AttachmentInfoMessage], EitherErr[AttachmentContentMessage], NotUsed]
 
-  def unpackBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed]
+  def unpackBundle: Flow[EitherErr[AttachmentContentMessage], EitherErr[ZipContent], NotUsed]
 
   def signAttachment: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed]
 
@@ -64,7 +64,7 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
       .log(name = "getMessages")
       .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
-  override def parseMessage: Flow[Message, EitherErr[AttachmentInfo], NotUsed] =
+  override def parseMessage: Flow[Message, EitherErr[AttachmentInfoMessage], NotUsed] =
     queue.parseMessages
       .log(name = "parseMessage")
       .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
@@ -74,12 +74,12 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
       .log(name = "deleteMessage")
       .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
-  override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] =
+  override def downloadBundle: Flow[EitherErr[AttachmentInfoMessage], EitherErr[AttachmentContentMessage], NotUsed] =
     storage.downloadAttachment
       .log(name = "downloadBundle")
       .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
 
-  override def unpackBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed]       =
+  override def unpackBundle: Flow[EitherErr[AttachmentContentMessage], EitherErr[ZipContent], NotUsed]       =
     bundle.extractBundle
       .log(name = "unpackBundle")
       .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
