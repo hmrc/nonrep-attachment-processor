@@ -75,9 +75,9 @@ class BundleService()(using config: ServiceConfig) extends Bundle {
     }
 
   private def handleFileExtraction(
-                                    attachment: AttachmentInfoMessage,
-                                    filename: String,
-                                    responseF: String => Either[Throwable, Option[Array[Byte]]]
+    attachment: AttachmentInfoMessage,
+    filename: String,
+    responseF: String => Either[Throwable, Option[Array[Byte]]]
   ): EitherErr[Array[Byte]] =
     responseF(filename).left
       .map(e =>

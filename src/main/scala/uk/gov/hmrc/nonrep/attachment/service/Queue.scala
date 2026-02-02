@@ -68,18 +68,22 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
 
       Try {
         val s3ObjectKey = message
-          .body().parseJson
-          .asJsObject.fields("Records")
+          .body()
+          .parseJson
+          .asJsObject
+          .fields("Records")
           .convertTo[List[JsValue]]
           .head
-          .asJsObject.fields("s3")
-          .asJsObject.fields("object").asJsObject
+          .asJsObject
+          .fields("s3")
+          .asJsObject
+          .fields("object")
+          .asJsObject
           .fields("key")
           .convertTo[String]
 
         val attachmentId = s3ObjectKey
           .replaceFirst(".zip", "")
-        
         AttachmentInfoMessage(attachmentId, messageHandle, s3ObjectKey)
       }.toEither.left.map(thr =>
         ErrorMessageWithDeleteSQSMessage(messageHandle, s"Parsing SQS message failure ${message.body()}", Some(thr))
