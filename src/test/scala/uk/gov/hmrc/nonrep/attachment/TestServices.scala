@@ -37,7 +37,6 @@ object TestServices {
   val ec: ExecutionContext        = typedSystem.executionContext
   val config: ServiceConfig       = new ServiceConfig()
 
-  val TestBusinessId = "TEST_BUSINESSID"
   val TestNotableEvent = "TEST_NE"
 
   def entityToString(entity: ResponseEntity)(using system: ActorSystem[?] = typedSystem, context: ExecutionContext = ec): Future[String] =
