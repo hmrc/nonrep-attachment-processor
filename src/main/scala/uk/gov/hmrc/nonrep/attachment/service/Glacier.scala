@@ -82,7 +82,7 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
   ): Future[UploadArchiveResponse] =
     client.uploadArchive(uploadArchiveRequest, asyncRequestBody).toScala
 
-  private[service] def datedVaultName(notableEvent:String) = s"${environmentalVaultNamePrefix}$notableEvent-${now().getYear}"
+  private[service] def datedVaultName(notableEvent:String) = s"${environmentalVaultNamePrefix}${notableEvent}-${now().getYear}"
 }
 
 object ChecksumUtils {

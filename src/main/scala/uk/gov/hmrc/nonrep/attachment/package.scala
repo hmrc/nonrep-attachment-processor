@@ -34,40 +34,15 @@ package object attachment {
 
   case class ErrorMessage(message: String, optThrowable: Option[Throwable] = None, severity: Severity = ERROR) extends AttachmentError
 
-  case class AttachmentInfoMessage(
-    attachmentId: String,
-    message: String,
-    s3ObjectKey: String,
-    submissionId: Option[String] = None,
-    processingStart: Long = System.nanoTime(),
-    attachmentSize: Option[Long] = None
-  ) {
-    def toAttachmentInfo(notableEvent: String): AttachmentInfo =
-      AttachmentInfo(
-        attachmentId = attachmentId,
-        message = message,
-        s3ObjectKey = s3ObjectKey,
-        notableEvent = notableEvent,
-        submissionId = submissionId,
-        processingStart = processingStart,
-        attachmentSize = attachmentSize
-      )
-  }
-
   case class AttachmentInfo(
     attachmentId: String,
     message: String,
     s3ObjectKey: String,
-    notableEvent: String,
+    notableEvent: String = "vat-registration",
     submissionId: Option[String] = None,
     processingStart: Long = System.nanoTime(),
     attachmentSize: Option[Long] = None
   )
-
-  case class AttachmentContentMessage(info: AttachmentInfoMessage, content: ByteString) {
-    val bytes: Array[Byte] = content.toArray
-    val length: Long       = bytes.length.toLong
-  }
 
   case class AttachmentContent(info: AttachmentInfo, content: ByteString) {
     val bytes: Array[Byte] = content.toArray
@@ -76,8 +51,8 @@ package object attachment {
 
   case class ArchivedAttachment(info: AttachmentInfo, archiveId: String, vaultName: String)
 
-  case class ZipContent(info: AttachmentInfoMessage, attachment: Array[Byte], metadata: Array[Byte])
-  case class SignedZipContent(info: AttachmentInfoMessage, signedAttachment: Array[Byte], attachment: Array[Byte], metadata: Array[Byte]) {
+  case class ZipContent(info: AttachmentInfo, attachment: Array[Byte], metadata: Array[Byte])
+  case class SignedZipContent(info: AttachmentInfo, signedAttachment: Array[Byte], attachment: Array[Byte], metadata: Array[Byte]) {
     lazy val files: Seq[(String, Array[Byte])] = Seq(
       SIGNED_ATTACHMENT_FILE -> signedAttachment,
       ATTACHMENT_FILE        -> attachment,

@@ -29,7 +29,7 @@ trait Queue {
 
   def getMessages: Source[Message, NotUsed]
 
-  def parseMessages: Flow[Message, EitherErr[AttachmentInfoMessage], NotUsed]
+  def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed]
 
   def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]
 }
@@ -62,7 +62,7 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
   override def getMessages: Source[Message, NotUsed] =
     SqsSource(config.queueUrl, settings)
 
-  override def parseMessages: Flow[Message, EitherErr[AttachmentInfoMessage], NotUsed] =
+  override def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed] =
     Flow[Message].map { message =>
       val messageHandle = message.receiptHandle()
 
@@ -84,7 +84,7 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
 
         val attachmentId = s3ObjectKey
           .replaceFirst(".zip", "")
-        AttachmentInfoMessage(attachmentId, messageHandle, s3ObjectKey)
+        AttachmentInfo(attachmentId, messageHandle, s3ObjectKey)
       }.toEither.left.map(thr =>
         ErrorMessageWithDeleteSQSMessage(messageHandle, s"Parsing SQS message failure ${message.body()}", Some(thr))
       )

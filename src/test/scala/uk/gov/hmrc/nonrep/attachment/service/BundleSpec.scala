@@ -18,7 +18,7 @@ class BundleSpec extends BaseSpec {
     "create a zip archive from content given" in {
       val attachmentId = testAttachmentId
       val messageId    = testSQSMessageIds.head
-      val info         = AttachmentInfoMessage(attachmentId, messageId, s"$attachmentId.zip")
+      val info         = AttachmentInfo(attachmentId, messageId, s"$attachmentId.zip")
       val zipContent   =
         SignedZipContent(info, Array.fill[Byte](1000)(Byte.MaxValue), Array.fill[Byte](1000)(Byte.MaxValue), sampleAttachmentMetadata)
 
@@ -47,10 +47,10 @@ class BundleSpec extends BaseSpec {
     "extract content from zip archive" in {
       val messageId = testSQSMessageIds.head
       val file      = ByteString(sampleAttachment)
-      val info      = AttachmentInfoMessage(testAttachmentId, messageId, testS3ObjectKey)
-      val content   = AttachmentContentMessage(info, file)
+      val info      = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
+      val content   = AttachmentContent(info, file)
 
-      val source = TestSource.probe[EitherErr[AttachmentContentMessage]]
+      val source = TestSource.probe[EitherErr[AttachmentContent]]
       val sink   = TestSink.probe[EitherErr[ZipContent]]
 
       val (pub, sub) = source.via(zipper.extractBundle).toMat(sink)(Keep.both).run()
@@ -68,7 +68,7 @@ class BundleSpec extends BaseSpec {
     "extract nrSubmissionId field from metadata" in {
       val attachmentId = testAttachmentId
       val messageId    = testSQSMessageIds.head
-      val info         = AttachmentInfoMessage(testAttachmentId, messageId, testS3ObjectKey)
+      val info         = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
       val zipContent   =
         SignedZipContent(info, Array.fill[Byte](1000)(Byte.MaxValue), Array.fill[Byte](1000)(Byte.MaxValue), sampleAttachmentMetadata)
 
@@ -88,7 +88,7 @@ class BundleSpec extends BaseSpec {
     "extract notableEvent field from metadata" in {
       val attachmentId = testAttachmentId
       val messageId    = testSQSMessageIds.head
-      val info         = AttachmentInfoMessage(testAttachmentId, messageId, testS3ObjectKey)
+      val info         = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey, notableEvent = "test-notableEvent")
       val zipContent   =
         SignedZipContent(info, Array.fill[Byte](1000)(Byte.MaxValue), Array.fill[Byte](1000)(Byte.MaxValue), sampleAttachmentMetadata)
 
@@ -104,12 +104,12 @@ class BundleSpec extends BaseSpec {
       result.toOption.get.info.notableEvent shouldBe "test-notableEvent"
     }
 
-    "fail missing notableEvent field from metadata" in {
+    "with notableEvent field in metadata" in {
       val attachmentId = testAttachmentId
       val messageId    = testSQSMessageIds.head
-      val info         = AttachmentInfoMessage(testAttachmentId, messageId, testS3ObjectKey)
+      val info         = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
       val zipContent   =
-        SignedZipContent(info, Array.fill[Byte](1000)(Byte.MaxValue), Array.fill[Byte](1000)(Byte.MaxValue), sampleAttachmentMetadataWithoutNotableEvent)
+        SignedZipContent(info, Array.fill[Byte](1000)(Byte.MaxValue), Array.fill[Byte](1000)(Byte.MaxValue), sampleAttachmentMetadataWithNotableEvent)
 
       val source     = TestSource.probe[EitherErr[SignedZipContent]]
       val sink       = TestSink.probe[EitherErr[AttachmentContent]]
@@ -119,17 +119,17 @@ class BundleSpec extends BaseSpec {
         .request(1)
         .expectNext()
 
-      result.isRight                        shouldBe false
-      result.left.toOption.get.message shouldBe "failed to extract notableEvent from metadata.json file because key not found: notableEvent"
+      result.isRight                        shouldBe true
+      result.toOption.get.info.notableEvent shouldBe "test-notableEvent"
     }
 
     "fail on extracting non-zip archive" in {
       val messageId = testSQSMessageIds.head
       val file      = ByteString(Array.fill[Byte](10)(77))
-      val info      = AttachmentInfoMessage(testAttachmentId, messageId, testS3ObjectKey)
-      val content   = AttachmentContentMessage(info, file)
+      val info      = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
+      val content   = AttachmentContent(info, file)
 
-      val source = TestSource.probe[EitherErr[AttachmentContentMessage]]
+      val source = TestSource.probe[EitherErr[AttachmentContent]]
       val sink   = TestSink.probe[EitherErr[ZipContent]]
 
       val (pub, sub) = source.via(zipper.extractBundle).toMat(sink)(Keep.both).run()
@@ -145,10 +145,10 @@ class BundleSpec extends BaseSpec {
     "fail on extracting missing metadata.json file archive" in {
       val messageId = testSQSMessageIds.head
       val file      = ByteString(sampleErrorAttachmentMissingMetadata)
-      val info      = AttachmentInfoMessage(testAttachmentId, messageId, testS3ObjectKey)
-      val content   = AttachmentContentMessage(info, file)
+      val info      = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
+      val content   = AttachmentContent(info, file)
 
-      val source = TestSource.probe[EitherErr[AttachmentContentMessage]]
+      val source = TestSource.probe[EitherErr[AttachmentContent]]
       val sink   = TestSink.probe[EitherErr[ZipContent]]
 
       val (pub, sub) = source.via(zipper.extractBundle).toMat(sink)(Keep.both).run()

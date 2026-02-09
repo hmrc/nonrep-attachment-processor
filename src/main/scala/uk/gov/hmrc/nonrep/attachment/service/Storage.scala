@@ -15,7 +15,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait Storage {
 
-  def downloadAttachment: Flow[EitherErr[AttachmentInfoMessage], EitherErr[AttachmentContentMessage], NotUsed]
+  def downloadAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed]
 
   def deleteAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]
 }
@@ -24,17 +24,17 @@ class StorageService()(using config: ServiceConfig, system: ActorSystem[?]) exte
 
   implicit val ec: ExecutionContext = system.executionContext
 
-  protected def s3DownloadSource(attachment: AttachmentInfoMessage): Source[ByteString, Future[ObjectMetadata]] =
+  protected def s3DownloadSource(attachment: AttachmentInfo): Source[ByteString, Future[ObjectMetadata]] =
     S3.getObject(config.attachmentsBucket, attachment.s3ObjectKey)
 
-  override def downloadAttachment: Flow[EitherErr[AttachmentInfoMessage], EitherErr[AttachmentContentMessage], NotUsed] =
-    Flow[EitherErr[AttachmentInfoMessage]]
+  override def downloadAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] =
+    Flow[EitherErr[AttachmentInfo]]
       .mapAsyncUnordered(8) {
         case Left(error)       => Future.successful(Left(error))
         case Right(attachment) =>
           val (metadata, stream) = s3DownloadSource(attachment).toMat(Sink.reduce[ByteString](_ ++ _))(Keep.both).run()
           metadata
-            .flatMap(_ => stream.map(content => Right(AttachmentContentMessage(attachment, content)).withLeft[AttachmentError]))
+            .flatMap(_ => stream.map(content => Right(AttachmentContent(attachment, content)).withLeft[AttachmentError]))
             .recover { case e =>
               system.log.error(s"Error getting object ${attachment.s3ObjectKey} from s3 ${config.attachmentsBucket}", e)
               Left(
