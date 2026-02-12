@@ -29,11 +29,15 @@ import scala.util.Try
 
 object TestServices {
 
+  val METADATA_FILE_WITH_NOTABLEEVENT = "metadata-with-notableEvent.json"
+
   lazy val testKit: ActorTestKit = ActorTestKit()
 
   val typedSystem: ActorSystem[?] = testKit.internalSystem
   val ec: ExecutionContext        = typedSystem.executionContext
   val config: ServiceConfig       = new ServiceConfig()
+
+  val TestNotableEvent = "TEST_NE"
 
   def entityToString(entity: ResponseEntity)(using system: ActorSystem[?] = typedSystem, context: ExecutionContext = ec): Future[String] =
     entity.dataBytes.runFold(ByteString(""))(_ ++ _).map(_.utf8String)
@@ -43,6 +47,8 @@ object TestServices {
   val archiveId                                         = "archiveId"
   val sampleAttachmentMetadata: Array[Byte]             =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(METADATA_FILE).getFile).toPath)
+  val sampleAttachmentMetadataWithNotableEvent: Array[Byte]             =
+    Files.readAllBytes(new File(getClass.getClassLoader.getResource(METADATA_FILE_WITH_NOTABLEEVENT).getFile).toPath)
   val sampleAttachment: Array[Byte]                     =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.zip").getFile).toPath)
   val sampleErrorAttachmentMissingMetadata: Array[Byte] =
@@ -117,8 +123,8 @@ object TestServices {
 
       override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
         Flow[EitherErr[AttachmentInfo]].map {
-          _.map(_ =>
-            AttachmentInfo(testAttachmentId, testSQSMessageIds.head, testS3ObjectKey, attachmentSize = Some(sampleAttachment.length.toLong))
+          _.map(attachmentInfo =>
+            AttachmentInfo(testAttachmentId, testSQSMessageIds.head, testS3ObjectKey, attachmentSize = Some(sampleAttachment.length.toLong), notableEvent = attachmentInfo.notableEvent)
           )
         }
     }

@@ -3,6 +3,8 @@
 *.log*
 .history
 .idea
+.DS_Store
+**/*.DS_Store
 version.txt
 /*.iml
 /*.ipr

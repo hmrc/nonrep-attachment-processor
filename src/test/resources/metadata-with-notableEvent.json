@@ -1,0 +1,9 @@
+{
+    "attachmentUrl": "testAttachmentUrl",
+    "businessId": "test-businessId",
+    "notableEvent": "test-notableEvent",
+    "attachmentId": "738bcba6-7f9e-11ec-8768-3f8498104f38",
+    "attachmentSha256Checksum": "968d0b8acb312f8cb0067da44a08260f53bab085d874d359bf6edb523ea01d93",
+    "attachmentContentType": "application/json",
+    "nrSubmissionId": "eed095f9-7cd5-4a58-b74e-906c8d8807b5"
+}

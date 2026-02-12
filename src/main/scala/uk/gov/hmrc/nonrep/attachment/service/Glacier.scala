@@ -40,9 +40,9 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
     Flow[EitherErr[AttachmentContent]]
       .mapAsyncUnordered(8) {
         case Right(attachmentContent) =>
-          eventuallyArchive(attachmentContent, datedVaultName).map { (archiveIdOrError: EitherErr[String]) =>
+          eventuallyArchive(attachmentContent, datedVaultName(attachmentContent.info.notableEvent)).map { (archiveIdOrError: EitherErr[String]) =>
             archiveIdOrError.map { archiveId =>
-              ArchivedAttachment(attachmentContent.info.copy(attachmentSize = Some(attachmentContent.length)), archiveId, datedVaultName)
+              ArchivedAttachment(attachmentContent.info.copy(attachmentSize = Some(attachmentContent.length)), archiveId, datedVaultName(attachmentContent.info.notableEvent))
             }
           }
         case Left(e)                  =>
@@ -82,7 +82,7 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
   ): Future[UploadArchiveResponse] =
     client.uploadArchive(uploadArchiveRequest, asyncRequestBody).toScala
 
-  private[service] def datedVaultName = s"${environmentalVaultNamePrefix}vat-registration-${now().getYear}"
+  private[service] def datedVaultName(notableEvent:String) = s"${environmentalVaultNamePrefix}${notableEvent}-${now().getYear}"
 }
 
 object ChecksumUtils {

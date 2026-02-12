@@ -19,6 +19,9 @@ trait Bundle {
   def extractBundle: Flow[EitherErr[AttachmentContent], EitherErr[ZipContent], NotUsed]
 
   def extractMetadataField(metadata: Array[Byte], field: String): EitherErr[String]
+
+  def extractOptionalMetadataField(metadata: Array[Byte], field: String): Option[String]
+
 }
 
 class BundleService()(using config: ServiceConfig) extends Bundle {
@@ -31,6 +34,14 @@ class BundleService()(using config: ServiceConfig) extends Bundle {
     }.toEither.left.map(error =>
       ErrorMessage(s"failed to extract $field from metadata.json file because ${error.getMessage}", Some(error), ERROR)
     )
+
+  override def extractOptionalMetadataField(metadata: Array[Byte], field: String): Option[String] =
+    Try {
+      new String(metadata, "utf-8").parseJson.asJsObject
+        .fields(field)
+        .convertTo[String]
+    }.toOption
+
 
   override def createBundle: Flow[EitherErr[SignedZipContent], EitherErr[AttachmentContent], NotUsed] =
     Flow[EitherErr[SignedZipContent]].map {
@@ -45,10 +56,13 @@ class BundleService()(using config: ServiceConfig) extends Bundle {
               zip.write(file)
               zip.closeEntry()
             }
-            extractMetadataField(content.metadata, "nrSubmissionId")
-              .map(extractedValue =>
-                AttachmentContent(content.info.copy(submissionId = Some(extractedValue)), ByteString(bytes.toByteArray))
-              )
+
+            for {
+              extractedValue <- extractMetadataField(content.metadata, "nrSubmissionId")
+              notableEvent = extractOptionalMetadataField(content.metadata, "notableEvent").getOrElse(content.info.notableEvent)
+            } yield {
+              AttachmentContent(content.info.copy(submissionId = Some(extractedValue), notableEvent = notableEvent), ByteString(bytes.toByteArray))
+            }
           }
           .toEither
           .left

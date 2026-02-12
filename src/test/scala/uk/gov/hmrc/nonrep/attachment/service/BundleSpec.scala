@@ -85,6 +85,44 @@ class BundleSpec extends BaseSpec {
       result.toOption.get.info.submissionId shouldBe Some("eed095f9-7cd5-4a58-b74e-906c8d8807b5")
     }
 
+    "extract notableEvent field from metadata" in {
+      val attachmentId = testAttachmentId
+      val messageId    = testSQSMessageIds.head
+      val info         = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey, notableEvent = "test-notableEvent")
+      val zipContent   =
+        SignedZipContent(info, Array.fill[Byte](1000)(Byte.MaxValue), Array.fill[Byte](1000)(Byte.MaxValue), sampleAttachmentMetadata)
+
+      val source     = TestSource.probe[EitherErr[SignedZipContent]]
+      val sink       = TestSink.probe[EitherErr[AttachmentContent]]
+      val (pub, sub) = source.via(zipper.createBundle).toMat(sink)(Keep.both).run()
+      pub.sendNext(Right(zipContent)).sendComplete()
+      val result     = sub
+        .request(1)
+        .expectNext()
+
+      result.isRight                        shouldBe true
+      result.toOption.get.info.notableEvent shouldBe "test-notableEvent"
+    }
+
+    "with notableEvent field in metadata" in {
+      val attachmentId = testAttachmentId
+      val messageId    = testSQSMessageIds.head
+      val info         = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
+      val zipContent   =
+        SignedZipContent(info, Array.fill[Byte](1000)(Byte.MaxValue), Array.fill[Byte](1000)(Byte.MaxValue), sampleAttachmentMetadataWithNotableEvent)
+
+      val source     = TestSource.probe[EitherErr[SignedZipContent]]
+      val sink       = TestSink.probe[EitherErr[AttachmentContent]]
+      val (pub, sub) = source.via(zipper.createBundle).toMat(sink)(Keep.both).run()
+      pub.sendNext(Right(zipContent)).sendComplete()
+      val result     = sub
+        .request(1)
+        .expectNext()
+
+      result.isRight                        shouldBe true
+      result.toOption.get.info.notableEvent shouldBe "test-notableEvent"
+    }
+
     "fail on extracting non-zip archive" in {
       val messageId = testSQSMessageIds.head
       val file      = ByteString(Array.fill[Byte](10)(77))
