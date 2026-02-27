@@ -25,36 +25,42 @@ object Routes {
 class Routes(processor: Future[Done])(using system: ActorSystem[?], config: ServiceConfig) {
 
   val log: Logger                        = system.log
+  
   val exceptionHandler: ExceptionHandler = ExceptionHandler { case error =>
     log.error("Internal server error", error)
     complete(HttpResponse(InternalServerError, entity = "Internal NRS attachments processor error"))
   }
 
+  val pingPath: Route = pathLabeled("ping") {
+    get {
+      complete {
+        if processor.isCompleted then HttpResponse(StatusCodes.InternalServerError, entity = "Processing of attachments is finished")
+        else HttpResponse(StatusCodes.OK, entity = "pong")
+      }
+    }
+  }
+  
+  val versionPath: Route = pathLabeled("version") {
+    pathEndOrSingleSlash {
+      get {
+        complete(StatusCodes.OK, BuildVersion(version = BuildInfo.version))
+      }
+    }
+  }
+  
+  val metricsPath: Route = pathLabeled("metrics") {
+    get {
+      metrics(registry)
+    }
+  }
+  
   lazy val serviceRoutes: Route =
     handleExceptions(exceptionHandler) {
       pathPrefix("attachment-processor") {
-        pathLabeled("ping") {
-          get {
-            complete {
-              if processor.isCompleted then HttpResponse(StatusCodes.InternalServerError, entity = "Processing of attachments is finished")
-              else HttpResponse(StatusCodes.OK, entity = "pong")
-            }
-          }
-        } ~ pathLabeled("version") {
-          pathEndOrSingleSlash {
-            get {
-              complete(StatusCodes.OK, BuildVersion(version = BuildInfo.version))
-            }
-          }
-        }
-      } ~ pathLabeled("ping") {
-        get {
-          complete(HttpResponse(StatusCodes.OK, entity = "pong"))
-        }
-      } ~ pathLabeled("metrics") {
-        get {
-          metrics(registry)
-        }
-      }
+        pingPath 
+          ~ versionPath
+      } 
+        ~ pingPath
+        ~ metricsPath
     }
 }
