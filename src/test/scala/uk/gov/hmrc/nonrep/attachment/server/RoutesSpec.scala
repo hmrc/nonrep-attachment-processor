@@ -30,24 +30,22 @@ class RoutesSpec extends BaseSpec {
   implicit val config: ServiceConfig = new ServiceConfig()
 
   trait Setup {
-    val routes = new Routes(Future {
+    val defaultF: Future[Done] = Future {
       Thread.sleep(10000)
       Done
-    })
+    }
+    val routes: Routes = new Routes(defaultF)
   }
 
   "Attachment Processor routes" should {
 
     "catch exception" in new Setup {
-      override val routes = new Routes(Future {
-        Thread.sleep(10000)
-        Done
-      }) {
+      override val routes: Routes = new Routes(defaultF) {
 
         override val versionPath: Route = pathLabeled("version") {
           pathEndOrSingleSlash {
             get {
-              _.complete((1 / 0).toString) // invalid code to force an exception
+              _.complete(IllegalArgumentException("something bad happened")) // invalid code to force an exception
             }
           }
         }
