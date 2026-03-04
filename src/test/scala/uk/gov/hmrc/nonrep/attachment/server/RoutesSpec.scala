@@ -38,7 +38,37 @@ class RoutesSpec extends BaseSpec {
   }
 
   "Attachment Processor routes" should {
+    "return version information" in new Setup {
+      val request: HttpRequest = Get(s"/${config.appName}/version")
 
+      request ~> routes.serviceRoutes ~> check {
+        status shouldBe StatusCodes.OK
+        contentType shouldBe ContentTypes.`application/json`
+        responseAs[BuildVersion].version shouldBe BuildInfo.version
+      }
+    }
+
+    "reply to ping request on service url" in new Setup {
+      val request: HttpRequest = Get(s"/${config.appName}/ping")
+
+      request ~> routes.serviceRoutes ~> check {
+        status shouldBe StatusCodes.OK
+        contentType shouldBe ContentTypes.`text/plain(UTF-8)`
+        responseAs[String] shouldBe "pong"
+      }
+    }
+
+    "reply to ping request" in new Setup {
+      val request: HttpRequest = Get(s"/ping")
+
+      request ~> routes.serviceRoutes ~> check {
+        status shouldBe StatusCodes.OK
+        contentType shouldBe ContentTypes.`text/plain(UTF-8)`
+        responseAs[String] shouldBe "pong"
+      }
+    }
+
+    // the below tests require overrides to avoid conflicting behaviour
     "catch exception" in new Setup {
       override val routes: Routes = new Routes(defaultF) {
 
@@ -60,44 +90,15 @@ class RoutesSpec extends BaseSpec {
       }
     }
 
-    "return version information" in new Setup {
-      val request: HttpRequest = Get(s"/${config.appName}/version")
-
-      request ~> routes.serviceRoutes ~> check {
-        status shouldBe StatusCodes.OK
-        contentType shouldBe ContentTypes.`application/json`
-        responseAs[BuildVersion].version shouldBe BuildInfo.version
-      }
-    }
-
-    "reply to ping request on service url" in new Setup {
-      val request: HttpRequest = Get(s"/${config.appName}/ping")
-
-      request ~> routes.serviceRoutes ~> check {
-        status shouldBe StatusCodes.OK
-        contentType shouldBe ContentTypes.`text/plain(UTF-8)`
-        responseAs[String] shouldBe "pong"
-      }
-    }
 
     "reply to ping when processor stopped working" in new Setup {
-      override val routes = new Routes(Future(Done))
+      override val routes: Routes = new Routes(Future.successful(Done))
 
       val request: HttpRequest = Get(s"/${config.appName}/ping")
       request ~> routes.serviceRoutes ~> check {
         status shouldBe StatusCodes.InternalServerError
         contentType shouldBe ContentTypes.`text/plain(UTF-8)`
         responseAs[String] shouldBe "Processing of attachments is finished"
-      }
-    }
-
-    "reply to ping request" in new Setup {
-      val request: HttpRequest = Get(s"/ping")
-
-      request ~> routes.serviceRoutes ~> check {
-        status shouldBe StatusCodes.OK
-        contentType shouldBe ContentTypes.`text/plain(UTF-8)`
-        responseAs[String] shouldBe "pong"
       }
     }
   }
