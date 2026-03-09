@@ -6,18 +6,14 @@ import org.apache.pekko.Done
 import org.apache.pekko.actor.testkit.typed.scaladsl.ActorTestKit
 import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.actor.typed.scaladsl.adapter.*
-import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpRequest, StatusCodes}
-import org.apache.pekko.http.scaladsl.server.Directives.{complete, get, handleExceptions, pathEndOrSingleSlash}
-import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
-import uk.gov.hmrc.nonrep.BuildInfo
 import org.apache.pekko.http.scaladsl.marshallers.sprayjson.SprayJsonSupport.*
+import org.apache.pekko.http.scaladsl.model.{ContentTypes, HttpRequest, StatusCodes}
 import org.apache.pekko.http.scaladsl.server.Route
-import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats.*
+import org.apache.pekko.http.scaladsl.testkit.RouteTestTimeout
 import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats.buildVersionJsonFormat
 
 import scala.concurrent.Future
 import scala.concurrent.duration.*
-import scala.concurrent.ExecutionContext.Implicits.global
 
 class RoutesSpec extends BaseSpec {
 

@@ -1,11 +1,10 @@
 package uk.gov.hmrc.nonrep.attachment
 
 import org.apache.pekko.actor.testkit.typed.scaladsl.ActorTestKit
-import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.actor.typed.scaladsl.adapter.*
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
-import org.scalatest.{BeforeAndAfterEach, Inside}
+import org.scalatest.Inside
 import org.scalatest.time.{Millis, Seconds, Span}
 import uk.gov.hmrc.nonrep.BuildInfo
 import uk.gov.hmrc.nonrep.attachment.server.{NonrepMicroservice, ServiceConfig}

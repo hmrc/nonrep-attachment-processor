@@ -5,7 +5,6 @@ import org.apache.pekko.stream.scaladsl.Keep
 import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
 
 import java.util.UUID
-import scala.concurrent.duration.DurationInt
 
 class UpdateSpec extends BaseSpec {
 
