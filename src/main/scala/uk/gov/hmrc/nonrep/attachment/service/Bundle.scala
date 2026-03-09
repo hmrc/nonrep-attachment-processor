@@ -42,7 +42,6 @@ class BundleService()(using config: ServiceConfig) extends Bundle {
         .convertTo[String]
     }.toOption
 
-
   override def createBundle: Flow[EitherErr[SignedZipContent], EitherErr[AttachmentContent], NotUsed] =
     Flow[EitherErr[SignedZipContent]].map {
       _.flatMap(content =>
@@ -59,10 +58,11 @@ class BundleService()(using config: ServiceConfig) extends Bundle {
 
             for {
               extractedValue <- extractMetadataField(content.metadata, "nrSubmissionId")
-              notableEvent = extractOptionalMetadataField(content.metadata, "notableEvent").getOrElse(content.info.notableEvent)
-            } yield {
-              AttachmentContent(content.info.copy(submissionId = Some(extractedValue), notableEvent = notableEvent), ByteString(bytes.toByteArray))
-            }
+              notableEvent    = extractOptionalMetadataField(content.metadata, "notableEvent").getOrElse(content.info.notableEvent)
+            } yield AttachmentContent(
+              content.info.copy(submissionId = Some(extractedValue), notableEvent = notableEvent),
+              ByteString(bytes.toByteArray)
+            )
           }
           .toEither
           .left

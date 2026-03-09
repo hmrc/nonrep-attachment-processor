@@ -1,0 +1,11 @@
+repos:
+  - repo: https://github.com/softwaremill/scala-pre-commit-hooks
+    rev: v0.5.0
+    hooks: #mix and match any of the following:
+      - id: sbt-fatal-warnings #arguments optional
+        args: [ --scope=test:compile ]
+      - id: sbt-unused-imports #includes fatal warnings, arguments optional
+        args: [ --scope=test:compile ]
+      - id: sbt-scalafmt
+      - id: sbt-scalafmt-apply
+        args: [ --no-clean ]

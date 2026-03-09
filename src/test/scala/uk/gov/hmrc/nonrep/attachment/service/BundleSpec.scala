@@ -109,7 +109,12 @@ class BundleSpec extends BaseSpec {
       val messageId    = testSQSMessageIds.head
       val info         = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
       val zipContent   =
-        SignedZipContent(info, Array.fill[Byte](1000)(Byte.MaxValue), Array.fill[Byte](1000)(Byte.MaxValue), sampleAttachmentMetadataWithNotableEvent)
+        SignedZipContent(
+          info,
+          Array.fill[Byte](1000)(Byte.MaxValue),
+          Array.fill[Byte](1000)(Byte.MaxValue),
+          sampleAttachmentMetadataWithNotableEvent
+        )
 
       val source     = TestSource.probe[EitherErr[SignedZipContent]]
       val sink       = TestSink.probe[EitherErr[AttachmentContent]]

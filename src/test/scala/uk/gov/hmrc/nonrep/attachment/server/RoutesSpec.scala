@@ -34,7 +34,7 @@ class RoutesSpec extends BaseSpec {
       Thread.sleep(10000)
       Done
     }
-    val routes: Routes = new Routes(defaultF)
+    val routes: Routes         = new Routes(defaultF)
   }
 
   "Attachment Processor routes" should {
@@ -42,8 +42,8 @@ class RoutesSpec extends BaseSpec {
       val request: HttpRequest = Get(s"/${config.appName}/version")
 
       request ~> routes.serviceRoutes ~> check {
-        status shouldBe StatusCodes.OK
-        contentType shouldBe ContentTypes.`application/json`
+        status                           shouldBe StatusCodes.OK
+        contentType                      shouldBe ContentTypes.`application/json`
         responseAs[BuildVersion].version shouldBe BuildInfo.version
       }
     }
@@ -52,8 +52,8 @@ class RoutesSpec extends BaseSpec {
       val request: HttpRequest = Get(s"/${config.appName}/ping")
 
       request ~> routes.serviceRoutes ~> check {
-        status shouldBe StatusCodes.OK
-        contentType shouldBe ContentTypes.`text/plain(UTF-8)`
+        status             shouldBe StatusCodes.OK
+        contentType        shouldBe ContentTypes.`text/plain(UTF-8)`
         responseAs[String] shouldBe "pong"
       }
     }
@@ -62,8 +62,8 @@ class RoutesSpec extends BaseSpec {
       val request: HttpRequest = Get(s"/ping")
 
       request ~> routes.serviceRoutes ~> check {
-        status shouldBe StatusCodes.OK
-        contentType shouldBe ContentTypes.`text/plain(UTF-8)`
+        status             shouldBe StatusCodes.OK
+        contentType        shouldBe ContentTypes.`text/plain(UTF-8)`
         responseAs[String] shouldBe "pong"
       }
     }
@@ -84,20 +84,19 @@ class RoutesSpec extends BaseSpec {
       val request: HttpRequest = Get(s"/${config.appName}/version")
 
       request ~> routes.serviceRoutes ~> check {
-        status shouldBe StatusCodes.InternalServerError
-        contentType shouldBe ContentTypes.`text/plain(UTF-8)`
+        status                shouldBe StatusCodes.InternalServerError
+        contentType           shouldBe ContentTypes.`text/plain(UTF-8)`
         responseAs[String] shouldEqual "Internal NRS attachments processor error"
       }
     }
-
 
     "reply to ping when processor stopped working" in new Setup {
       override val routes: Routes = new Routes(Future.successful(Done))
 
       val request: HttpRequest = Get(s"/${config.appName}/ping")
       request ~> routes.serviceRoutes ~> check {
-        status shouldBe StatusCodes.InternalServerError
-        contentType shouldBe ContentTypes.`text/plain(UTF-8)`
+        status             shouldBe StatusCodes.InternalServerError
+        contentType        shouldBe ContentTypes.`text/plain(UTF-8)`
         responseAs[String] shouldBe "Processing of attachments is finished"
       }
     }

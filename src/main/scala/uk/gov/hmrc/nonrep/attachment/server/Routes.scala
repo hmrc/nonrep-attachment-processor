@@ -24,8 +24,8 @@ object Routes {
 
 class Routes(processor: Future[Done])(using system: ActorSystem[?], config: ServiceConfig) {
 
-  val log: Logger                        = system.log
-  
+  val log: Logger = system.log
+
   val exceptionHandler: ExceptionHandler = ExceptionHandler { case error =>
     log.error("Internal server error", error)
     complete(HttpResponse(InternalServerError, entity = "Internal NRS attachments processor error"))
@@ -39,7 +39,7 @@ class Routes(processor: Future[Done])(using system: ActorSystem[?], config: Serv
       }
     }
   }
-  
+
   val versionPath: Route = pathLabeled("version") {
     pathEndOrSingleSlash {
       get {
@@ -47,19 +47,19 @@ class Routes(processor: Future[Done])(using system: ActorSystem[?], config: Serv
       }
     }
   }
-  
+
   val metricsPath: Route = pathLabeled("metrics") {
     get {
       metrics(registry)
     }
   }
-  
+
   lazy val serviceRoutes: Route =
     handleExceptions(exceptionHandler) {
       pathPrefix("attachment-processor") {
-        pingPath 
+        pingPath
           ~ versionPath
-      } 
+      }
         ~ pingPath
         ~ metricsPath
     }
