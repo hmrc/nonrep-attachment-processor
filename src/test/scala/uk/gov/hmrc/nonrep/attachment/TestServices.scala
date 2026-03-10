@@ -42,20 +42,20 @@ object TestServices {
   def entityToString(entity: ResponseEntity)(using system: ActorSystem[?] = typedSystem, context: ExecutionContext = ec): Future[String] =
     entity.dataBytes.runFold(ByteString(""))(_ ++ _).map(_.utf8String)
 
-  val testAttachmentId                                  = "738bcba6-7f9e-11ec-8768-3f8498104f38"
-  val testS3ObjectKey: String                           = s"$testAttachmentId.zip"
-  val archiveId                                         = "archiveId"
-  val sampleAttachmentMetadata: Array[Byte]             =
+  val testAttachmentId                                      = "738bcba6-7f9e-11ec-8768-3f8498104f38"
+  val testS3ObjectKey: String                               = s"$testAttachmentId.zip"
+  val archiveId                                             = "archiveId"
+  val sampleAttachmentMetadata: Array[Byte]                 =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(METADATA_FILE).getFile).toPath)
-  val sampleAttachmentMetadataWithNotableEvent: Array[Byte]             =
+  val sampleAttachmentMetadataWithNotableEvent: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(METADATA_FILE_WITH_NOTABLEEVENT).getFile).toPath)
-  val sampleAttachment: Array[Byte]                     =
+  val sampleAttachment: Array[Byte]                         =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.zip").getFile).toPath)
-  val sampleErrorAttachmentMissingMetadata: Array[Byte] =
+  val sampleErrorAttachmentMissingMetadata: Array[Byte]     =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"${testAttachmentId}_missing_metadata.zip").getFile).toPath)
-  val sampleAttachmentContent: Array[Byte]              =
+  val sampleAttachmentContent: Array[Byte]                  =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(testAttachmentId).getFile).toPath)
-  val sampleSignedAttachmentContent: Array[Byte]        =
+  val sampleSignedAttachmentContent: Array[Byte]            =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.p7m").getFile).toPath)
 
   val testApplicationSink: Sink[EitherErr[AttachmentInfo], TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
@@ -124,7 +124,13 @@ object TestServices {
       override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
         Flow[EitherErr[AttachmentInfo]].map {
           _.map(attachmentInfo =>
-            AttachmentInfo(testAttachmentId, testSQSMessageIds.head, testS3ObjectKey, attachmentSize = Some(sampleAttachment.length.toLong), notableEvent = attachmentInfo.notableEvent)
+            AttachmentInfo(
+              testAttachmentId,
+              testSQSMessageIds.head,
+              testS3ObjectKey,
+              attachmentSize = Some(sampleAttachment.length.toLong),
+              notableEvent = attachmentInfo.notableEvent
+            )
           )
         }
     }

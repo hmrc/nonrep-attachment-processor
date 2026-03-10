@@ -3,7 +3,7 @@ package uk.gov.hmrc.nonrep.attachment.service
 import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.stream.ActorAttributes
 import org.apache.pekko.stream.Supervision.restartingDecider
-import org.apache.pekko.stream.connectors.s3.{ObjectMetadata, S3Exception}
+import org.apache.pekko.stream.connectors.s3.ObjectMetadata
 import org.apache.pekko.stream.connectors.s3.scaladsl.S3
 import org.apache.pekko.stream.scaladsl.{Flow, Keep, Sink, Source}
 import org.apache.pekko.util.ByteString

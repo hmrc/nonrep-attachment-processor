@@ -96,6 +96,9 @@ lazy val root = (project in file(".")).
   )
 
 run / fork := true
+
+scalacOptions ++= Seq("-Wunused:imports")
+
 Compile / scalacOptions ++= Seq(
   "-deprecation",
   "-feature"

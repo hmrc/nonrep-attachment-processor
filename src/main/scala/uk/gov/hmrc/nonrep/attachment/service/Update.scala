@@ -6,7 +6,7 @@ import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Created, OK}
 import org.apache.pekko.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
 import org.apache.pekko.stream.Supervision.restartingDecider
-import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Merge, Partition, Source}
+import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Merge, Partition}
 import org.apache.pekko.stream.{ActorAttributes, FlowShape, OverflowStrategy}
 import org.apache.pekko.util.ByteString
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider

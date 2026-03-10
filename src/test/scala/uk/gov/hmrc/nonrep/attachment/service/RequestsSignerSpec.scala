@@ -6,7 +6,6 @@ import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCrede
 import software.amazon.awssdk.auth.signer.internal.Aws4SignerUtils
 import software.amazon.awssdk.http.auth.aws.signer.{AwsV4FamilyHttpSigner, AwsV4HttpSigner}
 import software.amazon.awssdk.http.auth.spi.signer.HttpSigner
-import software.amazon.awssdk.http.{SdkHttpFullRequest, SdkHttpMethod}
 import software.amazon.awssdk.regions.Region
 
 import java.time.temporal.{ChronoUnit, TemporalUnit}

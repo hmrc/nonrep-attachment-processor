@@ -5,7 +5,6 @@ import org.apache.pekko.stream.scaladsl.Keep
 import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
 
 import java.util.UUID
-import scala.concurrent.duration.DurationInt
 
 class UpdateSpec extends BaseSpec {
 
@@ -17,7 +16,13 @@ class UpdateSpec extends BaseSpec {
       import TestServices.success.*
       val messageId      = testSQSMessageIds.head
       val attachmentInfo =
-        AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip", submissionId = Some(UUID.randomUUID().toString), notableEvent = TestNotableEvent)
+        AttachmentInfo(
+          testAttachmentId,
+          messageId,
+          s"$testAttachmentId.zip",
+          submissionId = Some(UUID.randomUUID().toString),
+          notableEvent = TestNotableEvent
+        )
       val vaultName      = UUID.randomUUID().toString
       val archiveId      = UUID.randomUUID().toString
       val archived       = Right(ArchivedAttachment(attachmentInfo, vaultName, archiveId))
