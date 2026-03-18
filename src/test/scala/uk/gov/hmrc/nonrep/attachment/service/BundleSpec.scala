@@ -20,7 +20,13 @@ class BundleSpec extends BaseSpec {
       val messageId    = testSQSMessageIds.head
       val info         = AttachmentInfo(attachmentId, messageId, s"$attachmentId.zip")
       val zipContent   =
-        SignedZipContent(info, Array.fill[Byte](1000)(Byte.MaxValue), Array.fill[Byte](1000)(Byte.MaxValue), sampleAttachmentMetadata)
+        SignedZipContent(
+          info,
+          Array.fill[Byte](1000)(Byte.MaxValue),
+          Array.fill[Byte](1000)(Byte.MaxValue),
+          sampleAttachmentMetadata,
+          sampleSignedAttachmentMetadata
+        )
 
       val source     = TestSource.probe[EitherErr[SignedZipContent]]
       val sink       = TestSink.probe[EitherErr[AttachmentContent]]
@@ -70,7 +76,13 @@ class BundleSpec extends BaseSpec {
       val messageId    = testSQSMessageIds.head
       val info         = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
       val zipContent   =
-        SignedZipContent(info, Array.fill[Byte](1000)(Byte.MaxValue), Array.fill[Byte](1000)(Byte.MaxValue), sampleAttachmentMetadata)
+        SignedZipContent(
+          info,
+          Array.fill[Byte](1000)(Byte.MaxValue),
+          Array.fill[Byte](1000)(Byte.MaxValue),
+          sampleAttachmentMetadata,
+          sampleSignedAttachmentMetadata
+        )
 
       val source     = TestSource.probe[EitherErr[SignedZipContent]]
       val sink       = TestSink.probe[EitherErr[AttachmentContent]]
@@ -90,7 +102,13 @@ class BundleSpec extends BaseSpec {
       val messageId    = testSQSMessageIds.head
       val info         = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey, notableEvent = "test-notableEvent")
       val zipContent   =
-        SignedZipContent(info, Array.fill[Byte](1000)(Byte.MaxValue), Array.fill[Byte](1000)(Byte.MaxValue), sampleAttachmentMetadata)
+        SignedZipContent(
+          info,
+          Array.fill[Byte](1000)(Byte.MaxValue),
+          Array.fill[Byte](1000)(Byte.MaxValue),
+          sampleAttachmentMetadata,
+          sampleSignedAttachmentMetadata
+        )
 
       val source     = TestSource.probe[EitherErr[SignedZipContent]]
       val sink       = TestSink.probe[EitherErr[AttachmentContent]]
@@ -113,7 +131,8 @@ class BundleSpec extends BaseSpec {
           info,
           Array.fill[Byte](1000)(Byte.MaxValue),
           Array.fill[Byte](1000)(Byte.MaxValue),
-          sampleAttachmentMetadataWithNotableEvent
+          sampleAttachmentMetadataWithNotableEvent,
+          sampleSignedAttachmentMetadata
         )
 
       val source     = TestSource.probe[EitherErr[SignedZipContent]]

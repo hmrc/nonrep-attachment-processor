@@ -4,13 +4,14 @@ import org.apache.pekko.util.ByteString
 
 package object attachment {
 
-  type Attachment = Array[Byte]
+  type AttachmentBinary = Array[Byte]
 
   sealed trait Severity
   case object ERROR extends Severity
   case object WARN extends Severity
 
   val METADATA_FILE          = "metadata.json"
+  val SIGNED_METADATA_FILE   = "signed-metadata.p7m"
   val ATTACHMENT_FILE        = "attachment.data"
   val SIGNED_ATTACHMENT_FILE = "signed-attachment.p7m"
 
@@ -45,28 +46,36 @@ package object attachment {
   )
 
   case class AttachmentContent(info: AttachmentInfo, content: ByteString) {
-    val bytes: Array[Byte] = content.toArray
-    val length: Long       = bytes.length.toLong
+    val bytes: AttachmentBinary = content.toArray
+    val length: Long            = bytes.length.toLong
   }
 
   case class ArchivedAttachment(info: AttachmentInfo, archiveId: String, vaultName: String)
 
-  case class ZipContent(info: AttachmentInfo, attachment: Array[Byte], metadata: Array[Byte])
-  case class SignedZipContent(info: AttachmentInfo, signedAttachment: Array[Byte], attachment: Array[Byte], metadata: Array[Byte]) {
-    lazy val files: Seq[(String, Array[Byte])] = Seq(
+  case class ZipContent(info: AttachmentInfo, attachment: AttachmentBinary, metadata: AttachmentBinary)
+  case class SignedZipContent(
+    info: AttachmentInfo,
+    signedAttachment: AttachmentBinary,
+    attachment: AttachmentBinary,
+    metadata: AttachmentBinary,
+    signedMetadata: AttachmentBinary
+  ) {
+    lazy val files: Seq[(String, AttachmentBinary)] = Seq(
       SIGNED_ATTACHMENT_FILE -> signedAttachment,
       ATTACHMENT_FILE        -> attachment,
-      METADATA_FILE          -> metadata
+      METADATA_FILE          -> metadata,
+      SIGNED_METADATA_FILE   -> signedMetadata
     )
   }
 
   object SignedZipContent {
-    def apply(content: ZipContent, signedAttachment: Array[Byte]): SignedZipContent =
+    def apply(content: ZipContent, signedAttachment: AttachmentBinary, signedMetadata: AttachmentBinary): SignedZipContent =
       SignedZipContent(
         content.info,
         signedAttachment,
         content.attachment,
-        content.metadata
+        content.metadata,
+        signedMetadata
       )
   }
 }

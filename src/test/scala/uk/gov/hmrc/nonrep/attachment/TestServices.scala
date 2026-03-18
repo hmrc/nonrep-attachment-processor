@@ -47,6 +47,8 @@ object TestServices {
   val archiveId                                             = "archiveId"
   val sampleAttachmentMetadata: Array[Byte]                 =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(METADATA_FILE).getFile).toPath)
+  val sampleSignedAttachmentMetadata: Array[Byte]                 =
+    Files.readAllBytes(new File(getClass.getClassLoader.getResource(SIGNED_METADATA_FILE).getFile).toPath)
   val sampleAttachmentMetadataWithNotableEvent: Array[Byte] =
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(METADATA_FILE_WITH_NOTABLEEVENT).getFile).toPath)
   val sampleAttachment: Array[Byte]                         =
