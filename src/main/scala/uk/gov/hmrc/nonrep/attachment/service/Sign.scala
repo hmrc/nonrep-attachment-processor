@@ -1,4 +1,5 @@
-package uk.gov.hmrc.nonrep.attachment.service
+package uk.gov.hmrc.nonrep.attachment
+package service
 
 import org.apache.pekko.NotUsed
 import org.apache.pekko.actor.typed.ActorSystem
@@ -7,7 +8,7 @@ import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
 import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpMethods, HttpRequest, HttpResponse}
 import org.apache.pekko.stream.Supervision.restartingDecider
-import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Merge, Partition}
+import org.apache.pekko.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge, Partition, ZipWith}
 import org.apache.pekko.stream.{ActorAttributes, FlowShape, OverflowStrategy}
 import org.apache.pekko.util.ByteString
 import uk.gov.hmrc.nonrep.attachment.*
@@ -24,7 +25,7 @@ trait Sign {
 
 class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends Sign {
 
-  private def partitionRequests[A]() =
+  private[service] def partitionRequests[A]() =
     Partition[EitherErr[A]](
       2,
       {
@@ -33,13 +34,12 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
       }
     )
 
-  protected def parse(zip: EitherErr[ZipContent], response: HttpResponse): Future[EitherErr[SignedZipContent]] = {
+  private[service] def parse(zip: EitherErr[ZipContent], response: HttpResponse): Future[EitherErr[AttachmentBinary]] = {
     import system.executionContext
     if response.status == OK then
       response.entity.dataBytes
         .runFold(ByteString.empty)(_ ++ _)
-        .map(_.toArray[Byte])
-        .map(signed => zip.map(SignedZipContent(_, signed)))
+        .map(content => Right(content.toArray[Byte]))
     else {
       response.discardEntityBytes()
       val error = s"Response status ${response.status} from signatures service ${config.signaturesServiceHost}"
@@ -54,7 +54,7 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
       .buffer(config.signServiceBufferSize, OverflowStrategy.backpressure)
       .async
 
-  val createRequest: Flow[EitherErr[ZipContent], (HttpRequest, EitherErr[ZipContent]), NotUsed] =
+  private[service] val signAttachmentRequest: Flow[EitherErr[ZipContent], (HttpRequest, EitherErr[ZipContent]), NotUsed] =
     Flow[EitherErr[ZipContent]].map(zip =>
       zip.fold(
         error => HttpRequest() -> Left(error), // Have to keep http request outside either due to contract of HttpMethod
@@ -71,7 +71,24 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
       )
     )
 
-  val parseResponse: Flow[(Try[HttpResponse], EitherErr[ZipContent]), EitherErr[SignedZipContent], NotUsed] =
+  private[service] val signAttachmentMetadataRequest: Flow[EitherErr[ZipContent], (HttpRequest, EitherErr[ZipContent]), NotUsed] =
+    Flow[EitherErr[ZipContent]].map(zip =>
+      zip.fold(
+        error => HttpRequest() -> Left(error), // Have to keep http request outside either due to contract of HttpMethod
+        { content =>
+          val headers = List(RawHeader(TransactionIdHeader, content.info.attachmentId))
+          val request = HttpRequest(
+            HttpMethods.POST,
+            s"/${config.signaturesServiceHost}/cades/${config.signingProfile}",
+            headers,
+            HttpEntity(content.metadata)
+          )
+          (request, zip)
+        }
+      )
+    )
+
+  val parseResponse: Flow[(Try[HttpResponse], EitherErr[ZipContent]), EitherErr[AttachmentBinary], NotUsed] =
     Flow[(Try[HttpResponse], EitherErr[ZipContent])]
       .mapAsyncUnordered(8) { case (httpResponse, request) =>
         httpResponse match {
@@ -84,12 +101,12 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
       }
       .withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
 
-  private val remapErrorSeverity: Flow[EitherErr[SignedZipContent], EitherErr[SignedZipContent], NotUsed] =
-    Flow[EitherErr[SignedZipContent]].map {
+  private[service] val remapErrorSeverity: Flow[EitherErr[AttachmentBinary], EitherErr[AttachmentBinary], NotUsed] =
+    Flow[EitherErr[AttachmentBinary]].map {
       _.left.map(error => ErrorMessage(error.message, None, WARN))
     }
 
-  private val errorTransform: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] =
+  private[service] val errorTransform: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] =
     Flow[EitherErr[ZipContent]]
       .map(
         _.fold[EitherErr[SignedZipContent]](
@@ -99,16 +116,42 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
         )
       )
 
+  private[service] def zip3[A, B, C]() =
+    ZipWith[EitherErr[A], EitherErr[B], EitherErr[C], EitherErr[(A, B, C)]]((a, b, c) =>
+      (a, b, c) match {
+        case (Right(value1), Right(value2), Right(value3)) => Right((value1, value2, value3))
+        case (Left(error), _, _)                           => Left(error)
+        case (_, Left(error), _)                           => Left(error)
+        case (_, _, Left(error))                           => Left(error)
+      }
+    )
+
+  private[service] val zipContentWithSignedAttachmentAndMetadata = zip3[ZipContent, AttachmentBinary, AttachmentBinary]()
+
+  private[service] val mapSignedZipContent = Flow[EitherErr[(ZipContent, AttachmentBinary, AttachmentBinary)]].map {
+    _.map { case (zip, signedAttachment, signedMetadata) =>
+      SignedZipContent(zip, signedAttachment, signedMetadata)
+    }
+  }
+
   override def signing: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] =
     Flow.fromGraph(
       GraphDSL.create() { implicit builder =>
         import GraphDSL.Implicits.*
 
-        val input = builder.add(partitionRequests[ZipContent]())
-        val merge = builder.add(Merge[EitherErr[SignedZipContent]](2))
+        val broadcast = builder.add(Broadcast[EitherErr[ZipContent]](3))
+        val input     = builder.add(partitionRequests[ZipContent]())
+        val merge     = builder.add(Merge[EitherErr[SignedZipContent]](2))
+        val zip       = builder.add(zipContentWithSignedAttachmentAndMetadata)
 
         input ~> errorTransform ~> merge
-        input ~> createRequest ~> callDigitalSignatures ~> parseResponse ~> remapErrorSeverity ~> merge
+        input ~> broadcast
+
+        broadcast ~> zip.in0
+        broadcast ~> signAttachmentRequest ~> callDigitalSignatures ~> parseResponse ~> remapErrorSeverity ~> zip.in1
+        broadcast ~> signAttachmentMetadataRequest ~> callDigitalSignatures ~> parseResponse ~> remapErrorSeverity ~> zip.in2
+
+        zip.out ~> mapSignedZipContent ~> merge
 
         FlowShape(input.in, merge.out)
       }
