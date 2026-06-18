@@ -5,8 +5,6 @@ env:
     AWS_ACCOUNT_ID: 979211549557
     IMAGE_REPO_NAME: attachment-processor
   secrets-manager:
-    EXTERNAL_CRT_NON_PROD: "arn:aws:secretsmanager:eu-west-2:979211549557:secret:non-production.txm.external.crt"
-    EXTERNAL_CRT_PROD: "arn:aws:secretsmanager:eu-west-2:979211549557:secret:production.txm.external.crt"
     GITHUB_OAUTH_TOKEN: "arn:aws:secretsmanager:eu-west-2:979211549557:secret:gh-oauth-token"
 phases:
   install:
