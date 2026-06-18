@@ -3,13 +3,13 @@ import sbtassembly.AssemblyPlugin.autoImport.assembly
 
 enablePlugins(SbtGitVersioning)
 
-val awsSdkVersion = "2.31.+"
-val logbackVersion = "1.5.17"
-val metricsVersion = "1.0.1"
+val awsSdkVersion = "2.46.13"
+val logbackVersion = "1.5.34"
+val metricsVersion = "2.1.0"
 val jvmMetricsVersion = "3.0.2"
-val pekkoVersion = "1.1.3"
-val pekkoHttpVersion = "1.1.0"
-val pekkoConnectors = "1.1.0"
+val pekkoVersion = "1.6.0"
+val pekkoHttpVersion = "1.3.0"
+val pekkoConnectors = "1.3.0"
 val prometheusClientsVersion = "0.16.0"
 
 val projectName = "attachment-processor"
@@ -46,7 +46,7 @@ lazy val root = (project in file(".")).
       "org.apache.pekko"    %% "pekko-http"            % pekkoHttpVersion,
       "org.apache.pekko"    %% "pekko-http-xml"        % pekkoHttpVersion,
       "org.apache.pekko"    %% "pekko-http-spray-json" % pekkoHttpVersion,
-      "org.apache.pekko"    %% "pekko-actor-typed"     % "1.1.3",
+      "org.apache.pekko"    %% "pekko-actor-typed"     % "1.6.0",
       "org.apache.pekko"    %% "pekko-stream"          % pekkoVersion,
 
       "org.apache.pekko" %% "pekko-connectors-sqs" % pekkoConnectors,
@@ -61,9 +61,9 @@ lazy val root = (project in file(".")).
       // Logging
       "ch.qos.logback"       %  "logback-classic"          % logbackVersion,
       "ch.qos.logback"       %  "logback-core"             % logbackVersion,
-      "org.apache.pekko"    %%  "pekko-slf4j"              % "1.1.3",
-      "org.slf4j"            %  "slf4j-api"                % "2.0.17",
-      "net.logstash.logback" %  "logstash-logback-encoder" % "8.0",
+      "org.apache.pekko"    %%  "pekko-slf4j"              % "1.6.0",
+      "org.slf4j"            %  "slf4j-api"                % "2.0.18",
+      "net.logstash.logback" %  "logstash-logback-encoder" % "9.0",
 
       "uk.gov.hmrc"      %% "logback-json-logger"  % "5.6.0",
 
@@ -78,7 +78,7 @@ lazy val root = (project in file(".")).
       "org.apache.pekko"    %% "pekko-http-testkit"        % pekkoHttpVersion % Test,
       "org.apache.pekko"    %% "pekko-actor-testkit-typed" % pekkoVersion     % Test,
       "org.apache.pekko"    %% "pekko-stream-testkit"      % pekkoVersion     % Test,
-      "org.scalatest"        %% "scalatest"                % "3.2.19"        % Test,
+      "org.scalatest"        %% "scalatest"                % "3.2.20"        % Test,
       "org.scalatestplus"   %% "mockito-5-18"              % "3.2.19.0" % "test"
     ),
 
