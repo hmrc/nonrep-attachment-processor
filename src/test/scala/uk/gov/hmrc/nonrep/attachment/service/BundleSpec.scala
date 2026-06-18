@@ -28,8 +28,8 @@ class BundleSpec extends BaseSpec {
           sampleSignedAttachmentMetadata
         )
 
-      val source     = TestSource.probe[EitherErr[SignedZipContent]]
-      val sink       = TestSink.probe[EitherErr[AttachmentContent]]
+      val source     = TestSource[EitherErr[SignedZipContent]]()
+      val sink       = TestSink[EitherErr[AttachmentContent]]()
       val (pub, sub) = source.via(zipper.createBundle).toMat(sink)(Keep.both).run()
       pub.sendNext(Right(zipContent)).sendComplete()
       val result     = sub
@@ -56,8 +56,8 @@ class BundleSpec extends BaseSpec {
       val info      = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
       val content   = AttachmentContent(info, file)
 
-      val source = TestSource.probe[EitherErr[AttachmentContent]]
-      val sink   = TestSink.probe[EitherErr[ZipContent]]
+      val source = TestSource[EitherErr[AttachmentContent]]()
+      val sink   = TestSink[EitherErr[ZipContent]]()
 
       val (pub, sub) = source.via(zipper.extractBundle).toMat(sink)(Keep.both).run()
       pub.sendNext(Right(content)).sendComplete()
@@ -84,8 +84,8 @@ class BundleSpec extends BaseSpec {
           sampleSignedAttachmentMetadata
         )
 
-      val source     = TestSource.probe[EitherErr[SignedZipContent]]
-      val sink       = TestSink.probe[EitherErr[AttachmentContent]]
+      val source     = TestSource[EitherErr[SignedZipContent]]()
+      val sink       = TestSink[EitherErr[AttachmentContent]]()
       val (pub, sub) = source.via(zipper.createBundle).toMat(sink)(Keep.both).run()
       pub.sendNext(Right(zipContent)).sendComplete()
       val result     = sub
@@ -110,8 +110,8 @@ class BundleSpec extends BaseSpec {
           sampleSignedAttachmentMetadata
         )
 
-      val source     = TestSource.probe[EitherErr[SignedZipContent]]
-      val sink       = TestSink.probe[EitherErr[AttachmentContent]]
+      val source     = TestSource[EitherErr[SignedZipContent]]()
+      val sink       = TestSink[EitherErr[AttachmentContent]]()
       val (pub, sub) = source.via(zipper.createBundle).toMat(sink)(Keep.both).run()
       pub.sendNext(Right(zipContent)).sendComplete()
       val result     = sub
@@ -135,8 +135,8 @@ class BundleSpec extends BaseSpec {
           sampleSignedAttachmentMetadata
         )
 
-      val source     = TestSource.probe[EitherErr[SignedZipContent]]
-      val sink       = TestSink.probe[EitherErr[AttachmentContent]]
+      val source     = TestSource[EitherErr[SignedZipContent]]()
+      val sink       = TestSink[EitherErr[AttachmentContent]]()
       val (pub, sub) = source.via(zipper.createBundle).toMat(sink)(Keep.both).run()
       pub.sendNext(Right(zipContent)).sendComplete()
       val result     = sub
@@ -153,8 +153,8 @@ class BundleSpec extends BaseSpec {
       val info      = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
       val content   = AttachmentContent(info, file)
 
-      val source = TestSource.probe[EitherErr[AttachmentContent]]
-      val sink   = TestSink.probe[EitherErr[ZipContent]]
+      val source = TestSource[EitherErr[AttachmentContent]]()
+      val sink   = TestSink[EitherErr[ZipContent]]()
 
       val (pub, sub) = source.via(zipper.extractBundle).toMat(sink)(Keep.both).run()
       pub.sendNext(Right(content)).sendComplete()
@@ -172,8 +172,8 @@ class BundleSpec extends BaseSpec {
       val info      = AttachmentInfo(testAttachmentId, messageId, testS3ObjectKey)
       val content   = AttachmentContent(info, file)
 
-      val source = TestSource.probe[EitherErr[AttachmentContent]]
-      val sink   = TestSink.probe[EitherErr[ZipContent]]
+      val source = TestSource[EitherErr[AttachmentContent]]()
+      val sink   = TestSink[EitherErr[ZipContent]]()
 
       val (pub, sub) = source.via(zipper.extractBundle).toMat(sink)(Keep.both).run()
       pub.sendNext(Right(content)).sendComplete()

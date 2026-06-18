@@ -19,8 +19,8 @@ class SignSpec extends BaseSpec {
       val attachmentInfo = AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip")
       val zip            = Right(ZipContent(attachmentInfo, sampleAttachmentContent, sampleAttachmentMetadata))
 
-      val source     = TestSource.probe[EitherErr[ZipContent]]
-      val sink       = TestSink.probe[EitherErr[SignedZipContent]]
+      val source     = TestSource[EitherErr[ZipContent]]()
+      val sink       = TestSink[EitherErr[SignedZipContent]]()
       val (pub, sub) = source.via(signService.signing).toMat(sink)(Keep.both).run()
       pub.sendNext(zip).sendComplete()
       val result     = sub
@@ -36,8 +36,8 @@ class SignSpec extends BaseSpec {
     }
 
     "leave original error messages severity level" in {
-      val source     = TestSource.probe[EitherErr[ZipContent]]
-      val sink       = TestSink.probe[EitherErr[SignedZipContent]]
+      val source     = TestSource[EitherErr[ZipContent]]()
+      val sink       = TestSink[EitherErr[SignedZipContent]]()
       val (pub, sub) = source.via(signService.signing).toMat(sink)(Keep.both).run()
       pub.sendNext(Left(ErrorMessage("test", None, ERROR))).sendComplete()
       val result     = sub
@@ -55,8 +55,8 @@ class SignSpec extends BaseSpec {
       val attachmentInfo = AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip")
       val zip            = Right(ZipContent(attachmentInfo, sampleAttachmentContent, sampleAttachmentMetadata))
 
-      val source     = TestSource.probe[EitherErr[ZipContent]]
-      val sink       = TestSink.probe[EitherErr[SignedZipContent]]
+      val source     = TestSource[EitherErr[ZipContent]]()
+      val sink       = TestSink[EitherErr[SignedZipContent]]()
       val (pub, sub) = source.via(signService.signing).toMat(sink)(Keep.both).run()
       pub.sendNext(zip).sendComplete()
       val result     = sub
