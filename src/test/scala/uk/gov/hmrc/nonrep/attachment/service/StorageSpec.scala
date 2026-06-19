@@ -17,8 +17,8 @@ class StorageSpec extends BaseSpec {
       val attachmentContent = ByteString(sampleAttachment)
       val attachment        = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
 
-      val source = TestSource.probe[EitherErr[AttachmentInfo]]
-      val sink   = TestSink.probe[EitherErr[AttachmentContent]]
+      val source = TestSource[EitherErr[AttachmentInfo]]()
+      val sink   = TestSink[EitherErr[AttachmentContent]]()
 
       val (pub, sub) = source.via(storageService.downloadAttachment).toMat(sink)(Keep.both).run()
       pub.sendNext(attachment).sendComplete()
@@ -37,8 +37,8 @@ class StorageSpec extends BaseSpec {
       val messageId  = testSQSMessageIds.head
       val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
 
-      val source = TestSource.probe[EitherErr[AttachmentInfo]]
-      val sink   = TestSink.probe[EitherErr[AttachmentInfo]]
+      val source = TestSource[EitherErr[AttachmentInfo]]()
+      val sink   = TestSink[EitherErr[AttachmentInfo]]()
 
       val (pub, sub) = source.via(storageService.deleteAttachment).toMat(sink)(Keep.both).run()
       pub.sendNext(attachment).sendComplete()
@@ -60,8 +60,8 @@ class StorageSpec extends BaseSpec {
       val messageId  = testSQSMessageIds.head
       val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
 
-      val source = TestSource.probe[EitherErr[AttachmentInfo]]
-      val sink   = TestSink.probe[EitherErr[AttachmentContent]]
+      val source = TestSource[EitherErr[AttachmentInfo]]()
+      val sink   = TestSink[EitherErr[AttachmentContent]]()
 
       val (pub, sub) = source.via(storageService.downloadAttachment).toMat(sink)(Keep.both).run()
       pub.sendNext(attachment).sendComplete()
@@ -78,8 +78,8 @@ class StorageSpec extends BaseSpec {
       val messageId  = testSQSMessageIds.head
       val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
 
-      val source = TestSource.probe[EitherErr[AttachmentInfo]]
-      val sink   = TestSink.probe[EitherErr[AttachmentInfo]]
+      val source = TestSource[EitherErr[AttachmentInfo]]()
+      val sink   = TestSink[EitherErr[AttachmentInfo]]()
 
       val (pub, sub) = source.via(storageService.deleteAttachment).toMat(sink)(Keep.both).run()
       pub.sendNext(attachment).sendComplete()

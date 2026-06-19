@@ -3,13 +3,13 @@ import sbtassembly.AssemblyPlugin.autoImport.assembly
 
 enablePlugins(SbtGitVersioning)
 
-val awsSdkVersion = "2.31.+"
-val logbackVersion = "1.5.17"
-val metricsVersion = "1.0.1"
+val awsSdkVersion = "2.45.+"
+val logbackVersion = "1.5.34"
+val metricsVersion = "1.1.0"
 val jvmMetricsVersion = "3.0.2"
-val pekkoVersion = "1.1.3"
-val pekkoHttpVersion = "1.1.0"
-val pekkoConnectors = "1.1.0"
+val pekkoVersion = "1.6.0"
+val pekkoHttpVersion = "1.3.0"
+val pekkoConnectors = "1.3.0"
 val prometheusClientsVersion = "0.16.0"
 
 val projectName = "attachment-processor"
@@ -78,7 +78,7 @@ lazy val root = (project in file(".")).
       "org.apache.pekko"    %% "pekko-http-testkit"        % pekkoHttpVersion % Test,
       "org.apache.pekko"    %% "pekko-actor-testkit-typed" % pekkoVersion     % Test,
       "org.apache.pekko"    %% "pekko-stream-testkit"      % pekkoVersion     % Test,
-      "org.scalatest"        %% "scalatest"                % "3.2.19"        % Test,
+      "org.scalatest"        %% "scalatest"                % "3.2.20"        % Test,
       "org.scalatestplus"   %% "mockito-5-18"              % "3.2.19.0" % "test"
     ),
 

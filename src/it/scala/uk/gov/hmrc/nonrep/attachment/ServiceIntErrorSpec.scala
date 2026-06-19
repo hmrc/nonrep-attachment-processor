@@ -6,8 +6,6 @@ import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.{HttpRequest, HttpResponse, StatusCodes}
 import org.scalatest.Inside
 import org.scalatest.time.{Millis, Seconds, Span}
-import uk.gov.hmrc.nonrep.BuildInfo
-import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats.buildVersionJsonFormat
 import uk.gov.hmrc.nonrep.attachment.server.{NonrepMicroservice, ServiceConfig}
 
 import scala.concurrent.Future

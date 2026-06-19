@@ -19,7 +19,7 @@ class QueueSpec extends BaseSpec {
     }
 
     "Message from source should have" in {
-      val sink = TestSink.probe[Message]
+      val sink = TestSink[Message]()
 
       val sub    = queueService.getMessages.runWith(sink)
       val result = sub
@@ -31,7 +31,7 @@ class QueueSpec extends BaseSpec {
 
     "Delete messages" when {
       "the s3 object can not be downloaded" in {
-        val sink     = TestSink.probe[EitherErr[AttachmentInfo]]
+        val sink     = TestSink[EitherErr[AttachmentInfo]]()
         val (_, sub) = queueService.getMessages
           .via(queueService.parseMessages)
           .via(TestServices.failure.storageService.downloadAttachment)
@@ -50,7 +50,7 @@ class QueueSpec extends BaseSpec {
       }
 
       "completed processing" in {
-        val sink     = TestSink.probe[EitherErr[AttachmentInfo]]
+        val sink     = TestSink[EitherErr[AttachmentInfo]]()
         val (_, sub) = queueService.getMessages
           .via(queueService.parseMessages)
           .via(queueService.deleteMessage)
@@ -67,7 +67,7 @@ class QueueSpec extends BaseSpec {
     }
 
     "Parse messages properly" in {
-      val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+      val sink = TestSink[EitherErr[AttachmentInfo]]()
 
       val (_, sub) = queueService.getMessages
         .via(queueService.parseMessages)
@@ -86,7 +86,7 @@ class QueueSpec extends BaseSpec {
       import TestServices.failure.*
 
       "Report parsing message failure" in {
-        val sink = TestSink.probe[EitherErr[AttachmentInfo]]
+        val sink = TestSink[EitherErr[AttachmentInfo]]()
 
         val (_, sub) = queueService.getMessages
           .via(queueService.parseMessages)
@@ -101,8 +101,8 @@ class QueueSpec extends BaseSpec {
       }
 
       "Report delete message failure" in {
-        val source     = TestSource.probe[EitherErr[AttachmentInfo]]
-        val sink       = TestSink.probe[EitherErr[AttachmentInfo]]
+        val source     = TestSource[EitherErr[AttachmentInfo]]()
+        val sink       = TestSink[EitherErr[AttachmentInfo]]()
         val messageId  = testSQSMessageIds.head
         val attachment = Right(AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip"))
 

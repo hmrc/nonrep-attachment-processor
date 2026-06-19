@@ -61,7 +61,7 @@ object TestServices {
     Files.readAllBytes(new File(getClass.getClassLoader.getResource(s"$testAttachmentId.p7m").getFile).toPath)
 
   val testApplicationSink: Sink[EitherErr[AttachmentInfo], TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
-    TestSink.probe[EitherErr[AttachmentInfo]](using typedSystem.classicSystem)
+    TestSink[EitherErr[AttachmentInfo]]()(using typedSystem.classicSystem)
 
   val testSQSMessageIds: IndexedSeq[String] = IndexedSeq.fill(3)(UUID.randomUUID().toString)
 
@@ -174,7 +174,7 @@ object TestServices {
       }
     }
 
-    val zipperService = BundleService(using config)
+    val zipperService = BundleService()(using config)
   }
 
   object failure {

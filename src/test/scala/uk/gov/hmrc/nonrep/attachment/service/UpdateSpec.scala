@@ -27,8 +27,8 @@ class UpdateSpec extends BaseSpec {
       val archiveId      = UUID.randomUUID().toString
       val archived       = Right(ArchivedAttachment(attachmentInfo, vaultName, archiveId))
 
-      val source = TestSource.probe[EitherErr[ArchivedAttachment]]
-      val sink   = TestSink.probe[EitherErr[AttachmentInfo]]
+      val source = TestSource[EitherErr[ArchivedAttachment]]()
+      val sink   = TestSink[EitherErr[AttachmentInfo]]()
 
       val (pub, sub) = source.via(updateService.updateMetastore).toMat(sink)(Keep.both).run()
       pub.sendNext(archived).sendComplete()
@@ -50,8 +50,8 @@ class UpdateSpec extends BaseSpec {
       val archiveId      = UUID.randomUUID().toString
       val archived       = Right(ArchivedAttachment(attachmentInfo, vaultName, archiveId))
 
-      val source = TestSource.probe[EitherErr[ArchivedAttachment]]
-      val sink   = TestSink.probe[EitherErr[AttachmentInfo]]
+      val source = TestSource[EitherErr[ArchivedAttachment]]()
+      val sink   = TestSink[EitherErr[AttachmentInfo]]()
 
       val (pub, sub) = source.via(updateService.updateMetastore).toMat(sink)(Keep.both).run()
       pub.sendNext(archived).sendComplete()
