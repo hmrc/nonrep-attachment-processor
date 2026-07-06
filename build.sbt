@@ -21,13 +21,9 @@ createVersionFile := {
   Files.write(Paths.get("version.txt"), version.value.getBytes(StandardCharsets.UTF_8))
 }
 
-lazy val IntegrationTest = config("it") extend Test
-
 lazy val root = (project in file(".")).
-  configs(IntegrationTest).
   enablePlugins(BuildInfoPlugin).
   settings(
-    Defaults.itSettings,
     inThisBuild(List(
       organization := "uk.gov",
       majorVersion := 0,
@@ -88,11 +84,7 @@ lazy val root = (project in file(".")).
       case PathList("META-INF", "BCKEY.DSA") => MergeStrategy.discard
       case "reference.conf" => MergeStrategy.concat
       case _ => MergeStrategy.first
-    },
-    assembly / test := Def.sequential(
-      Test / test,
-      IntegrationTest / test
-    ).value
+    }
   )
 
 run / fork := true
@@ -106,3 +98,20 @@ Compile / scalacOptions ++= Seq(
 Test / testOptions += Tests.Argument("-oF")
 Test / fork := true
 Test / envVars := Map("WORKING_DIR" -> "/tmp/unit-tests")
+
+lazy val it = (project in file("it"))
+  .dependsOn(root % "test->test;compile->compile")
+  .settings(
+    name := s"$projectName-it",
+    publish / skip := true,
+    Test / fork := true,
+    Test / testOptions += Tests.Argument("-oF"),
+    Test / envVars := Map("WORKING_DIR" -> "/tmp/integration-tests"),
+    scalacOptions ++= Seq("-Wunused:imports"),
+    Test / scalacOptions += "-Wconf:msg=is not declared infix:s"
+  )
+
+root / assembly / test := Def.sequential(
+  root / Test / test, // run unit tests first
+  it / Test / test    // run it tests only if unit tests pass
+).value
