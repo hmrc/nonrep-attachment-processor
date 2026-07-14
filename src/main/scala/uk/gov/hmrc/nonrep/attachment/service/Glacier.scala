@@ -40,6 +40,7 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
     Flow[EitherErr[AttachmentContent]]
       .mapAsyncUnordered(8) {
         case Right(attachmentContent) =>
+          system.log.info(s"archive attachmentContent: ${attachmentContent.info.attachmentId} ")
           eventuallyArchive(attachmentContent, datedVaultName(attachmentContent.info.notableEvent)).map {
             (archiveIdOrError: EitherErr[String]) =>
               archiveIdOrError.map { archiveId =>

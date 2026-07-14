@@ -42,7 +42,7 @@ lazy val root = (project in file(".")).
       "org.apache.pekko"    %% "pekko-http"            % pekkoHttpVersion,
       "org.apache.pekko"    %% "pekko-http-xml"        % pekkoHttpVersion,
       "org.apache.pekko"    %% "pekko-http-spray-json" % pekkoHttpVersion,
-      "org.apache.pekko"    %% "pekko-actor-typed"     % "1.1.3",
+      "org.apache.pekko"    %% "pekko-actor-typed"     % "1.6.0",
       "org.apache.pekko"    %% "pekko-stream"          % pekkoVersion,
 
       "org.apache.pekko" %% "pekko-connectors-sqs" % pekkoConnectors,

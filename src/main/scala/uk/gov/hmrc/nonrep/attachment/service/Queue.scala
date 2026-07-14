@@ -19,6 +19,7 @@ import uk.gov.hmrc.nonrep.attachment.*
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import uk.gov.hmrc.nonrep.attachment.utils.ErrorHandler
 
+import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.jdk.FutureConverters.CompletionStageOps
@@ -59,12 +60,19 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
       .withCloseOnEmptyReceive(config.closeOnEmptyReceive)
       .withWaitTimeSeconds(config.waitTimeSeconds)
 
-  override def getMessages: Source[Message, NotUsed] =
-    SqsSource(config.queueUrl, settings)
+  var msgCount:AtomicLong = new AtomicLong(0)
+
+  override def getMessages: Source[Message, NotUsed] = {
+    system.log.info(s"SqsSourceSettings maxBufferSize: ${settings.maxBatchSize}")
+    SqsSource(config.queueUrl, settings).map{ msg =>
+      system.log.info(s"getMessages SQS msgCount: ${msgCount.addAndGet(1L)}")
+      msg}
+  }
 
   override def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed] =
     Flow[Message].map { message =>
       val messageHandle = message.receiptHandle()
+      system.log.info(s"parseMessages messageHandle: ${messageHandle}")
 
       Try {
         val s3ObjectKey = message

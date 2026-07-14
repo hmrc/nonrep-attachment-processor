@@ -59,6 +59,7 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
       zip.fold(
         error => HttpRequest() -> Left(error), // Have to keep http request outside either due to contract of HttpMethod
         { content =>
+          system.log.info(s"signAttachmentRequest attachmentId: ${content.info.attachmentId}")
           val headers = List(RawHeader(TransactionIdHeader, content.info.attachmentId))
           val request = HttpRequest(
             HttpMethods.POST,
@@ -92,8 +93,11 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
     Flow[(Try[HttpResponse], EitherErr[ZipContent])]
       .mapAsyncUnordered(8) { case (httpResponse, request) =>
         httpResponse match {
-          case Success(response)  => parse(request, response)
+          case Success(response)  =>
+            system.log.info(s"parseResponse response: ${response.status}")
+            parse(request, response)
           case Failure(exception) =>
+            system.log.info(s"parseResponse failed msg: ${exception.getMessage}")
             Future.successful(
               Left(ErrorMessage(s"Failure connection to ${config.signaturesServiceHost} with ${exception.getMessage}", Some(exception)))
             )
@@ -103,7 +107,10 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
 
   private[service] val remapErrorSeverity: Flow[EitherErr[AttachmentBinary], EitherErr[AttachmentBinary], NotUsed] =
     Flow[EitherErr[AttachmentBinary]].map {
-      _.left.map(error => ErrorMessage(error.message, None, WARN))
+      _.left.map(error =>
+        system.log.info(s"remapErrorSeverity error: ${error.message}")
+        ErrorMessage(error.message, None, WARN)
+      )
     }
 
   private[service] val errorTransform: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed] =

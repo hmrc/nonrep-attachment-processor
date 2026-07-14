@@ -32,6 +32,7 @@ class StorageService()(using config: ServiceConfig, system: ActorSystem[?]) exte
       .mapAsyncUnordered(8) {
         case Left(error)       => Future.successful(Left(error))
         case Right(attachment) =>
+          system.log.info(s"downloadAttachment attachment: ${attachment.attachmentId}")
           val (metadata, stream) = s3DownloadSource(attachment).toMat(Sink.reduce[ByteString](_ ++ _))(Keep.both).run()
           metadata
             .flatMap(_ => stream.map(content => Right(AttachmentContent(attachment, content)).withLeft[AttachmentError]))
