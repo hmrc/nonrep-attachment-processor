@@ -34,7 +34,9 @@ class Routes(processor: Future[Done])(using system: ActorSystem[?], config: Serv
   val pingPath: Route = pathLabeled("ping") {
     get {
       complete {
-        if processor.isCompleted then HttpResponse(StatusCodes.InternalServerError, entity = "Processing of attachments is finished")
+        if processor.isCompleted then
+          system.log.info(s"Ping called: ThreadCount: ${Thread.activeCount()}, totalMemory:${Runtime.getRuntime.totalMemory()}, freeMemory:${ Runtime.getRuntime.freeMemory()}")
+          HttpResponse(StatusCodes.InternalServerError, entity = "Processing of attachments is finished")
         else HttpResponse(StatusCodes.OK, entity = "pong")
       }
     }

@@ -66,9 +66,13 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
         .build(),
       AsyncRequestBody.fromBytes(content.bytes)
     )
-      .map(uploadResponse => Right(uploadResponse.archiveId()))
+      .map(uploadResponse =>
+        system.log.info(s"GlacierService UploadedArchive attachmentId: ${content.info.attachmentId}")
+        Right(uploadResponse.archiveId())  
+      )
       .recoverWith[EitherErr[String]] {
         case exception: ResourceNotFoundException =>
+          system.log.error(s"GlacierService ERROR ResourceNotFoundException attachmentId: ${content.info.attachmentId}")
           Future.successful(
             Left(
               ErrorMessage(

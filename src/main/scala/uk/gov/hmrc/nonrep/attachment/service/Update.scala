@@ -5,6 +5,7 @@ import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Created, OK}
 import org.apache.pekko.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
+import org.apache.pekko.http.scaladsl.settings.ConnectionPoolSettings
 import org.apache.pekko.stream.Supervision.restartingDecider
 import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Merge, Partition}
 import org.apache.pekko.stream.{ActorAttributes, FlowShape, OverflowStrategy}
@@ -56,6 +57,7 @@ class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) exten
       (
         attachment.toOption
           .map { archived =>
+            system.log.info(s"Update metastore request called [${archived.info.attachmentId}]")
             val submissionId = archived.info.submissionId.getOrElse(new IllegalStateException("Submission ID must be present"))
             val path         = s"/${archived.info.notableEvent}-attachments/index/${archived.info.attachmentId}?refresh=${config.refreshPolicy}"
             val body         =
@@ -71,12 +73,16 @@ class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) exten
       )
     }
 
-  val callMetastore: Flow[(HttpRequest, EitherErr[ArchivedAttachment]), (Try[HttpResponse], EitherErr[ArchivedAttachment]), Any] =
+  private val connectionPoolSettings = ConnectionPoolSettings(system)
+
+  val callMetastore: Flow[(HttpRequest, EitherErr[ArchivedAttachment]), (Try[HttpResponse], EitherErr[ArchivedAttachment]), Any] = {
+    system.log.info(s"UpdateService maxConnections: ${connectionPoolSettings.maxConnections}")
     (if config.isElasticSearchProtocolSecure then
-       Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]](config.elasticSearchHost)
-     else Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost))
-      .buffer(config.esServiceBufferSize, OverflowStrategy.backpressure)
-      .async
+       Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]](config.elasticSearchHost, settings = connectionPoolSettings)
+     else Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost, settings = connectionPoolSettings))
+//      .buffer(config.esServiceBufferSize, OverflowStrategy.backpressure)
+//      .async
+  }
 
   val parseResponse: Flow[(Try[HttpResponse], EitherErr[ArchivedAttachment]), EitherErr[ArchivedAttachment], NotUsed] =
     Flow[(Try[HttpResponse], EitherErr[ArchivedAttachment])]

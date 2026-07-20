@@ -15,10 +15,10 @@ import scala.util.{Failure, Success}
 
 class NonrepMicroservice()(using system: ActorSystem[?], config: ServiceConfig) extends ErrorHandler {
   val applicationSink: Sink[EitherErr[AttachmentInfo], Future[Done]] =
-    Sink.foreach[EitherErr[AttachmentInfo]] {
+    Sink.foreach[EitherErr[AttachmentInfo]] { 
       _.fold(
         errorHandler,
-        attachmentInfo => system.log.info(s"Successful processing of attachment ${attachmentInfo.attachmentId}")
+        attachmentInfo => system.log.info(s"Sink: Successful processing of attachment ${attachmentInfo.attachmentId}")
       )
     }
 

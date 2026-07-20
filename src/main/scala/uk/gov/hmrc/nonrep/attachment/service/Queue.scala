@@ -19,6 +19,7 @@ import uk.gov.hmrc.nonrep.attachment.*
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import uk.gov.hmrc.nonrep.attachment.utils.ErrorHandler
 
+import java.lang.management.ManagementFactory
 import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -65,7 +66,7 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
   override def getMessages: Source[Message, NotUsed] = {
     system.log.info(s"SqsSourceSettings maxBufferSize: ${settings.maxBatchSize}")
     SqsSource(config.queueUrl, settings).map{ msg =>
-      system.log.info(s"getMessages SQS msgCount: ${msgCount.addAndGet(1L)}")
+      system.log.info(s"getMessages SQS msgCount: ${msgCount.addAndGet(1L)} ThreadCount:${Thread.activeCount()}, totalMemory:${Runtime.getRuntime.totalMemory()}, freeMemory:${ Runtime.getRuntime.freeMemory()}")
       msg}
   }
 

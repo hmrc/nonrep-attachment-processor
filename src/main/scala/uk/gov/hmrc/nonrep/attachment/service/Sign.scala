@@ -7,6 +7,7 @@ import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
 import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpMethods, HttpRequest, HttpResponse}
+import org.apache.pekko.http.scaladsl.settings.ConnectionPoolSettings
 import org.apache.pekko.stream.Supervision.restartingDecider
 import org.apache.pekko.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge, Partition, ZipWith}
 import org.apache.pekko.stream.{ActorAttributes, FlowShape, OverflowStrategy}
@@ -47,12 +48,16 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
     }
   }
 
-  val callDigitalSignatures: Flow[(HttpRequest, EitherErr[ZipContent]), (Try[HttpResponse], EitherErr[ZipContent]), Any] =
+  private val connectionPoolSettings = ConnectionPoolSettings(system)
+
+  val callDigitalSignatures: Flow[(HttpRequest, EitherErr[ZipContent]), (Try[HttpResponse], EitherErr[ZipContent]), Any] = {
+    system.log.info(s"SignService maxConnections: ${connectionPoolSettings.maxConnections}")
     (if config.isSignaturesServiceSecure then
-       Http().cachedHostConnectionPoolHttps[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort)
-     else Http().cachedHostConnectionPool[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort))
-      .buffer(config.signServiceBufferSize, OverflowStrategy.backpressure)
-      .async
+      Http().cachedHostConnectionPoolHttps[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort, settings = connectionPoolSettings)
+    else Http().cachedHostConnectionPool[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort, settings = connectionPoolSettings))
+//      .buffer(config.signServiceBufferSize, OverflowStrategy.backpressure)
+//      .async
+  }
 
   private[service] val signAttachmentRequest: Flow[EitherErr[ZipContent], (HttpRequest, EitherErr[ZipContent]), NotUsed] =
     Flow[EitherErr[ZipContent]].map(zip =>
