@@ -48,15 +48,12 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
     }
   }
 
-  private val connectionPoolSettings = ConnectionPoolSettings(system)
-
   val callDigitalSignatures: Flow[(HttpRequest, EitherErr[ZipContent]), (Try[HttpResponse], EitherErr[ZipContent]), Any] = {
-    system.log.info(s"SignService maxConnections: ${connectionPoolSettings.maxConnections}")
     (if config.isSignaturesServiceSecure then
-      Http().cachedHostConnectionPoolHttps[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort, settings = connectionPoolSettings)
-    else Http().cachedHostConnectionPool[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort, settings = connectionPoolSettings))
-//      .buffer(config.signServiceBufferSize, OverflowStrategy.backpressure)
-//      .async
+      Http().cachedHostConnectionPoolHttps[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort)
+    else Http().cachedHostConnectionPool[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort))
+      .buffer(config.signServiceBufferSize, OverflowStrategy.backpressure)
+      .async
   }
 
   private[service] val signAttachmentRequest: Flow[EitherErr[ZipContent], (HttpRequest, EitherErr[ZipContent]), NotUsed] =

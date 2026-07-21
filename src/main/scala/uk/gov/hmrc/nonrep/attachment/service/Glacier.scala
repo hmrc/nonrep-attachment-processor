@@ -72,7 +72,7 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
       )
       .recoverWith[EitherErr[String]] {
         case exception: ResourceNotFoundException =>
-          system.log.error(s"GlacierService ERROR ResourceNotFoundException attachmentId: ${content.info.attachmentId}")
+          system.log.info(s"GlacierService ERROR ResourceNotFoundException attachmentId: ${content.info.attachmentId}")
           Future.successful(
             Left(
               ErrorMessage(
@@ -92,7 +92,7 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
   ): Future[UploadArchiveResponse] =
     client.uploadArchive(uploadArchiveRequest, asyncRequestBody).toScala
 
-  private[service] def datedVaultName(notableEvent: String) = s"$environmentalVaultNamePrefix$notableEvent"
+  private[service] def datedVaultName(notableEvent: String) = s"$environmentalVaultNamePrefix$notableEvent-${now().getYear}"
 }
 
 object ChecksumUtils {

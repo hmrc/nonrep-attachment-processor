@@ -50,12 +50,24 @@ class StorageService()(using config: ServiceConfig, system: ActorSystem[?]) exte
       }
       .withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
 
+  import scala.util.{Try, Success, Failure}
+
   protected def s3DeleteSource(attachment: AttachmentInfo): Source[Done, NotUsed] =
     S3.deleteObject(config.attachmentsBucket, attachment.s3ObjectKey)
 
   override def deleteAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
     Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) {
       case Left(error)       => Future.successful(Left(error))
-      case Right(attachment) => s3DeleteSource(attachment).toMat(Sink.head)(Keep.right).run().map(_ => Right(attachment))
+      case Right(attachment) =>
+        Try {
+          s3DeleteSource(attachment).toMat(Sink.head)(Keep.right).run().map(_ => Right(attachment))
+        } match {
+          case Success(source) =>
+            system.log.warn("StorageService.deleteAttachment ok")
+            Future.successful(Right(attachment))
+          case Failure(err) =>
+            system.log.warn(s"StorageService.deleteAttachment failed ${err.getMessage}")
+            Future.successful(Right(attachment))
+        }
     }
 }

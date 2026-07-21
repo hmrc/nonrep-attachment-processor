@@ -73,15 +73,12 @@ class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) exten
       )
     }
 
-  private val connectionPoolSettings = ConnectionPoolSettings(system)
-
   val callMetastore: Flow[(HttpRequest, EitherErr[ArchivedAttachment]), (Try[HttpResponse], EitherErr[ArchivedAttachment]), Any] = {
-    system.log.info(s"UpdateService maxConnections: ${connectionPoolSettings.maxConnections}")
     (if config.isElasticSearchProtocolSecure then
-       Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]](config.elasticSearchHost, settings = connectionPoolSettings)
-     else Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost, settings = connectionPoolSettings))
-//      .buffer(config.esServiceBufferSize, OverflowStrategy.backpressure)
-//      .async
+       Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]](config.elasticSearchHost)
+     else Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost))
+      .buffer(config.esServiceBufferSize, OverflowStrategy.backpressure)
+      .async
   }
 
   val parseResponse: Flow[(Try[HttpResponse], EitherErr[ArchivedAttachment]), EitherErr[ArchivedAttachment], NotUsed] =
