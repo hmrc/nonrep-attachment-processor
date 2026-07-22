@@ -53,7 +53,7 @@ class StorageService()(using config: ServiceConfig, system: ActorSystem[?]) exte
   import scala.util.{Try, Success, Failure}
 
   protected def s3DeleteSource(attachment: AttachmentInfo): Source[Done, NotUsed] =
-    S3.deleteObject(config.attachmentsBucket, attachment.s3ObjectKey)
+    S3.deleteObject(config.attachmentsBucket, "INVALID-KEY")   // call delete but DO NOT delete the object so it can be reused
 
   override def deleteAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
     Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) {
