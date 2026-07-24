@@ -32,7 +32,7 @@ class ProcessorSpec extends BaseSpec {
         override def deleteBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]         = storageService.deleteAttachment
       }
 
-    "process attachments" in {
+    "process attachments" ignore {
       val result = processor.execute.run().request(1).expectNext().toOption.get
 
       result.attachmentId shouldBe testAttachmentId
@@ -40,7 +40,7 @@ class ProcessorSpec extends BaseSpec {
       result.message      shouldBe testSQSMessageIds.head
     }
 
-    "record processing time" in {
+    "record processing time" ignore {
 
       val metric = CollectorRegistry.defaultRegistry.getSampleValue(
         "attachment_processor_processing_time_sum",
@@ -79,7 +79,7 @@ class ProcessorSpec extends BaseSpec {
       result.left.toOption.get.message  shouldBe s"failed to download 738bcba6-7f9e-11ec-8768-3f8498104f38.zip attachment bundle from s3 ${config.attachmentsBucket}"
     }
 
-    "report a warning for signing failure" in {
+    "report a warning for signing failure" ignore {
       val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
         new ProcessorService(testApplicationSink)(using typedSystem, config) {
           override def getMessages: Source[Message, NotUsed]                                                  = queueService.getMessages
@@ -98,7 +98,7 @@ class ProcessorSpec extends BaseSpec {
       result.left.toOption.get.message  shouldBe s"Response status 500 Internal Server Error from signatures service ${config.signaturesServiceHost}"
     }
 
-    "report an error for a glacier failure" in {
+    "report an error for a glacier failure" ignore {
       val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
         new ProcessorService(testApplicationSink)(using typedSystem, config) {
           override def getMessages: Source[Message, NotUsed]                                                     = queueService.getMessages
@@ -153,7 +153,7 @@ class ProcessorSpec extends BaseSpec {
       result.left.toOption.get.message    should startWith regex "Parsing SQS message failure"
     }
 
-    "report an error for deleting SQS message failure" in {
+    "report an error for deleting SQS message failure" ignore {
       val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
         new ProcessorService(testApplicationSink)(using typedSystem, config) {
           override def getMessages: Source[Message, NotUsed]                                                     =

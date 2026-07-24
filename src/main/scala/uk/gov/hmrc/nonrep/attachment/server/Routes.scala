@@ -11,11 +11,15 @@ import org.apache.pekko.http.scaladsl.server.directives.MethodDirectives.get
 import org.apache.pekko.http.scaladsl.server.{ExceptionHandler, Route}
 import fr.davit.pekko.http.metrics.core.scaladsl.server.HttpMetricsDirectives.{metrics, pathLabeled}
 import fr.davit.pekko.http.metrics.prometheus.marshalling.PrometheusMarshallers.*
+import uk.gov.hmrc.nonrep.attachment.app.metrics.Prometheus
+import io.prometheus.client.exporter.common.TextFormat
 import org.slf4j.Logger
 import uk.gov.hmrc.nonrep.BuildInfo
 import uk.gov.hmrc.nonrep.attachment.app.metrics.Prometheus.*
 import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats.buildVersionJsonFormat
+import uk.gov.hmrc.nonrep.attachment.utils.MessageCount
 
+import java.io.StringWriter
 import scala.concurrent.Future
 
 object Routes {
@@ -31,13 +35,35 @@ class Routes(processor: Future[Done])(using system: ActorSystem[?], config: Serv
     complete(HttpResponse(InternalServerError, entity = "Internal NRS attachments processor error"))
   }
 
+  def dumpMetrics: String =
+    val writer = new StringWriter()
+    TextFormat.write004(writer, Prometheus.prometheus.metricFamilySamples())
+    writer.toString.split("\n").filterNot( _.startsWith("#")).mkString("\n")
+
+  def logStatus(): Unit = {
+    system.log.info(
+      s"""Ping Status
+         |Processor.isCompleted:  ${processor.isCompleted}
+         |Messages Processed: ${MessageCount.msgCount}
+         |Memory Total: ${Runtime.getRuntime.totalMemory()}
+         |Memory Free: ${Runtime.getRuntime.freeMemory()}
+         |Thread Count: ${Thread.activeCount()}
+         |
+         |""".stripMargin
+      + dumpMetrics
+    )
+
+  }
+
   val pingPath: Route = pathLabeled("ping") {
     get {
       complete {
         if processor.isCompleted then
-          system.log.info(s"Ping called: ThreadCount: ${Thread.activeCount()}, totalMemory:${Runtime.getRuntime.totalMemory()}, freeMemory:${ Runtime.getRuntime.freeMemory()}")
+          logStatus()
           HttpResponse(StatusCodes.InternalServerError, entity = "Processing of attachments is finished")
-        else HttpResponse(StatusCodes.OK, entity = "pong")
+        else
+          logStatus()
+          HttpResponse(StatusCodes.OK, entity = "pong")
       }
     }
   }

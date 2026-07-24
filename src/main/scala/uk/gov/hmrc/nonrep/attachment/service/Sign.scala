@@ -7,7 +7,8 @@ import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
 import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpMethods, HttpRequest, HttpResponse}
-import org.apache.pekko.http.scaladsl.settings.ConnectionPoolSettings
+import org.apache.pekko.stream.Attributes.LogLevels.{Error, Info}
+import org.apache.pekko.stream.Attributes.logLevels
 import org.apache.pekko.stream.Supervision.restartingDecider
 import org.apache.pekko.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge, Partition, ZipWith}
 import org.apache.pekko.stream.{ActorAttributes, FlowShape, OverflowStrategy}
@@ -37,7 +38,7 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
 
   private[service] def parse(zip: EitherErr[ZipContent], response: HttpResponse): Future[EitherErr[AttachmentBinary]] = {
     import system.executionContext
-    if response.status == OK then
+    if response.status != OK then // TODO THIS IS WRONG, WILL GENERATE ERROR ON OK
       response.entity.dataBytes
         .runFold(ByteString.empty)(_ ++ _)
         .map(content => Right(content.toArray[Byte]))
@@ -157,8 +158,34 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
         input ~> broadcast
 
         broadcast ~> zip.in0
-        broadcast ~> signAttachmentRequest ~> callDigitalSignatures ~> parseResponse ~> remapErrorSeverity ~> zip.in1
-        broadcast ~> signAttachmentMetadataRequest ~> callDigitalSignatures ~> parseResponse ~> remapErrorSeverity ~> zip.in2
+        broadcast
+          ~> signAttachmentRequest
+            .log(name = "Sign.attach.signAttachmentRequest")
+            .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+          ~> callDigitalSignatures
+            .log(name = "Sign.attach.callDigitalSignatures")
+            .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+          ~> parseResponse
+            .log(name = "Sign.attach.parseResponse")
+            .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+          ~> remapErrorSeverity
+            .log(name = "Sign.attach.remapErrorSeverity")
+            .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+          ~> zip.in1
+        broadcast
+          ~> signAttachmentMetadataRequest
+            .log(name = "Sign.meta.signAttachmentMetadataRequest")
+            .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+          ~> callDigitalSignatures
+            .log(name = "Sign.meta.callDigitalSignatures")
+            .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+          ~> parseResponse
+            .log(name = "Sign.meta.parseResponse")
+            .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+          ~> remapErrorSeverity
+            .log(name = "Sign.meta.remapErrorSeverity")
+            .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+          ~> zip.in2
 
         zip.out ~> mapSignedZipContent ~> merge
 

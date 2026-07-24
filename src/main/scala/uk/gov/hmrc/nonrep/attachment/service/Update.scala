@@ -5,7 +5,8 @@ import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Created, OK}
 import org.apache.pekko.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
-import org.apache.pekko.http.scaladsl.settings.ConnectionPoolSettings
+import org.apache.pekko.stream.Attributes.LogLevels.{Error, Info}
+import org.apache.pekko.stream.Attributes.logLevels
 import org.apache.pekko.stream.Supervision.restartingDecider
 import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Merge, Partition}
 import org.apache.pekko.stream.{ActorAttributes, FlowShape, OverflowStrategy}
@@ -57,7 +58,6 @@ class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) exten
       (
         attachment.toOption
           .map { archived =>
-            system.log.info(s"Update metastore request called [${archived.info.attachmentId}]")
             val submissionId = archived.info.submissionId.getOrElse(new IllegalStateException("Submission ID must be present"))
             val path         = s"/${archived.info.notableEvent}-attachments/index/${archived.info.attachmentId}?refresh=${config.refreshPolicy}"
             val body         =
@@ -73,13 +73,12 @@ class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) exten
       )
     }
 
-  val callMetastore: Flow[(HttpRequest, EitherErr[ArchivedAttachment]), (Try[HttpResponse], EitherErr[ArchivedAttachment]), Any] = {
+  val callMetastore: Flow[(HttpRequest, EitherErr[ArchivedAttachment]), (Try[HttpResponse], EitherErr[ArchivedAttachment]), Any] =
     (if config.isElasticSearchProtocolSecure then
        Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]](config.elasticSearchHost)
      else Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost))
       .buffer(config.esServiceBufferSize, OverflowStrategy.backpressure)
       .async
-  }
 
   val parseResponse: Flow[(Try[HttpResponse], EitherErr[ArchivedAttachment]), EitherErr[ArchivedAttachment], NotUsed] =
     Flow[(Try[HttpResponse], EitherErr[ArchivedAttachment])]
@@ -107,7 +106,18 @@ class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) exten
         val remapAttachmentInfoShape = builder.add(remapAttachmentInfo)
 
         input ~> merge
-        input ~> createRequest ~> callMetastore ~> parseResponse ~> merge ~> remapAttachmentInfoShape.in
+        input
+          ~> createRequest
+           .log(name = "Update.createRequest")
+           .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+          ~> callMetastore
+            .log(name = "Update.callMetastore")
+            .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+          ~> parseResponse
+            .log(name = "Update.parseResponse")
+            .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+          ~> merge
+          ~> remapAttachmentInfoShape.in
 
         FlowShape(input.in, remapAttachmentInfoShape.out)
       }

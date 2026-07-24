@@ -10,7 +10,7 @@ import uk.gov.hmrc.nonrep.attachment.server.Main.config
 
 object Prometheus {
 
-  private val prometheus: CollectorRegistry = CollectorRegistry.defaultRegistry
+  val prometheus: CollectorRegistry = CollectorRegistry.defaultRegistry
 
   val settings: PrometheusSettings =
     PrometheusSettings.default

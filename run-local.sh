@@ -2,4 +2,4 @@
 
 # To enable execution with nonrep-stubs
 
-ENV=local sbt  'set javaOptions ++= Seq("-Dconfig.resource=local.conf", "-Dlogback.configurationFile=logback-console.xml"); run'
+ENV=local sbt  'set javaOptions ++= Seq("-Dconfig.resource=local.conf", "-Dlogback.configurationFile=logback-local.xml"); run'
