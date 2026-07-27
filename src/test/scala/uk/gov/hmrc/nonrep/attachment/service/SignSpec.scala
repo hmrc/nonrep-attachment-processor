@@ -13,7 +13,7 @@ class SignSpec extends BaseSpec {
   "Sign service" should {
     import TestServices.success.*
 
-    "send attachment for signing with selected profile" ignore {
+    "send attachment for signing with selected profile" in {
       val messageId = UUID.randomUUID().toString
 
       val attachmentInfo = AttachmentInfo(testAttachmentId, messageId, s"$testAttachmentId.zip")
@@ -48,7 +48,7 @@ class SignSpec extends BaseSpec {
       result.left.toOption.get.severity shouldBe ERROR
     }
 
-    "return sign error messages with WARN severity" ignore {
+    "return sign error messages with WARN severity" in {
       import TestServices.failure.*
       val messageId = UUID.randomUUID().toString
 

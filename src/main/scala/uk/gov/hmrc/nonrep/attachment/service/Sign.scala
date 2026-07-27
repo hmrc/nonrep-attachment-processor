@@ -38,7 +38,7 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
 
   private[service] def parse(zip: EitherErr[ZipContent], response: HttpResponse): Future[EitherErr[AttachmentBinary]] = {
     import system.executionContext
-    if response.status != OK then // TODO THIS IS WRONG, WILL GENERATE ERROR ON OK
+    if response.status == OK then
       response.entity.dataBytes
         .runFold(ByteString.empty)(_ ++ _)
         .map(content => Right(content.toArray[Byte]))
@@ -49,13 +49,12 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
     }
   }
 
-  val callDigitalSignatures: Flow[(HttpRequest, EitherErr[ZipContent]), (Try[HttpResponse], EitherErr[ZipContent]), Any] = {
+  val callDigitalSignatures: Flow[(HttpRequest, EitherErr[ZipContent]), (Try[HttpResponse], EitherErr[ZipContent]), Any] =
     (if config.isSignaturesServiceSecure then
       Http().cachedHostConnectionPoolHttps[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort)
     else Http().cachedHostConnectionPool[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort))
       .buffer(config.signServiceBufferSize, OverflowStrategy.backpressure)
       .async
-  }
 
   private[service] val signAttachmentRequest: Flow[EitherErr[ZipContent], (HttpRequest, EitherErr[ZipContent]), NotUsed] =
     Flow[EitherErr[ZipContent]].map(zip =>

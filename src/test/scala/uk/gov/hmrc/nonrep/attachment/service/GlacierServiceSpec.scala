@@ -95,7 +95,7 @@ class GlacierServiceSpec extends BaseSpec {
     }
   }
 
-  "datedVaultName" ignore {
+  "datedVaultName" should {
     "return a vault name without a prefix" when {
       val vaultNameWithNoPrefix = s"vat-registration-${now().year()}"
 

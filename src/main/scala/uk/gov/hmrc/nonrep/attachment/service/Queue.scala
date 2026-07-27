@@ -17,7 +17,7 @@ import spray.json.DefaultJsonProtocol.*
 import spray.json.*
 import uk.gov.hmrc.nonrep.attachment.*
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
-import uk.gov.hmrc.nonrep.attachment.utils.{ErrorHandler, MessageCount}
+import uk.gov.hmrc.nonrep.attachment.utils.ErrorHandler
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -61,9 +61,7 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
 
   override def getMessages: Source[Message, NotUsed] = {
     system.log.info(s"SqsSourceSettings maxBufferSize: ${settings.maxBatchSize}")
-    SqsSource(config.queueUrl, settings).map{ msg =>
-      system.log.info(s"getMessages SQS msgCount: ${MessageCount.msgCount.addAndGet(1L)}")
-      msg}
+    SqsSource(config.queueUrl, settings)
   }
 
   override def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed] =
@@ -94,23 +92,10 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
       )
     }
 
-  import scala.util.{Try, Success, Failure}
-
   override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = {
     def delete(receiptHandle: String) = {
-      Try {
-        val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle("INVALID-KEY").build() // call delete but DO NOT delete the object so it can be reused
-        client.deleteMessage(request).asScala
-      } match {
-        case Success(result) =>
-          result.map( r =>
-            system.log.info(s"Queue.deleteMessage ok ${r}")
-          )
-          Future.successful(Done)
-        case scala.util.Failure(result) =>
-          system.log.info(s"Queue.deleteMessage failed: ${result.getMessage}")
-          Future.successful(Done)
-      }
+      val request = DeleteMessageRequest.builder().queueUrl(config.queueUrl).receiptHandle(receiptHandle).build()
+      client.deleteMessage(request).asScala
     }
 
     Flow[EitherErr[AttachmentInfo]]

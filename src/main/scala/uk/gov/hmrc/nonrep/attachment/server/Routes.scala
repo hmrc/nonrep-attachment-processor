@@ -17,7 +17,6 @@ import org.slf4j.Logger
 import uk.gov.hmrc.nonrep.BuildInfo
 import uk.gov.hmrc.nonrep.attachment.app.metrics.Prometheus.*
 import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats.buildVersionJsonFormat
-import uk.gov.hmrc.nonrep.attachment.utils.MessageCount
 
 import java.io.StringWriter
 import scala.concurrent.Future
@@ -44,7 +43,6 @@ class Routes(processor: Future[Done])(using system: ActorSystem[?], config: Serv
     system.log.info(
       s"""Ping Status
          |Processor.isCompleted:  ${processor.isCompleted}
-         |Messages Processed: ${MessageCount.msgCount}
          |Memory Total: ${Runtime.getRuntime.totalMemory()}
          |Memory Free: ${Runtime.getRuntime.freeMemory()}
          |Thread Count: ${Thread.activeCount()}
@@ -62,7 +60,6 @@ class Routes(processor: Future[Done])(using system: ActorSystem[?], config: Serv
           logStatus()
           HttpResponse(StatusCodes.InternalServerError, entity = "Processing of attachments is finished")
         else
-          logStatus()
           HttpResponse(StatusCodes.OK, entity = "pong")
       }
     }
