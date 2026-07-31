@@ -1,7 +1,7 @@
 package uk.gov.hmrc.nonrep.attachment.service
 
 import org.apache.pekko.NotUsed
-import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.actor.typed.{ActorSystem, DispatcherSelector}
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.StatusCodes.{Created, OK}
 import org.apache.pekko.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
@@ -14,6 +14,7 @@ import uk.gov.hmrc.nonrep.attachment.*
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import uk.gov.hmrc.nonrep.attachment.service.RequestsSigner.*
 
+import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success, Try}
 
 trait Update {
@@ -23,6 +24,8 @@ trait Update {
 }
 
 class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) extends Update {
+
+  implicit val ec: ExecutionContext = system.dispatchers.lookup(DispatcherSelector.fromConfig("my-metastore-dispatcher"))
 
   override def createRequestsSignerParams =
     RequestsSignerParams(DefaultCredentialsProvider.builder().build().resolveCredentials)
@@ -37,7 +40,6 @@ class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) exten
     )
 
   protected def parse(archived: EitherErr[ArchivedAttachment], response: HttpResponse): EitherErr[ArchivedAttachment] = {
-    import system.executionContext
     if response.status == OK || response.status == Created then {
       response.entity.dataBytes
         .runFold(ByteString.empty)(_ ++ _)
@@ -73,8 +75,8 @@ class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) exten
 
   val callMetastore: Flow[(HttpRequest, EitherErr[ArchivedAttachment]), (Try[HttpResponse], EitherErr[ArchivedAttachment]), Any] =
     (if config.isElasticSearchProtocolSecure then
-       Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]](config.elasticSearchHost)
-     else Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost))
+       Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]](config.elasticSearchHost, 4566)
+     else Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost, 4566))
       .buffer(config.esServiceBufferSize, OverflowStrategy.backpressure)
       .async
 

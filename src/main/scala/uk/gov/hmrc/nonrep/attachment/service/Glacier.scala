@@ -1,7 +1,7 @@
 package uk.gov.hmrc.nonrep.attachment.service
 
 import org.apache.pekko.NotUsed
-import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.actor.typed.{ActorSystem, DispatcherSelector}
 import org.apache.pekko.stream.ActorAttributes
 import org.apache.pekko.stream.Supervision.restartingDecider
 import org.apache.pekko.stream.scaladsl.Flow
@@ -19,7 +19,7 @@ import java.security.MessageDigest.getInstance
 import java.time.LocalDate.now
 import scala.annotation.tailrec
 import scala.compat.java8.FutureConverters.*
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 
 trait Glacier {
   val archive: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed]
@@ -29,12 +29,13 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
   private[service] lazy val client: GlacierAsyncClient = GlacierAsyncClient
     .builder()
     .region(EU_WEST_2)
+    .endpointOverride(java.net.URI.create("http://localhost:8999/glacier"))
     .httpClientBuilder(NettyNioAsyncHttpClient.builder())
     .build()
 
   private val environmentalVaultNamePrefix = if config.isSandbox then s"${config.env}-" else ""
 
-  implicit val ec: ExecutionContext = system.executionContext
+  implicit val ec: ExecutionContext = system.dispatchers.lookup(DispatcherSelector.fromConfig("my-glacier-dispatcher"))
 
   override val archive: Flow[EitherErr[AttachmentContent], EitherErr[ArchivedAttachment], NotUsed] =
     Flow[EitherErr[AttachmentContent]]
@@ -51,6 +52,7 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
               }
           }
         case Left(e)                  =>
+          system.log.warn(s"Skipping archive for attachment content due to previous error: $e")
           Future successful Left(e)
       }
       .withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
@@ -78,14 +80,16 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
             )
           )
         case exception                            =>
-          Future.successful(Left(ErrorMessage(s"Error uploading attachment $content to glacier $vaultName", Some(exception))))
+          system.log.error(s"Error uploading attachment ${content.info.attachmentId} to glacier $vaultName", exception)
+          Future.successful(Left(ErrorMessage(s"Error uploading attachment ${content.info.attachmentId} to glacier $vaultName", Some(exception))))
       }
 
   private[service] def eventuallyUploadArchive(
     uploadArchiveRequest: UploadArchiveRequest,
     asyncRequestBody: AsyncRequestBody
-  ): Future[UploadArchiveResponse] =
+  ): Future[UploadArchiveResponse] = {
     client.uploadArchive(uploadArchiveRequest, asyncRequestBody).toScala
+  }
 
   private[service] def datedVaultName(notableEvent: String) = s"$environmentalVaultNamePrefix$notableEvent-${now().getYear}"
 }

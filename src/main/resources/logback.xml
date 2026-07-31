@@ -1,18 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <appender name="LOGSTASH" class="net.logstash.logback.appender.LogstashTcpSocketAppender">
-        <destination>${LOGSTASH_URL}:${LOGSTASH_PORT}</destination>
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <customFields>{"appname":"attachment-processor", "env":"${ENV}"}</customFields>
-        </encoder>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="uk.gov.hmrc.play.logging.JsonEncoder"/>
     </appender>
 
     <root level="INFO">
-        <appender-ref ref="LOGSTASH" />
+        <appender-ref ref="STDOUT" />
     </root>
 
     <property name="LOG_LEVEL" value="${log.level:-INFO}" />
 
-    <logger name="uk.gov" level="${LOG_LEVEL}" />
+    <logger name="uk.gov" level="${LOG_LEVEL}"/>
 
 </configuration>

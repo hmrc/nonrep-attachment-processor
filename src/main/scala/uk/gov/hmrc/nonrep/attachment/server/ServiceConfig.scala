@@ -2,8 +2,8 @@ package uk.gov.hmrc.nonrep.attachment
 package server
 
 import java.net.URI
-
 import com.typesafe.config.{Config, ConfigFactory}
+import org.apache.pekko.stream.connectors.s3.S3Settings
 
 class ServiceConfig(val servicePort: Int = 8000) {
 
@@ -13,8 +13,7 @@ class ServiceConfig(val servicePort: Int = 8000) {
 
   def isSandbox: Boolean = !Set("dev", "qa", "staging", "production").contains(env)
 
-  val queueUrl: String = if env == "local" then "local" else sqsSystemProperty
-
+  val queueUrl: String = if env == "local" then "http://sqs.eu-west-2.localhost.localstack.cloud:4566/000000000000/local-nonrep-attachment-queue" else sqsSystemProperty
   private[server] def sqsSystemProperty: String =
     sys.env.getOrElse(
       "ATTACHMENT_SQS",
@@ -35,13 +34,15 @@ class ServiceConfig(val servicePort: Int = 8000) {
     if configFile.exists() then ConfigFactory.parseFile(configFile)
     else ConfigFactory.load("application.conf")
 
+  val awsSettings: S3Settings = S3Settings(config.getConfig(S3Settings.ConfigPath))
+
   val refreshPolicy: String = config.getConfig("metastore").getString("refresh_policy")
 
   private val signaturesParams           = config.getObject(s"$appName.signatures").toConfig
-  private val signaturesServiceUri       = URI.create(signaturesParams.getString("service-url"))
-  val isSignaturesServiceSecure: Boolean = signaturesServiceUri.toURL.getProtocol == "https"
-  val signaturesServiceHost: String      = signaturesServiceUri.getHost
-  val signaturesServicePort: Int         = signaturesServiceUri.getPort
+  val signaturesServiceUri: URI = URI.create(signaturesParams.getString("service-url"))
+  val isSignaturesServiceSecure: Boolean = false
+  val signaturesServiceHost: String      = "localhost"
+  val signaturesServicePort: Int         = 8999
   val signingProfile: String             = signaturesParams.getString("signing-profile")
 
   private val systemParams         = config.getObject(s"$appName.system-params").toConfig

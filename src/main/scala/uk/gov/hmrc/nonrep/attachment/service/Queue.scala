@@ -1,7 +1,7 @@
 package uk.gov.hmrc.nonrep.attachment.service
 
 import org.apache.pekko.actor.CoordinatedShutdown
-import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.actor.typed.{ActorSystem, DispatcherSelector}
 import org.apache.pekko.stream.ActorAttributes
 import org.apache.pekko.stream.Supervision.restartingDecider
 import org.apache.pekko.stream.connectors.sqs.scaladsl.SqsSource
@@ -19,6 +19,7 @@ import uk.gov.hmrc.nonrep.attachment.*
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import uk.gov.hmrc.nonrep.attachment.utils.ErrorHandler
 
+import java.net.URI
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.jdk.FutureConverters.CompletionStageOps
@@ -36,12 +37,13 @@ trait Queue {
 
 class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) extends Queue with ErrorHandler {
 
-  implicit val ec: ExecutionContextExecutor = system.executionContext
+  implicit val ec: ExecutionContextExecutor = system.dispatchers.lookup(DispatcherSelector.fromConfig("my-sqs-dispatcher"))
 
   private[service] implicit lazy val client: SqsAsyncClient = SqsAsyncClient
     .builder()
     .region(EU_WEST_2)
     .httpClientBuilder(NettyNioAsyncHttpClient.builder())
+    .endpointOverride(URI.create("http://sqs.eu-west-2.localhost.localstack.cloud:4566/000000000000/local-nonrep-attachment-queue"))
     .build()
 
   CoordinatedShutdown(system).addTask(CoordinatedShutdown.PhaseBeforeServiceUnbind, "close SQS client") { () =>
@@ -99,10 +101,12 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
     Flow[EitherErr[AttachmentInfo]]
       .mapAsyncUnordered(8) {
         case Right(info)                                   =>
-          delete(info.message).map(_ => Right(info))
+//          delete(info.message).map(_ => Right(info))
+            Future.successful(Right(info))
         case Left(error: ErrorMessageWithDeleteSQSMessage) =>
           system.log.error(s"failure caused by: ${error.message}, SQS message to be removed")
-          delete(error.messageId).map(_ => Left(error))
+//          delete(error.messageId).map(_ => Left(error))
+            Future.successful(Left(error))
         case Left(error)                                   =>
           Future.successful(Left(error))
       }

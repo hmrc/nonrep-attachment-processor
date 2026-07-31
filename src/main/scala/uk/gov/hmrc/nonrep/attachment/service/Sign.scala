@@ -2,7 +2,7 @@ package uk.gov.hmrc.nonrep.attachment
 package service
 
 import org.apache.pekko.NotUsed
-import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.actor.typed.{ActorSystem, DispatcherSelector}
 import org.apache.pekko.http.scaladsl.Http
 import org.apache.pekko.http.scaladsl.model.StatusCodes.OK
 import org.apache.pekko.http.scaladsl.model.headers.RawHeader
@@ -14,7 +14,7 @@ import org.apache.pekko.util.ByteString
 import uk.gov.hmrc.nonrep.attachment.*
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 trait Sign {
@@ -24,6 +24,8 @@ trait Sign {
 }
 
 class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends Sign {
+
+  implicit val ec: ExecutionContext = system.dispatchers.lookup(DispatcherSelector.fromConfig("my-signing-dispatcher"))
 
   private[service] def partitionRequests[A]() =
     Partition[EitherErr[A]](
@@ -35,12 +37,17 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
     )
 
   private[service] def parse(zip: EitherErr[ZipContent], response: HttpResponse): Future[EitherErr[AttachmentBinary]] = {
-    import system.executionContext
     if response.status == OK then
       response.entity.dataBytes
         .runFold(ByteString.empty)(_ ++ _)
         .map(content => Right(content.toArray[Byte]))
     else {
+      response.entity.dataBytes.runFold(ByteString.empty)(_ ++ _).foreach { content =>
+        system.log.error(
+          s"Response status ${response.status} from signatures service ${config.signaturesServiceHost} , response body: ${content.utf8String}"
+        )
+      }
+      system.log.error(s"it got here?")
       response.discardEntityBytes()
       val error = s"Response status ${response.status} from signatures service ${config.signaturesServiceHost}"
       Future.successful(Left(ErrorMessage(error)))
@@ -51,8 +58,6 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
     (if config.isSignaturesServiceSecure then
        Http().cachedHostConnectionPoolHttps[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort)
      else Http().cachedHostConnectionPool[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort))
-      .buffer(config.signServiceBufferSize, OverflowStrategy.backpressure)
-      .async
 
   private[service] val signAttachmentRequest: Flow[EitherErr[ZipContent], (HttpRequest, EitherErr[ZipContent]), NotUsed] =
     Flow[EitherErr[ZipContent]].map(zip =>
@@ -62,7 +67,7 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
           val headers = List(RawHeader(TransactionIdHeader, content.info.attachmentId))
           val request = HttpRequest(
             HttpMethods.POST,
-            s"/${config.signaturesServiceHost}/cades/${config.signingProfile}",
+            s"${config.signaturesServiceUri}/cades/${config.signingProfile}",
             headers,
             HttpEntity(content.attachment)
           )
@@ -79,7 +84,7 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
           val headers = List(RawHeader(TransactionIdHeader, content.info.attachmentId))
           val request = HttpRequest(
             HttpMethods.POST,
-            s"/${config.signaturesServiceHost}/cades/${config.signingProfile}",
+            s"${config.signaturesServiceUri}/cades/${config.signingProfile}",
             headers,
             HttpEntity(content.metadata)
           )
