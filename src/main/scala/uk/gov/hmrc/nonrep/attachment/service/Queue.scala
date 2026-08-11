@@ -70,19 +70,10 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
 
       Try {
         val s3ObjectKey = message
-          .body()
-          .parseJson
-          .asJsObject
-          .fields("Records")
-          .convertTo[List[JsValue]]
-          .head
-          .asJsObject
-          .fields("s3")
-          .asJsObject
-          .fields("object")
-          .asJsObject
-          .fields("key")
-          .convertTo[String]
+          .body().parseJson.asJsObject
+          .fields("Records").convertTo[List[JsValue]].head.asJsObject
+          .fields("s3").asJsObject.fields("object").asJsObject
+          .fields("key").convertTo[String]
 
         val attachmentId = s3ObjectKey
           .replaceFirst(".zip", "")
@@ -101,10 +92,10 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
     Flow[EitherErr[AttachmentInfo]]
       .mapAsyncUnordered(8) {
         case Right(info)                                   =>
-          delete(info.message).map(_ => Right(info))
+          delete("INVALID_DELETE").map(_ => Right(info))
         case Left(error: ErrorMessageWithDeleteSQSMessage) =>
           system.log.error(s"failure caused by: ${error.message}, SQS message to be removed")
-          delete(error.messageId).map(_ => Left(error))
+          delete("INVALID_DELETE").map(_ => Left(error))
         case Left(error)                                   =>
           Future.successful(Left(error))
       }

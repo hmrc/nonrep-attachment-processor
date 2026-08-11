@@ -2,8 +2,8 @@ package uk.gov.hmrc.nonrep.attachment
 package server
 
 import java.net.URI
-
 import com.typesafe.config.{Config, ConfigFactory}
+import org.apache.pekko.stream.connectors.s3.S3Settings
 
 class ServiceConfig(val servicePort: Int = 8000) {
 
@@ -13,7 +13,7 @@ class ServiceConfig(val servicePort: Int = 8000) {
 
   def isSandbox: Boolean = !Set("dev", "qa", "staging", "production").contains(env)
 
-  val queueUrl: String = if env == "local" then "local" else sqsSystemProperty
+  val queueUrl: String = if env == "local" then sys.env.getOrElse("ATTACHMENT_SQS", "local") else sqsSystemProperty
 
   private[server] def sqsSystemProperty: String =
     sys.env.getOrElse(
@@ -28,6 +28,7 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val elasticSearchUri: URI                  = URI.create(sys.env.getOrElse("ELASTICSEARCH", "http://elasticsearch.nrs"))
   val isElasticSearchProtocolSecure: Boolean = elasticSearchUri.toURL.getProtocol == "https"
   val elasticSearchHost: String              = elasticSearchUri.getHost
+  val elasticSearchPort: Int              = elasticSearchUri.getPort
 
   private val configFile = new java.io.File(s"/etc/config/CONFIG_FILE")
 
@@ -38,7 +39,7 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val refreshPolicy: String = config.getConfig("metastore").getString("refresh_policy")
 
   private val signaturesParams           = config.getObject(s"$appName.signatures").toConfig
-  private val signaturesServiceUri       = URI.create(signaturesParams.getString("service-url"))
+  val signaturesServiceUri       = URI.create(signaturesParams.getString("service-url"))
   val isSignaturesServiceSecure: Boolean = signaturesServiceUri.toURL.getProtocol == "https"
   val signaturesServiceHost: String      = signaturesServiceUri.getHost
   val signaturesServicePort: Int         = signaturesServiceUri.getPort
@@ -53,6 +54,11 @@ class ServiceConfig(val servicePort: Int = 8000) {
 
   val signServiceBufferSize: Int = systemParams.getInt("signServiceBufferSize")
   val esServiceBufferSize: Int   = systemParams.getInt("esServiceBufferSize")
+
+  val awsSettings: S3Settings = S3Settings(config.getConfig(S3Settings.ConfigPath))
+
+  private val glacierParams = config.getObject(s"$appName.glacier").toConfig
+  val awsGlacierSettings = awsSettings.withEndpointUrl(glacierParams.getString("glacier-url"))
 
   override def toString: String =
     s"""

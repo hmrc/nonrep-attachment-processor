@@ -11,7 +11,6 @@ import org.apache.pekko.stream.Supervision.restartingDecider
 import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Merge, Partition}
 import org.apache.pekko.stream.{ActorAttributes, FlowShape, OverflowStrategy}
 import org.apache.pekko.util.ByteString
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import uk.gov.hmrc.nonrep.attachment.*
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import uk.gov.hmrc.nonrep.attachment.service.RequestsSigner.*
@@ -27,7 +26,7 @@ trait Update {
 class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) extends Update {
 
   override def createRequestsSignerParams =
-    RequestsSignerParams(DefaultCredentialsProvider.builder().build().resolveCredentials)
+    RequestsSignerParams( config.awsGlacierSettings.credentialsProvider.resolveCredentials() )
 
   private def partitionRequests[A]() =
     Partition[EitherErr[A]](
@@ -75,10 +74,11 @@ class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) exten
 
   val callMetastore: Flow[(HttpRequest, EitherErr[ArchivedAttachment]), (Try[HttpResponse], EitherErr[ArchivedAttachment]), Any] =
     (if config.isElasticSearchProtocolSecure then
-       Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]](config.elasticSearchHost)
-     else Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost))
+      Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]]("127.0.0.1", 8010 )
+    else Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]]("127.0.0.1", 8010 ))
       .buffer(config.esServiceBufferSize, OverflowStrategy.backpressure)
       .async
+
 
   val parseResponse: Flow[(Try[HttpResponse], EitherErr[ArchivedAttachment]), EitherErr[ArchivedAttachment], NotUsed] =
     Flow[(Try[HttpResponse], EitherErr[ArchivedAttachment])]

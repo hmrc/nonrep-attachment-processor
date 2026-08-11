@@ -51,8 +51,8 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
 
   val callDigitalSignatures: Flow[(HttpRequest, EitherErr[ZipContent]), (Try[HttpResponse], EitherErr[ZipContent]), Any] =
     (if config.isSignaturesServiceSecure then
-      Http().cachedHostConnectionPoolHttps[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort)
-    else Http().cachedHostConnectionPool[EitherErr[ZipContent]](config.signaturesServiceHost, config.signaturesServicePort))
+      Http().cachedHostConnectionPoolHttps[EitherErr[ZipContent]]("127.0.0.1", port = 8010)
+    else Http().cachedHostConnectionPool[EitherErr[ZipContent]]("127.0.0.1", port = 8010))
       .buffer(config.signServiceBufferSize, OverflowStrategy.backpressure)
       .async
 
@@ -65,7 +65,7 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
           val headers = List(RawHeader(TransactionIdHeader, content.info.attachmentId))
           val request = HttpRequest(
             HttpMethods.POST,
-            s"/${config.signaturesServiceHost}/cades/${config.signingProfile}",
+            s"${config.signaturesServiceUri}/cades/${config.signingProfile}",
             headers,
             HttpEntity(content.attachment)
           )
@@ -82,7 +82,7 @@ class SignService()(using config: ServiceConfig, system: ActorSystem[?]) extends
           val headers = List(RawHeader(TransactionIdHeader, content.info.attachmentId))
           val request = HttpRequest(
             HttpMethods.POST,
-            s"/${config.signaturesServiceHost}/cades/${config.signingProfile}",
+            s"${config.signaturesServiceUri}/cades/${config.signingProfile}",
             headers,
             HttpEntity(content.metadata)
           )

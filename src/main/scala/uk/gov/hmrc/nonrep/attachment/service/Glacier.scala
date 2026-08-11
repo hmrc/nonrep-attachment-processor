@@ -5,6 +5,7 @@ import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.stream.ActorAttributes
 import org.apache.pekko.stream.Supervision.restartingDecider
 import org.apache.pekko.stream.scaladsl.Flow
+import software.amazon.awssdk.awscore.defaultsmode.DefaultsMode
 import software.amazon.awssdk.core.async.AsyncRequestBody
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient
 import software.amazon.awssdk.regions.Region.EU_WEST_2
@@ -28,6 +29,11 @@ trait Glacier {
 class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) extends Glacier {
   private[service] lazy val client: GlacierAsyncClient = GlacierAsyncClient
     .builder()
+    .endpointOverride(java.net.URI(Some("http://localhost:8010/glacier").getOrElse(
+      throw new IllegalStateException(
+        "System property glacier-url is not set."))   )    )
+    .credentialsProvider(config.awsGlacierSettings.credentialsProvider)
+    .defaultsMode(DefaultsMode.AUTO)
     .region(EU_WEST_2)
     .httpClientBuilder(NettyNioAsyncHttpClient.builder())
     .build()
