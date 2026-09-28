@@ -42,7 +42,7 @@ lazy val root = (project in file(".")).
       "org.apache.pekko"    %% "pekko-http"            % pekkoHttpVersion,
       "org.apache.pekko"    %% "pekko-http-xml"        % pekkoHttpVersion,
       "org.apache.pekko"    %% "pekko-http-spray-json" % pekkoHttpVersion,
-      "org.apache.pekko"    %% "pekko-actor-typed"     % "1.1.3",
+      "org.apache.pekko"    %% "pekko-actor-typed"     % pekkoVersion,
       "org.apache.pekko"    %% "pekko-stream"          % pekkoVersion,
 
       "org.apache.pekko" %% "pekko-connectors-sqs" % pekkoConnectors,
@@ -57,7 +57,7 @@ lazy val root = (project in file(".")).
       // Logging
       "ch.qos.logback"       %  "logback-classic"          % logbackVersion,
       "ch.qos.logback"       %  "logback-core"             % logbackVersion,
-      "org.apache.pekko"    %%  "pekko-slf4j"              % "1.1.3",
+      "org.apache.pekko"    %%  "pekko-slf4j"              % "1.6.0",
       "org.slf4j"            %  "slf4j-api"                % "2.0.17",
       "net.logstash.logback" %  "logstash-logback-encoder" % "8.0",
 
@@ -75,7 +75,9 @@ lazy val root = (project in file(".")).
       "org.apache.pekko"    %% "pekko-actor-testkit-typed" % pekkoVersion     % Test,
       "org.apache.pekko"    %% "pekko-stream-testkit"      % pekkoVersion     % Test,
       "org.scalatest"        %% "scalatest"                % "3.2.20"        % Test,
-      "org.scalatestplus"   %% "mockito-5-18"              % "3.2.19.0" % "test"
+      "org.scalatestplus"   %% "mockito-5-18"              % "3.2.19.0" % "test",
+      "org.wiremock"              % "wiremock"                       % "3.13.2" % Test,
+      "org.scalamock"             %% "scalamock"                     % "7.5.5" % Test
     ),
 
     assembly / assemblyJarName := s"$projectName.jar",

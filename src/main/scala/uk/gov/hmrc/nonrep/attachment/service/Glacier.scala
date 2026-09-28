@@ -28,6 +28,8 @@ trait Glacier {
 class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) extends Glacier {
   private[service] lazy val client: GlacierAsyncClient = GlacierAsyncClient
     .builder()
+    .endpointOverride(java.net.URI(config.glacierUrl ))
+    .credentialsProvider(config.awsGlacierSettings.credentialsProvider)
     .region(EU_WEST_2)
     .httpClientBuilder(NettyNioAsyncHttpClient.builder())
     .build()
@@ -52,6 +54,9 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
           }
         case Left(e)                  =>
           Future successful Left(e)
+      }.recover{
+        case err: RuntimeException =>
+          Left(ErrorMessage(s"Glacier archive failed: ${err.getMessage}"))
       }
       .withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
 

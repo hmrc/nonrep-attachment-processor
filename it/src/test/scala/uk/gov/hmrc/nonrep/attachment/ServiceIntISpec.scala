@@ -12,19 +12,24 @@ import uk.gov.hmrc.nonrep.attachment.app.json.JsonFormats.buildVersionJsonFormat
 
 import scala.concurrent.Future
 
-class ServiceIntSpec extends BaseSpec with Inside {
+class ServiceIntISpec extends BaseSpec with Inside {
   import TestServices.*
 
   var server: NonrepMicroservice = null
   val config: ServiceConfig      = new ServiceConfig(servicePort = 9342)
   val hostUrl                    = s"http://localhost:${config.port}"
-  val service: String            = config.appName
+  val service: String            = ServiceConfig.appName
 
   lazy val testKit                                                     = ActorTestKit()
   override def createActorSystem(): org.apache.pekko.actor.ActorSystem = testKit.system.toClassic
 
   override def beforeAll(): Unit =
     server = NonrepMicroservice()(using system.toTyped, config)
+    server.addServerBindingOnComplete()
+    server.addAttachmentsProcessorOnComplete()
+    server.addCoordinatedShutdown()
+
+    whenReady(server.serverBinding) { _ => println(">>>>START") }
 
   override def afterAll(): Unit =
     whenReady(server.serverBinding) {
@@ -37,7 +42,7 @@ class ServiceIntSpec extends BaseSpec with Inside {
 
     "return version information for GET request to service /version endpoint" in {
       val http                                 = Http(system)
-      val responseFuture: Future[HttpResponse] = http.singleRequest(HttpRequest(uri = s"$hostUrl/${config.appName}/version"))
+      val responseFuture: Future[HttpResponse] = http.singleRequest(HttpRequest(uri = s"$hostUrl/${ServiceConfig.appName}/version"))
       whenReady(responseFuture) { res =>
         res.status shouldBe StatusCodes.OK
         whenReady(entityToString(res.entity)) { body =>
@@ -47,7 +52,7 @@ class ServiceIntSpec extends BaseSpec with Inside {
     }
 
     "return a 'pong' response for GET requests to service /ping endpoint" in {
-      val responseFuture: Future[HttpResponse] = Http(system).singleRequest(HttpRequest(uri = s"$hostUrl/${config.appName}/ping"))
+      val responseFuture: Future[HttpResponse] = Http(system).singleRequest(HttpRequest(uri = s"$hostUrl/${ServiceConfig.appName}/ping"))
       whenReady(responseFuture) { res =>
         res.status shouldBe StatusCodes.OK
         whenReady(entityToString(res.entity)) { body =>

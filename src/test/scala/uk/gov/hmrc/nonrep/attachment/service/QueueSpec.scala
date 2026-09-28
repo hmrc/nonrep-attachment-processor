@@ -19,12 +19,13 @@ class QueueSpec extends BaseSpec {
     }
 
     "Message from source should have" in {
-      val sink = TestSink[Message]()
+      val sink = TestSink[EitherErr[Message]]()
 
       val sub    = queueService.getMessages.runWith(sink)
       val result = sub
         .request(1)
         .expectNext()
+        .toOption.get
 
       testSQSMessageIds should contain(result.receiptHandle())
     }

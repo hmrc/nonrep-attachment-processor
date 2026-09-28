@@ -3,7 +3,7 @@ package uk.gov.hmrc.nonrep.attachment.service
 import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.stream.ActorAttributes
 import org.apache.pekko.stream.Supervision.restartingDecider
-import org.apache.pekko.stream.connectors.s3.ObjectMetadata
+import org.apache.pekko.stream.connectors.s3.{ObjectMetadata, S3Attributes}
 import org.apache.pekko.stream.connectors.s3.scaladsl.S3
 import org.apache.pekko.stream.scaladsl.{Flow, Keep, Sink, Source}
 import org.apache.pekko.util.ByteString
@@ -26,6 +26,7 @@ class StorageService()(using config: ServiceConfig, system: ActorSystem[?]) exte
 
   protected def s3DownloadSource(attachment: AttachmentInfo): Source[ByteString, Future[ObjectMetadata]] =
     S3.getObject(config.attachmentsBucket, attachment.s3ObjectKey)
+      .withAttributes(S3Attributes.settings(config.awsSettings))
 
   override def downloadAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] =
     Flow[EitherErr[AttachmentInfo]]
@@ -51,10 +52,13 @@ class StorageService()(using config: ServiceConfig, system: ActorSystem[?]) exte
 
   protected def s3DeleteSource(attachment: AttachmentInfo): Source[Done, NotUsed] =
     S3.deleteObject(config.attachmentsBucket, attachment.s3ObjectKey)
+      .withAttributes(S3Attributes.settings(config.awsSettings))
 
   override def deleteAttachment: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
     Flow[EitherErr[AttachmentInfo]].mapAsyncUnordered(8) {
       case Left(error)       => Future.successful(Left(error))
-      case Right(attachment) => s3DeleteSource(attachment).toMat(Sink.head)(Keep.right).run().map(_ => Right(attachment))
+      case Right(attachment) => s3DeleteSource(attachment).toMat(Sink.head)(Keep.right).run()
+        .map(_ => Right(attachment))
+        .recover(err => Left(ErrorMessage(s"Delete Attachment Failed ${err.getMessage}")))
     }
 }

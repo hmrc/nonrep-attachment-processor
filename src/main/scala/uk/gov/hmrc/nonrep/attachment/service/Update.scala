@@ -9,7 +9,6 @@ import org.apache.pekko.stream.Supervision.restartingDecider
 import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Merge, Partition}
 import org.apache.pekko.stream.{ActorAttributes, FlowShape, OverflowStrategy}
 import org.apache.pekko.util.ByteString
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider
 import uk.gov.hmrc.nonrep.attachment.*
 import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import uk.gov.hmrc.nonrep.attachment.service.RequestsSigner.*
@@ -25,7 +24,7 @@ trait Update {
 class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) extends Update {
 
   override def createRequestsSignerParams =
-    RequestsSignerParams(DefaultCredentialsProvider.builder().build().resolveCredentials)
+    RequestsSignerParams(config.awsGlacierSettings.credentialsProvider.resolveCredentials())
 
   private def partitionRequests[A]() =
     Partition[EitherErr[A]](
@@ -73,8 +72,8 @@ class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) exten
 
   val callMetastore: Flow[(HttpRequest, EitherErr[ArchivedAttachment]), (Try[HttpResponse], EitherErr[ArchivedAttachment]), Any] =
     (if config.isElasticSearchProtocolSecure then
-       Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]](config.elasticSearchHost)
-     else Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost))
+       Http().cachedHostConnectionPoolHttps[EitherErr[ArchivedAttachment]](config.elasticSearchHost, config.elasticSearchPort)
+     else Http().cachedHostConnectionPool[EitherErr[ArchivedAttachment]](config.elasticSearchHost, config.elasticSearchPort))
       .buffer(config.esServiceBufferSize, OverflowStrategy.backpressure)
       .async
 
@@ -84,7 +83,7 @@ class UpdateService()(using config: ServiceConfig, system: ActorSystem[?]) exten
         httpResponse match {
           case Success(response)  => parse(request, response)
           case Failure(exception) =>
-            Left(ErrorMessage(s"Failure connection to ${config.elasticSearchHost} with ${exception.getMessage}", Some(exception)))
+            Left(ErrorMessage(s"Failure connection to ${config.elasticSearchHost}:${config.elasticSearchPort} with ${exception.getMessage}", Some(exception)))
         }
       }
       .withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
