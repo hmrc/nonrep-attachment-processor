@@ -5,6 +5,10 @@ import org.apache.pekko.stream.scaladsl.Keep
 import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
 import software.amazon.awssdk.services.sqs.model.Message
 
+import org.mockito.Mockito.when
+import org.scalatestplus.mockito.MockitoSugar.mock
+
+
 class QueueSpec extends BaseSpec {
 
   import TestServices.*
@@ -18,8 +22,8 @@ class QueueSpec extends BaseSpec {
       queueService.settings.closeOnEmptyReceive shouldBe config.closeOnEmptyReceive
     }
 
-    // TODO NONPR-5114 .getMessages in stubbs so nothing in 'main' called
-    "Message from source should have" ignore {
+    // TODO NONPR-5114 .getMessages in stubs so nothing in 'main' called
+    "Message from source should have" in {
       val sink = TestSink[EitherErr[Message]]()
 
       val sub    = queueService.getMessages.runWith(sink)
@@ -33,7 +37,7 @@ class QueueSpec extends BaseSpec {
 
     "Delete messages" when {
       // TODO NONPR-5114  QueueService not called. .getMessages replaced
-      "the s3 object can not be downloaded" ignore {
+      "the s3 object can not be downloaded" in {
         val sink     = TestSink[EitherErr[AttachmentInfo]]()
         val (_, sub) = queueService.getMessages
           .via(queueService.parseMessages)
