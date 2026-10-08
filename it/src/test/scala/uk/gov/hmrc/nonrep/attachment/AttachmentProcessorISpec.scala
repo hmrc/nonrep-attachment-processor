@@ -46,28 +46,28 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
   override def afterEach(): Unit = {
     super.afterEach()
-    testKit.system.terminate()
+    testKit.system.terminate()  // this will stop NonrepMicroservice in each test
   }
 
-  val commonErrors: Seq[(Int, String)] = List(
-    (400, "AccessDeniedException"),
-    (400, "IncompleteSignature"),
-    (500, "InternalFailure"),
-    (400, "InvalidAction"),
-    (403, "InvalidClientTokenId"),
-    (400, "InvalidParameterCombination"),
-    (400, "InvalidParameterValue"),
-    (400, "InvalidQueryParameter"),
-    (404, "MalformedQueryString"),
-    (400, "MissingAction"),
-    (400, "MissingAuthenticationToken"),
-    (400, "MissingParameter"),
-    (400, "NotAuthorized"),
-    (403, "OptInRequired"),
-    (400, "RequestExpired"),
-    (503, "ServiceUnavailable"),
-    (403, "ThrottlingException"),
-    (400, "ValidationError")
+  val commonErrors: Seq[(Int, String, String)] = List(
+    (400, "AccessDeniedException", "Bad Request"),
+    (400, "IncompleteSignature", "Bad Request"),
+    (500, "InternalFailure", "Internal Server Error"),
+    (400, "InvalidAction", "Bad Request"),
+    (403, "InvalidClientTokenId", "Forbidden"),
+    (400, "InvalidParameterCombination", "Bad Request"),
+    (400, "InvalidParameterValue", "Bad Request"),
+    (400, "InvalidQueryParameter", "Bad Request"),
+    (404, "MalformedQueryString", "Not Found"),
+    (400, "MissingAction", "Bad Request"),
+    (400, "MissingAuthenticationToken", "Bad Request"),
+    (400, "MissingParameter", "Bad Request"),
+    (400, "NotAuthorized", "Bad Request"),
+    (403, "OptInRequired", "Forbidden"),
+    (400, "RequestExpired", "Bad Request"),
+    (503, "ServiceUnavailable", "Service Unavailable"),
+    (403, "ThrottlingException", "Forbidden"),
+    (400, "ValidationError", "Bad Request")
   )
 
   // MALFORMED_RESPONSE_CHUNK gives OK and then garbage (see https://wiremock.org/2.x/docs/simulating-faults/)
@@ -118,6 +118,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       service.msgSuccessCount shouldBe 1 withClue ("incorrect successCount")
       verifyDeleteMessage(1, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
+      service.failedMsgList.length shouldBe 0
     }
 
     "work with two msg ok" in new StreamMessageJourney {
@@ -141,7 +142,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
     // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ReceiveMessage.html
     "pass common error checks" should {
-      for (statusCode, errMsg) <- commonErrors do
+      for (statusCode, errMsg, statusCodeText) <- commonErrors do
         s"${errMsg}(${statusCode}) SQS request error (error msg followed by ok msg)" in new StreamMessageJourney {
           override def getMessages(): Unit = {
             sendSQSErrorMessage(statusCode, errMsg, to = "msg-2")
@@ -159,6 +160,8 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
           service.msgSuccessCount shouldBe expectedSucessCount withClue ("incorrect successCount")
           service.msgFailedCount shouldBe expectErrorCount withClue ("incorrect failedCount")
+
+          service.failedMsgList.length shouldBe expectErrorCount withClue( service.failedMsgList.mkString(", "))
         }
     }
 
@@ -197,6 +200,8 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
             service.msgSuccessCount shouldBe 1 withClue ("incorrect successCount")
             service.msgFailedCount shouldBe 1 withClue ("incorrect failedCount")
             verifyDeleteMessage(1, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+
+            service.failedMsgMessages shouldBe List("Get SQS message failure: Service returned HTTP status code 400 (Service: Sqs, Status Code: 400, Request ID: null) (SDK Attempt Count: 1)")
           }
       }
 
@@ -233,27 +238,103 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
         private val service = createNonrepMicroservice(testKit)
 
         waitForNMessages(1)(service)
-        val failedCount: Int = service.msgFailedCount
-        failedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
+        service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
         verifySqsDeleteMessage(1)
+
+        service.failedMsgMessages shouldBe List(
+          """Parsing SQS message failure {
+            |  "Records": [
+            |    {
+            |      "eventVersion": "2.0",
+            |      "eventSource": "aws:s3",
+            |      "awsRegion": "eu-west-2",
+            |      "eventTime": "2018-07-17T14:08:56.784Z",
+            |      "eventName": "ObjectCreated:Put",
+            |      "userIdentity": {
+            |        "principalId": "AWS:AROAI6UKNMK6GNG3RQ4J6:adam-put2_p"
+            |      },
+            |      "requestParameters": {
+            |        "sourceIPAddress": "35.178.67.252"
+            |      },
+            |      "responseElements": {
+            |        "x-amz-request-id": "AEACEBA7C61C2BCE",
+            |        "x-amz-id-2": "KKUq2q4T+66NOwEqvAZxAH7HefNI/KdVVbVZxf0/qS8V4n4nmlINLkg86n2shIvvsGgjHGnAGTA="
+            |      },
+            |      "s3": {
+            |        "s3SchemaVersion": "1.0",
+            |        "configurationId": "sns1",
+            |        "bucket": {
+            |          "name": "local-nonrep-submission-data",
+            |          "ownerIdentity": {
+            |            "principalId": "A202PFQUTJVUOI"
+            |          },
+            |          "arn": "arn:aws:s3:::adam1-nonrep-submission-data"
+            |        },
+            |        "NOT-object": {
+            |          "key": "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip",
+            |          "size": 10000,
+            |          "eTag": "93579cc5c9c8246e7ad30f14b99ecb83",
+            |          "sequencer": "005B4DF878BDCFA069"
+            |        }
+            |      }
+            |    }
+            |  ]
+            |}""".stripMargin
+
+        )
       }
 
       "Fault check" should {
-        for fault <- faultList do
-          s"${fault.name} Failed SQS msg" in new StreamMessageJourney {
-            override def getMessages(): Unit = {
-              sendFaultSQSMessage(fault)
-            }
-
-            createMessageJourney()
-
-            private val service = createNonrepMicroservice(testKit)
-
-            waitForNMessages(1)(service)
-
-            service.msgFailedCount shouldBe 1 withClue ("failedCount")
-            service.msgSuccessCount shouldBe 0 withClue ("successCount")
+        s"${Fault.CONNECTION_RESET_BY_PEER} Failed SQS msg" in new StreamMessageJourney {
+          override def getMessages(): Unit = {
+            sendFaultSQSMessage(Fault.CONNECTION_RESET_BY_PEER)
           }
+
+          createMessageJourney()
+
+          private val service = createNonrepMicroservice(testKit)
+
+          waitForNMessages(1)(service)
+
+          service.msgFailedCount shouldBe 1 withClue ("failedCount")
+          service.msgSuccessCount shouldBe 0 withClue ("successCount")
+
+          service.failedMsgMessages shouldBe List("Get SQS message failure: Unable to execute HTTP request: Connection reset (SDK Attempt Count: 4)")
+        }
+
+        s"${Fault.EMPTY_RESPONSE} Failed SQS msg" in new StreamMessageJourney {
+          override def getMessages(): Unit = {
+            sendFaultSQSMessage(Fault.EMPTY_RESPONSE)
+          }
+
+          createMessageJourney()
+
+          private val service = createNonrepMicroservice(testKit)
+
+          waitForNMessages(1)(service)
+
+          service.msgFailedCount shouldBe 1 withClue ("failedCount")
+          service.msgSuccessCount shouldBe 0 withClue ("successCount")
+
+          service.failedMsgMessages.headOption.getOrElse("") should startWith ("Get SQS message failure: Unable to execute HTTP request: The connection was closed during the request. The request will usually succeed on a retry, but if it does not: consider disabling any proxies you have configured, enabling debug logging, or performing a TCP dump to identify the root cause. If this is a streaming operation, validate that data is being read or written in a timely manner.")
+        }
+
+        s"${Fault.RANDOM_DATA_THEN_CLOSE} Failed SQS msg" in new StreamMessageJourney {
+          override def getMessages(): Unit = {
+            sendFaultSQSMessage(Fault.RANDOM_DATA_THEN_CLOSE)
+          }
+
+          createMessageJourney()
+
+          private val service = createNonrepMicroservice(testKit)
+
+          waitForNMessages(1)(service)
+
+          service.msgFailedCount shouldBe 1 withClue ("failedCount")
+          service.msgSuccessCount shouldBe 0 withClue ("successCount")
+
+          service.failedMsgMessages.headOption.getOrElse("") should startWith ("Get SQS message failure: Unable to execute HTTP request: The connection was closed during the request. The request will usually succeed on a retry, but if it does not: consider disabling any proxies you have configured, enabling debug logging, or performing a TCP dump to identify the root cause. If this is a streaming operation, validate that data is being read or written in a timely manner.")
+        }
       }
 
     }
@@ -270,6 +351,8 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       private val service = createNonrepMicroservice(testKit)
       waitForNMessages(1)(service)
       service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
+
+      service.failedMsgMessages shouldBe List("failed to download d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip attachment bundle from s3 local-nonrep-attachment-data")
     }
 
     "s3 timeout" in new StreamMessageJourney {
@@ -286,10 +369,12 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
       // s3DeleteMessage should NOT be called
       verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+
+      service.failedMsgMessages shouldBe List("failed to download d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip attachment bundle from s3 local-nonrep-attachment-data")
     }
 
     "s3 common errors" should {
-      for ((statusCode, errMsg) <- commonErrors) {
+      for ((statusCode, errMsg, statusCodeText) <- commonErrors) {
         s"${errMsg}(${statusCode}) S3 request error" in new StreamMessageJourney {
 
           override def downloadBundle(): Unit = {
@@ -302,6 +387,8 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
 
           verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+
+          service.failedMsgMessages shouldBe List("failed to download d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip attachment bundle from s3 local-nonrep-attachment-data")
         }
       }
     }
@@ -309,7 +396,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
   "signAttachment" should {
     "pass common error checks" should {
-      for (statusCode, errMsg) <- commonErrors do
+      for (statusCode, errMsg, statusCodeText) <- commonErrors do
         s"${errMsg}(${statusCode}) sign failed" in new StreamMessageJourney {
           override def signAttachment(): Unit = {
             signMessageError(statusCode)
@@ -323,6 +410,8 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
           verifyGlacierStoreCheck(0, "local-vat-registration-2026")
           verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+
+          service.failedMsgMessages shouldBe List(s"Response status $statusCode $statusCodeText from signatures service localhost")
         }
     }
 
@@ -340,6 +429,8 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
       verifyGlacierStoreCheck(0, "local-vat-registration-2026")
       verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+
+      service.failedMsgMessages shouldBe List("Failure connection to localhost with TCP idle-timeout encountered on connection to [localhost/<unresolved>:9008], no bytes passed in the last 60 seconds")
     }
 
   }
@@ -383,6 +474,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           // s3DeleteMessage should NOT be called
           verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
+          service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, contentLen:5004) to glacier local-vat-registration-2026")
         }
       }
     }
@@ -402,11 +494,13 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       verifyGlacierStoreCheck(1, "local-vat-registration-2026")
       // s3DeleteMessage should NOT be called
       verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+
+      service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, contentLen:5004) to glacier local-vat-registration-2026")
     }
 
 
     "pass common error checks" should {
-      for (statusCode, errMsg) <- commonErrors do
+      for (statusCode, errMsg, statusCodeText) <- commonErrors do
         s"${errMsg}(${statusCode}) failed save to glacier" in new StreamMessageJourney {
           override def archiveBundle(): Unit = {
             glacierStoreError("local-vat-registration-2026", statusCode, errMsg)
@@ -420,6 +514,8 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           verifyGlacierStoreCheck(1, "local-vat-registration-2026")
           // s3DeleteMessage should NOT be called
           verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+
+          service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, contentLen:5004) to glacier local-vat-registration-2026")
         }
     }
 
@@ -437,6 +533,8 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
           service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
           verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+
+          service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, contentLen:5004) to glacier local-vat-registration-2026")
         }
     }
 
@@ -491,6 +589,8 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       waitForNMessages(1)(service)
       service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
       service.msgSuccessCount shouldBe 0 withClue (s"incorrect successCount  Success:${service.msgFailedCount}")
+
+      service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, contentLen:5004) to glacier local-vat-registration-2026")
     }
 
     "completely empty response" in new StreamMessageJourney {
@@ -508,13 +608,15 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       verifyGlacierStoreCheck(4, "local-vat-registration-2026")
       // s3DeleteMessage should NOT be called
       verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+
+      service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, contentLen:5004) to glacier local-vat-registration-2026")
     }
 
   }
 
   "updateMetastore" should {
     "pass common error checks" should {
-      for (statusCode, errMsg) <- commonErrors do
+      for (statusCode, errMsg, statusCodeText) <- commonErrors do
         s"${errMsg}(${statusCode}) delete SQS message" in new StreamMessageJourney {
           override def updateMetastore(): Unit = {
             metastoreStoreError("vat-registration-attachments", "d9b3f2f3-32e1-4903-b812-a64c2a045c61", statusCode, errMsg)
@@ -529,25 +631,27 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           // check delete was NOT called
           verifySqsDeleteMessage(0)
           verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+
+          service.failedMsgMessages shouldBe List(s"Response status $statusCode $statusCodeText from ES service localhost")
         }
     }
   }
 
   // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_DeleteMessage.html
-  val deleteMessageErrors: Seq[(Int, String)] = List(
-    (400, "InvalidAddress"),
-    (400, "InvalidIdFormat"),
-    (400, "InvalidSecurity"),
-    (400, "QueueDoesNotExist"),
-    (400, "ReceiptHandleIsInvalid"),
-    (400, "RequestThrottled"),
-    (400, "UnsupportedOperation")
+  val deleteMessageErrors: Seq[(Int, String, String)] = List(
+    (400, "InvalidAddress", ""),
+    (400, "InvalidIdFormat", ""),
+    (400, "InvalidSecurity", ""),
+    (400, "QueueDoesNotExist", ""),
+    (400, "ReceiptHandleIsInvalid", ""),
+    (400, "RequestThrottled", ""),
+    (400, "UnsupportedOperation", "")
   )
 
   "deleteMessage (SQS)" should {
     "deleteMessage with single msg" should {
 
-      for (statusCode, errMsg) <- commonErrors ++ deleteMessageErrors do
+      for (statusCode, errMsg, statusCodeText) <- commonErrors ++ deleteMessageErrors do
         s"${errMsg}(${statusCode}) delete SQS message, single failed message" in new StreamMessageJourney {
 
           override def deleteMessage(): Unit = {
@@ -564,11 +668,12 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           service.msgFailedCount shouldBe 1 withClue ("incorrect failedCount")
           service.msgSuccessCount shouldBe 0 withClue ("incorrect successCount")
 
+          service.failedMsgMessages shouldBe List(s"Delete SQS message failed Service returned HTTP status code $statusCode (Service: Sqs, Status Code: $statusCode, Request ID: null) (SDK Attempt Count: ${1+retryCount})")
         }
     }
 
     "deleteMessage with recover on 2nd autoretry if statuscode > 500" should {
-      for (statusCode, errMsg) <- (commonErrors ++ deleteMessageErrors).filter( _._1 >= 500) do
+      for (statusCode, errMsg, statusCodeText) <- (commonErrors ++ deleteMessageErrors).filter( _._1 >= 500) do
         s"${errMsg}(${statusCode}) delete SQS message" in new StreamMessageJourney {
           override def deleteMessage(): Unit = {
             sqsDeleteMessageError(statusCode, errMsg, to="sqs-ok")
@@ -590,7 +695,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
   "deleteBundle (S3)" should {
     "pass common error checks" should {
-      for (statusCode, errMsg) <- commonErrors do
+      for (statusCode, errMsg, statusCodeText) <- commonErrors do
         s"${errMsg}(${statusCode}) delete SQS message" in new StreamMessageJourney {
 
           override def deleteBundle(): Unit = {
@@ -607,6 +712,8 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
           service.msgFailedCount shouldBe 1 withClue ("incorrect failedCount")
           service.msgSuccessCount shouldBe 0 withClue ("incorrect successCount")
+
+          service.failedMsgMessages shouldBe List("""Delete Attachment Failed """)
         }
     }
   }

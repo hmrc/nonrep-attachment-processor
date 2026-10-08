@@ -48,7 +48,7 @@ class ServiceConfig(val servicePort: Int = 8000) {
   private val configFile = new java.io.File(s"/etc/config/CONFIG_FILE")
 
   val config: Config =
-    if configFile.exists() then ConfigFactory.parseFile(configFile)
+    if configFile.exists() then ConfigFactory.parseFile(configFile).resolve()
     else ConfigFactory.load("application.conf")
 
   val refreshPolicy: String = config.getConfig("metastore").getString("refresh_policy")

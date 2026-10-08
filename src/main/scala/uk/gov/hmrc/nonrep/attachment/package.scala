@@ -48,6 +48,8 @@ package object attachment {
   case class AttachmentContent(info: AttachmentInfo, content: ByteString) {
     val bytes: AttachmentBinary = content.toArray
     val length: Long            = bytes.length.toLong
+    
+    def mkLogString:String = s"AttachmentContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, contentLen:${length})"
   }
 
   case class ArchivedAttachment(info: AttachmentInfo, archiveId: String, vaultName: String)
