@@ -5,10 +5,6 @@ import org.apache.pekko.stream.scaladsl.Keep
 import org.apache.pekko.stream.testkit.scaladsl.{TestSink, TestSource}
 import software.amazon.awssdk.services.sqs.model.Message
 
-import org.mockito.Mockito.when
-import org.scalatestplus.mockito.MockitoSugar.mock
-
-
 class QueueSpec extends BaseSpec {
 
   import TestServices.*
