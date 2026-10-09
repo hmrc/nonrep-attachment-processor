@@ -141,8 +141,8 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
   "getMessage (SQS)" should {
 
     // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ReceiveMessage.html
-    "pass common error checks" should {
-      for (statusCode, errMsg, statusCodeText) <- commonErrors do
+    "log common (4xx) error checks and recover on next message" should {
+      for (statusCode, errMsg, statusCodeText) <- commonErrors.filterNot( err => is5xx( err._1)) do
         s"${errMsg}(${statusCode}) SQS request error (error msg followed by ok msg)" in new StreamMessageJourney {
           override def getMessages(): Unit = {
             sendSQSErrorMessage(statusCode, errMsg, to = "msg-2")
@@ -150,19 +150,35 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
             noSQSMessage(state = "no-msg", to = "no-msg")
           }
           createMessageJourney()
-
           private val service = createNonrepMicroservice(testKit)
+          waitForNMessages(2)(service)
 
-          private val expectedSucessCount = 1
-          private val expectErrorCount = if is5xx(statusCode) then 0 else 1 // if 5xx then SQS performs an internal retry and get the next msg
+          service.msgSuccessCount shouldBe 1 withClue ("incorrect successCount")
+          service.msgFailedCount shouldBe 1 withClue ("incorrect failedCount")
 
-          waitForNMessages(expectedSucessCount + expectErrorCount)(service)
-
-          service.msgSuccessCount shouldBe expectedSucessCount withClue ("incorrect successCount")
-          service.msgFailedCount shouldBe expectErrorCount withClue ("incorrect failedCount")
-
-          service.failedMsgList.length shouldBe expectErrorCount withClue( service.failedMsgList.mkString(", "))
+          service.failedMsgList.length shouldBe 1 withClue( service.failedMsgList.mkString(", "))
         }
+
+      "5xx errors are handled by AWS api internally and recover on next message" should {
+        for (statusCode, errMsg, statusCodeText) <- commonErrors.filter(err => is5xx(err._1)) do
+          s"${errMsg}(${statusCode}) SQS request error (error msg followed by ok msg)" in new StreamMessageJourney {
+            override def getMessages(): Unit = {
+              sendSQSErrorMessage(statusCode, errMsg, to = "msg-2")
+              sendSQSMessage(state = "msg-2", to = "no-msg")
+              noSQSMessage(state = "no-msg", to = "no-msg")
+            }
+
+            createMessageJourney()
+            private val service = createNonrepMicroservice(testKit)
+            waitForNMessages(1)(service)
+
+            service.msgSuccessCount shouldBe 1 withClue ("incorrect successCount")
+            service.msgFailedCount shouldBe 0 withClue ("incorrect failedCount")
+
+            service.failedMsgList.length shouldBe 0 withClue (service.failedMsgList.mkString(", "))
+
+          }
+      }
     }
 
     "SQS specific errors" should {
