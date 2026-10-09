@@ -1,0 +1,6 @@
+{
+  "ConsumedCapacity": {
+    "CapacityUnits": 1,
+    "TableName": "Thread"
+  }
+}

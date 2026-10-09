@@ -37,7 +37,7 @@ class RoutesSpec extends BaseSpec {
 
   "Attachment Processor routes" should {
     "return version information" in new Setup {
-      val request: HttpRequest = Get(s"/${config.appName}/version")
+      val request: HttpRequest = Get(s"/${ServiceConfig.appName}/version")
 
       request ~> routes.serviceRoutes ~> check {
         status                           shouldBe StatusCodes.OK
@@ -47,7 +47,7 @@ class RoutesSpec extends BaseSpec {
     }
 
     "reply to ping request on service url" in new Setup {
-      val request: HttpRequest = Get(s"/${config.appName}/ping")
+      val request: HttpRequest = Get(s"/${ServiceConfig.appName}/ping")
 
       request ~> routes.serviceRoutes ~> check {
         status             shouldBe StatusCodes.OK
@@ -79,7 +79,7 @@ class RoutesSpec extends BaseSpec {
         }
       }
 
-      val request: HttpRequest = Get(s"/${config.appName}/version")
+      val request: HttpRequest = Get(s"/${ServiceConfig.appName}/version")
 
       request ~> routes.serviceRoutes ~> check {
         status                shouldBe StatusCodes.InternalServerError
@@ -91,7 +91,7 @@ class RoutesSpec extends BaseSpec {
     "reply to ping when processor stopped working" in new Setup {
       override val routes: Routes = new Routes(Future.successful(Done))
 
-      val request: HttpRequest = Get(s"/${config.appName}/ping")
+      val request: HttpRequest = Get(s"/${ServiceConfig.appName}/ping")
       request ~> routes.serviceRoutes ~> check {
         status             shouldBe StatusCodes.InternalServerError
         contentType        shouldBe ContentTypes.`text/plain(UTF-8)`

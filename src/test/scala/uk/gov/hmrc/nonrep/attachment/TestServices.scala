@@ -65,7 +65,7 @@ object TestServices {
 
   val testSQSMessageIds: IndexedSeq[String] = IndexedSeq.fill(3)(UUID.randomUUID().toString)
 
-  def testSQSMessage(env: String, messageId: String, attachmentId: String, service: String = "s3"): Message = Message
+  def testSQSMessage(env: String, messageId: String, attachmentId: String, service: String = "s3"): EitherErr[Message] = Right(Message
     .builder()
     .receiptHandle(messageId)
     .body(s"""
@@ -109,6 +109,7 @@ object TestServices {
     }
     """)
     .build()
+  )
 
   object success {
     val storageService: Storage = new StorageService()(using config, typedSystem) {
@@ -120,9 +121,11 @@ object TestServices {
     }
 
     val queueService: Queue = new QueueService()(using config, typedSystem) {
-      override def getMessages: Source[Message, NotUsed] =
+      // TODO NONPR-5114 Needs to handle .recover
+      override def getMessages: Source[EitherErr[Message], NotUsed] =
         Source(testSQSMessageIds.map(id => testSQSMessage(this.config.env, id, testAttachmentId)))
 
+      // TODO NONPR-5114 Not handling errors (in main AttachmentInfo is unchanged on success)
       override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
         Flow[EitherErr[AttachmentInfo]].map {
           _.map(attachmentInfo =>
@@ -166,6 +169,7 @@ object TestServices {
         override val amountToAdd: Long  = 999
         override val unit: TemporalUnit = ChronoUnit.MILLIS
 
+        // TODO NONPR-5114 this is the same code as being overridden
         override val builder: RequestBuilder =
           SignRequest
             .builder[AwsCredentials](credentials)
@@ -210,7 +214,7 @@ object TestServices {
 
     val queueService: Queue = new QueueService()(using config, typedSystem) {
 
-      override def getMessages: Source[Message, NotUsed] =
+      override def getMessages: Source[EitherErr[Message], NotUsed] =
         Source(testSQSMessageIds.map(id => testSQSMessage(this.config.env, id, testAttachmentId, "invalid")))
 
       override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =

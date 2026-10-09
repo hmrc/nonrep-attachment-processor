@@ -18,8 +18,8 @@ class ProcessorSpec extends BaseSpec {
 
     val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
       new ProcessorService(testApplicationSink)(using typedSystem, config) {
-        override def getMessages: Source[Message, NotUsed]                                                     = queueService.getMessages
-        override def parseMessage: Flow[Message, EitherErr[AttachmentInfo], NotUsed]                           = queueService.parseMessages
+        override def getMessages: Source[EitherErr[Message], NotUsed]                                                     = queueService.getMessages
+        override def parseMessage: Flow[EitherErr[Message], EitherErr[AttachmentInfo], NotUsed]                           = queueService.parseMessages
         override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]        = queueService.deleteMessage
         override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed]    =
           storageService.downloadAttachment
@@ -60,7 +60,7 @@ class ProcessorSpec extends BaseSpec {
     "report a warning when an attachment cannot be downloaded from s3" in {
       val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
         new ProcessorService(testApplicationSink)(using typedSystem, config) {
-          override def getMessages: Source[Message, NotUsed]                                                  =
+          override def getMessages: Source[EitherErr[Message], NotUsed]                                                  =
             queueService.getMessages
           override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] =
             failure.storageService.downloadAttachment
@@ -82,7 +82,7 @@ class ProcessorSpec extends BaseSpec {
     "report a warning for signing failure" in {
       val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
         new ProcessorService(testApplicationSink)(using typedSystem, config) {
-          override def getMessages: Source[Message, NotUsed]                                                  = queueService.getMessages
+          override def getMessages: Source[EitherErr[Message], NotUsed]                                                  = queueService.getMessages
           override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed] =
             storageService.downloadAttachment
           override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed]      = failure.signService.signing
@@ -101,7 +101,7 @@ class ProcessorSpec extends BaseSpec {
     "report an error for a glacier failure" in {
       val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
         new ProcessorService(testApplicationSink)(using typedSystem, config) {
-          override def getMessages: Source[Message, NotUsed]                                                     = queueService.getMessages
+          override def getMessages: Source[EitherErr[Message], NotUsed]                                                     = queueService.getMessages
           override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed]    =
             storageService.downloadAttachment
           override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed]         = signService.signing
@@ -119,7 +119,7 @@ class ProcessorSpec extends BaseSpec {
     "report an error for update metastore failure" in {
       val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
         new ProcessorService(testApplicationSink)(using typedSystem, config) {
-          override def getMessages: Source[Message, NotUsed]                                                     = queueService.getMessages
+          override def getMessages: Source[EitherErr[Message], NotUsed]                                                     = queueService.getMessages
           override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed]    =
             storageService.downloadAttachment
           override def signAttachment: Flow[EitherErr[ZipContent], EitherErr[SignedZipContent], NotUsed]         = signService.signing
@@ -138,7 +138,7 @@ class ProcessorSpec extends BaseSpec {
     "report an error for parsing SQS message failure" in {
       val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
         new ProcessorService(testApplicationSink)(using typedSystem, config) {
-          override def getMessages: Source[Message, NotUsed]                                              =
+          override def getMessages: Source[EitherErr[Message], NotUsed]                                              =
             failure.queueService.getMessages
           override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
             queueService.deleteMessage
@@ -156,7 +156,7 @@ class ProcessorSpec extends BaseSpec {
     "report an error for deleting SQS message failure" in {
       val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
         new ProcessorService(testApplicationSink)(using typedSystem, config) {
-          override def getMessages: Source[Message, NotUsed]                                                     =
+          override def getMessages: Source[EitherErr[Message], NotUsed]                                                     =
             queueService.getMessages
           override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]        =
             failure.queueService.deleteMessage
@@ -180,7 +180,7 @@ class ProcessorSpec extends BaseSpec {
     "report error for deleting s3 bundle failure" in {
       val processor: ProcessorService[TestSubscriber.Probe[EitherErr[AttachmentInfo]]] =
         new ProcessorService(testApplicationSink)(using typedSystem, config) {
-          override def getMessages: Source[Message, NotUsed]                                                     = queueService.getMessages
+          override def getMessages: Source[EitherErr[Message], NotUsed]                                                     = queueService.getMessages
           override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]        = queueService.deleteMessage
           override def downloadBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentContent], NotUsed]    =
             storageService.downloadAttachment

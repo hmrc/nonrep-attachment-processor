@@ -6,7 +6,7 @@ import org.apache.pekko.stream.Attributes.LogLevels.{Error, Info}
 import org.apache.pekko.stream.Attributes.logLevels
 import org.apache.pekko.stream.ClosedShape
 import org.apache.pekko.stream.scaladsl.RunnableGraph.fromGraph
-import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, RunnableGraph, Sink, Source}
+import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, RestartSource, RunnableGraph, Sink, Source}
 import software.amazon.awssdk.services.sqs.model.Message
 import uk.gov.hmrc.nonrep.attachment.*
 import uk.gov.hmrc.nonrep.attachment.app.metrics.Prometheus.{attachmentProcessingDuration, attachmentSizeBucket}
@@ -15,9 +15,9 @@ import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 import scala.concurrent.duration.{DurationInt, FiniteDuration, NANOSECONDS, SECONDS}
 
 trait Processor[A] {
-  def getMessages: Source[Message, NotUsed]
+  def getMessages: Source[EitherErr[Message], NotUsed]
 
-  def parseMessage: Flow[Message, EitherErr[AttachmentInfo], NotUsed]
+  def parseMessage: Flow[EitherErr[Message], EitherErr[AttachmentInfo], NotUsed]
 
   def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]
 
@@ -58,13 +58,16 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
 
   val update: Update = UpdateService()
 
-  override def getMessages: Source[Message, NotUsed] =
-    queue.getMessages
-      .throttle(config.messagesPerSecond, 1.second)
-      .log(name = "getMessages")
-      .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+  override def getMessages: Source[EitherErr[Message], NotUsed] =
+    // see https://pekko.apache.org/docs/pekko/1.1/stream/operators/RestartSource/onFailuresWithBackoff.html
+    RestartSource.withBackoff(config.sqsRestartSettings) { () =>
+      queue.getMessages
+        .throttle(config.messagesPerSecond, 1.second)
+        .log(name = "getMessages")
+        .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))
+    }
 
-  override def parseMessage: Flow[Message, EitherErr[AttachmentInfo], NotUsed] =
+  override def parseMessage: Flow[EitherErr[Message], EitherErr[AttachmentInfo], NotUsed] =
     queue.parseMessages
       .log(name = "parseMessage")
       .addAttributes(logLevels(onElement = Info, onFinish = Info, onFailure = Error))

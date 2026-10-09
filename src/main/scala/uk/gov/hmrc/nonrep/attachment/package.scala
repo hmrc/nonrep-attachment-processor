@@ -48,11 +48,16 @@ package object attachment {
   case class AttachmentContent(info: AttachmentInfo, content: ByteString) {
     val bytes: AttachmentBinary = content.toArray
     val length: Long            = bytes.length.toLong
+    
+    override def toString:String = s"AttachmentContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize})"
   }
 
   case class ArchivedAttachment(info: AttachmentInfo, archiveId: String, vaultName: String)
 
-  case class ZipContent(info: AttachmentInfo, attachment: AttachmentBinary, metadata: AttachmentBinary)
+  case class ZipContent(info: AttachmentInfo, attachment: AttachmentBinary, metadata: AttachmentBinary) {
+    override def toString: String = s"SignedZipContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize}, attachmentLen:${attachment.length}, metadataLen:${metadata.length})"
+  }
+
   case class SignedZipContent(
     info: AttachmentInfo,
     signedAttachment: AttachmentBinary,
@@ -66,6 +71,8 @@ package object attachment {
       METADATA_FILE          -> metadata,
       SIGNED_METADATA_FILE   -> signedMetadata
     )
+
+    override def toString: String = s"SignedZipContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize}, attachmentLen:${attachment.length}, signedAttachmentLen:${signedAttachment.length}, metadataLen:${metadata.length}, signedMetadataLen:${signedMetadata.length})"
   }
 
   object SignedZipContent {
