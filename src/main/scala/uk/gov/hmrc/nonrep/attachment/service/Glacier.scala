@@ -76,14 +76,14 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
           Future.successful(
             Left(
               ErrorMessage(
-                s"Vault $vaultName not found for attachment ${content.mkLogString}. The sign service should create the vault in due course.",
+                s"Vault $vaultName not found for attachment ${content.toString}. The sign service should create the vault in due course.",
                 Some(exception),
                 WARN
               )
             )
           )
         case exception                            =>
-          Future.successful(Left(ErrorMessage(s"Error uploading attachment ${content.mkLogString} to glacier $vaultName", Some(exception))))
+          Future.successful(Left(ErrorMessage(s"Error uploading attachment ${content.toString} to glacier $vaultName", Some(exception))))
       }
 
   private[service] def eventuallyUploadArchive(

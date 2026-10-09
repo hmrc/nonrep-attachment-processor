@@ -106,9 +106,9 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
     }
   }
 
-  "basic checks (it works)" should {
+  "Check a good message(s) can be processed correctly" should {
 
-    "work with single msg ok" in new StreamMessageJourney{
+    "Check a single message processed ok" in new StreamMessageJourney{
       createMessageJourney()
 
       private val service = createNonrepMicroservice(testKit)
@@ -121,7 +121,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       service.failedMsgList.length shouldBe 0
     }
 
-    "work with two msg ok" in new StreamMessageJourney {
+    "Check two messages can be processed ok" in new StreamMessageJourney {
       override def getMessages(): Unit = {
         sendSQSMessage(to = "msg-2")
         sendSQSMessage(state = "msg-2", to = "no-msg")
@@ -490,7 +490,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           // s3DeleteMessage should NOT be called
           verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
-          service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, contentLen:5004) to glacier local-vat-registration-2026")
+          service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, s3ObjectKey:d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip, attachmentSize:None) to glacier local-vat-registration-2026")
         }
       }
     }
@@ -511,7 +511,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       // s3DeleteMessage should NOT be called
       verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
-      service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, contentLen:5004) to glacier local-vat-registration-2026")
+      service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, s3ObjectKey:d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip, attachmentSize:None) to glacier local-vat-registration-2026")
     }
 
 
@@ -531,7 +531,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           // s3DeleteMessage should NOT be called
           verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
-          service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, contentLen:5004) to glacier local-vat-registration-2026")
+          service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, s3ObjectKey:d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip, attachmentSize:None) to glacier local-vat-registration-2026")
         }
     }
 
@@ -550,7 +550,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
           verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
-          service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, contentLen:5004) to glacier local-vat-registration-2026")
+          service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, s3ObjectKey:d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip, attachmentSize:None) to glacier local-vat-registration-2026")
         }
     }
 
@@ -606,7 +606,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
       service.msgSuccessCount shouldBe 0 withClue (s"incorrect successCount  Success:${service.msgFailedCount}")
 
-      service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, contentLen:5004) to glacier local-vat-registration-2026")
+      service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, s3ObjectKey:d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip, attachmentSize:None) to glacier local-vat-registration-2026")
     }
 
     "completely empty response" in new StreamMessageJourney {
@@ -625,7 +625,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       // s3DeleteMessage should NOT be called
       verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
-      service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, contentLen:5004) to glacier local-vat-registration-2026")
+      service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, s3ObjectKey:d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip, attachmentSize:None) to glacier local-vat-registration-2026")
     }
 
   }
