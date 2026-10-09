@@ -514,7 +514,6 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, s3ObjectKey:d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip, attachmentSize:None) to glacier local-vat-registration-2026")
     }
 
-
     "pass common error checks" should {
       for (statusCode, errMsg, statusCodeText) <- commonErrors do
         s"${errMsg}(${statusCode}) failed save to glacier" in new StreamMessageJourney {
