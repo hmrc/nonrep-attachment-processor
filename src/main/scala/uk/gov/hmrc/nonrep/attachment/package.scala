@@ -72,7 +72,7 @@ package object attachment {
       SIGNED_METADATA_FILE   -> signedMetadata
     )
 
-    override def toString: String = s"SignedZipContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize}, attachmentLen:${attachment.length}, signedAttachmentLen:${signedAttachment.length}, metadataLen:${metadata.length}, signedMetadataLen:${signedMetadata.length})"
+//    override def toString: String = s"SignedZipContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize}, attachmentLen:${attachment.length}, signedAttachmentLen:${signedAttachment.length}, metadataLen:${metadata.length}, signedMetadataLen:${signedMetadata.length})"
   }
 
   object SignedZipContent {
