@@ -49,7 +49,7 @@ package object attachment {
     val bytes: AttachmentBinary = content.toArray
     val length: Long            = bytes.length.toLong
     
-    override def toString:String = s"AttachmentContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize})"
+    def mkLogString:String = s"AttachmentContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize})"
   }
 
   case class ArchivedAttachment(info: AttachmentInfo, archiveId: String, vaultName: String)
