@@ -45,12 +45,12 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
   }
 
   var service: TestNonrepMicroservice = null
-  
+
   override def afterEach(): Unit = {
     super.afterEach()
     if( service != null) {
       service.processor.sharedKillSwitch.shutdown()
-      service == null
+      service = null
     }
     testKit.system.terminate()  // this will stop NonrepMicroservice in each test
   }
