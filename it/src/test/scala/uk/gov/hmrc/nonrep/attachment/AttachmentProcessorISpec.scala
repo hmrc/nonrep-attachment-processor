@@ -49,7 +49,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
   override def afterEach(): Unit = {
     super.afterEach()
     if( service != null) {
-      service.processor.sharedKillSwitch.shutdown()
+      service.processor.killProcessor
       service = null
     }
     testKit.system.terminate()  // this will stop NonrepMicroservice in each test
@@ -393,8 +393,6 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
       service.failedMsgMessages shouldBe List("failed to download d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip attachment bundle from s3 local-nonrep-attachment-data")
-
-      service.processor.sharedKillSwitch.shutdown()
     }
 
     "s3 common errors" should {

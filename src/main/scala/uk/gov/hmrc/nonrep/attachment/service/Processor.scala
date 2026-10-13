@@ -37,7 +37,7 @@ trait Processor[A] {
 
   def applicationSink: Sink[EitherErr[AttachmentInfo], A]
 
-  val sharedKillSwitch:SharedKillSwitch
+  def killProcessor:Unit
 }
 
 object Processor {
@@ -124,7 +124,10 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
       }
     }
 
-  val sharedKillSwitch:SharedKillSwitch = KillSwitches.shared("killBill")
+  private val killSwitch:SharedKillSwitch = KillSwitches.shared("killBill")
+
+  def killProcessor: Unit = killSwitch.shutdown()
+
 
   val execute: RunnableGraph[A] = fromGraph(
     GraphDSL.createGraph(applicationSink)(implicit builder =>
@@ -142,7 +145,7 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
           ~> deleteMessage
           ~> deleteBundle
           ~> recordProcessingTime
-          .via(sharedKillSwitch.flow)
+          .via(killSwitch.flow)
           ~> sink
 
         ClosedShape
