@@ -55,7 +55,7 @@ package object attachment {
   case class ArchivedAttachment(info: AttachmentInfo, archiveId: String, vaultName: String)
 
   case class ZipContent(info: AttachmentInfo, attachment: AttachmentBinary, metadata: AttachmentBinary) {
-    override def toString: String = getClass.getName
+    override def toString: String = "ZipContent"
 //    override def toString: String = getClass.getName + "@" + Integer.toHexString(hashCode())
 //    override def toString: String = s"ZipContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize}, attachmentLen:${attachment.length}, metadataLen:${metadata.length})"
   }
