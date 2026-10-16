@@ -1,6 +1,5 @@
 package uk.gov.hmrc.nonrep.attachment
 
-import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.http.Fault
 import org.scalatest.time.Span
 import uk.gov.hmrc.nonrep.attachment.utils.TestNonrepMicroservice
@@ -43,7 +42,6 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
     super.beforeEach()
     testKit = ActorTestKit(actorSystemNameFrom(getClass), mockConfig.config)
     wireMockServer.resetAll()
-    WireMock.resetAllScenarios()
   }
 
   override def afterEach(): Unit = {
