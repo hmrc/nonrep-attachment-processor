@@ -48,14 +48,16 @@ package object attachment {
   case class AttachmentContent(info: AttachmentInfo, content: ByteString) {
     val bytes: AttachmentBinary = content.toArray
     val length: Long            = bytes.length.toLong
-    
+
+    // TODO change to toString, but this halts the PR build. (see NONPR-5138 )
     def mkLogString:String = s"AttachmentContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize})"
   }
 
   case class ArchivedAttachment(info: AttachmentInfo, archiveId: String, vaultName: String)
 
   case class ZipContent(info: AttachmentInfo, attachment: AttachmentBinary, metadata: AttachmentBinary) {
-    override def toString: String = s"ZipContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize}, attachmentLen:${attachment.length}, metadataLen:${metadata.length})"
+    // TODO having toString halts the PR build. (see NONPR-5138 )
+//    override def toString: String = s"ZipContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize}, attachmentLen:${attachment.length}, metadataLen:${metadata.length})"
   }
 
   case class SignedZipContent(
@@ -72,7 +74,8 @@ package object attachment {
       SIGNED_METADATA_FILE   -> signedMetadata
     )
 
-    override def toString: String = s"SignedZipContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize}, attachmentLen:${attachment.length}, signedAttachmentLen:${signedAttachment.length}, metadataLen:${metadata.length}, signedMetadataLen:${signedMetadata.length})"
+    // TODO having toString halts the PR build. (see NONPR-5138 )
+//    override def toString: String = s"SignedZipContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize}, attachmentLen:${attachment.length}, signedAttachmentLen:${signedAttachment.length}, metadataLen:${metadata.length}, signedMetadataLen:${signedMetadata.length})"
   }
 
   object SignedZipContent {
