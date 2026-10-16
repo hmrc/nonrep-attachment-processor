@@ -10,7 +10,7 @@ class ServiceConfigSpec extends AnyWordSpec with Matchers {
 
   "ServiceConfig" should {
     "specify app name" in {
-      config.appName shouldBe "attachment-processor"
+      ServiceConfig.appName shouldBe "attachment-processor"
     }
 
     "specify environment" in {

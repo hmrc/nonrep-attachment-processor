@@ -27,9 +27,9 @@ import scala.util.Try
 trait Queue {
   def settings: SqsSourceSettings
 
-  def getMessages: Source[Message, NotUsed]
+  def getMessages: Source[EitherErr[Message], NotUsed]
 
-  def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed]
+  def parseMessages: Flow[EitherErr[Message], EitherErr[AttachmentInfo], NotUsed]
 
   def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]
 }
@@ -40,6 +40,8 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
 
   private[service] implicit lazy val client: SqsAsyncClient = SqsAsyncClient
     .builder()
+    .credentialsProvider(config.awsSettings.credentialsProvider)
+    .endpointOverride(java.net.URI(config.queueUrl))
     .region(EU_WEST_2)
     .httpClientBuilder(NettyNioAsyncHttpClient.builder())
     .build()
@@ -59,35 +61,40 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
       .withCloseOnEmptyReceive(config.closeOnEmptyReceive)
       .withWaitTimeSeconds(config.waitTimeSeconds)
 
-  override def getMessages: Source[Message, NotUsed] =
+  override def getMessages: Source[EitherErr[Message], NotUsed] =
     SqsSource(config.queueUrl, settings)
+      .map(Right(_))
+      .recover{
+        case err => Left(ErrorMessage(s"Get SQS message failure: ${err.getCause.getMessage}"))
+      }
 
-  override def parseMessages: Flow[Message, EitherErr[AttachmentInfo], NotUsed] =
-    Flow[Message].map { message =>
-      val messageHandle = message.receiptHandle()
+  override def parseMessages: Flow[EitherErr[Message], EitherErr[AttachmentInfo], NotUsed] =
+    Flow[EitherErr[Message]].map {
+      _.flatMap { message => {
+        val messageHandle = message.receiptHandle()
+        Try {
+          val s3ObjectKey = message
+            .body()
+            .parseJson
+            .asJsObject
+            .fields("Records")
+            .convertTo[List[JsValue]]
+            .head
+            .asJsObject
+            .fields("s3")
+            .asJsObject
+            .fields("object")
+            .asJsObject
+            .fields("key")
+            .convertTo[String]
 
-      Try {
-        val s3ObjectKey = message
-          .body()
-          .parseJson
-          .asJsObject
-          .fields("Records")
-          .convertTo[List[JsValue]]
-          .head
-          .asJsObject
-          .fields("s3")
-          .asJsObject
-          .fields("object")
-          .asJsObject
-          .fields("key")
-          .convertTo[String]
-
-        val attachmentId = s3ObjectKey
-          .replaceFirst(".zip", "")
-        AttachmentInfo(attachmentId, messageHandle, s3ObjectKey)
-      }.toEither.left.map(thr =>
-        ErrorMessageWithDeleteSQSMessage(messageHandle, s"Parsing SQS message failure ${message.body()}", Some(thr))
-      )
+          val attachmentId = s3ObjectKey
+            .replaceFirst(".zip", "")
+          AttachmentInfo(attachmentId, messageHandle, s3ObjectKey)
+        }.toEither.left.map(thr =>
+          ErrorMessageWithDeleteSQSMessage(messageHandle, s"Parsing SQS message failure ${message.body()}", Some(thr))
+        )
+      }}
     }
 
   override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] = {
@@ -100,9 +107,13 @@ class QueueService()(using val config: ServiceConfig, system: ActorSystem[?]) ex
       .mapAsyncUnordered(8) {
         case Right(info)                                   =>
           delete(info.message).map(_ => Right(info))
+            .recover{ err => Left(ErrorMessage(s"Delete SQS message failed ${err.getCause.getMessage}"))}
+
         case Left(error: ErrorMessageWithDeleteSQSMessage) =>
           system.log.error(s"failure caused by: ${error.message}, SQS message to be removed")
           delete(error.messageId).map(_ => Left(error))
+            .recover{ err => Left(ErrorMessage(s"Delete SQS message (with invalid json) failed ${err.getCause.getMessage}"))}
+
         case Left(error)                                   =>
           Future.successful(Left(error))
       }
