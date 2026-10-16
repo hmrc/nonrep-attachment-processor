@@ -6,7 +6,7 @@ import fr.davit.pekko.http.metrics.prometheus.{Buckets, PrometheusRegistry, Prom
 import io.prometheus.client.{CollectorRegistry, Histogram}
 import io.prometheus.client.dropwizard.DropwizardExports
 import io.prometheus.client.hotspot.DefaultExports
-import uk.gov.hmrc.nonrep.attachment.server.Main.config
+import uk.gov.hmrc.nonrep.attachment.server.ServiceConfig
 
 object Prometheus {
 
@@ -14,7 +14,7 @@ object Prometheus {
 
   val settings: PrometheusSettings =
     PrometheusSettings.default
-      .withNamespace(config.appName)
+      .withNamespace(ServiceConfig.appName)
       .withIncludePathDimension(true)
       .withIncludeMethodDimension(true)
       .withIncludeStatusDimension(true)
@@ -25,7 +25,7 @@ object Prometheus {
 
   val registry: PrometheusRegistry = {
     DefaultExports.initialize()
-    val registry = SharedMetricRegistries.getOrCreate(config.appName)
+    val registry = SharedMetricRegistries.getOrCreate(ServiceConfig.appName)
     registry.register("jvm.attribute", new JvmAttributeGaugeSet())
     registry.register("jvm.gc", new GarbageCollectorMetricSet())
     registry.register("jvm.memory", new MemoryUsageGaugeSet())

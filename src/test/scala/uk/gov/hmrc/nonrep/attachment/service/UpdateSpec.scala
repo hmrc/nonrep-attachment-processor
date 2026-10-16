@@ -42,6 +42,7 @@ class UpdateSpec extends BaseSpec {
       result.toOption.get.message      shouldBe attachmentInfo.message
     }
 
+    // TODO NONPR-5114 .updateMetastore is stubbed
     "Report update metastore failure" in {
       import TestServices.failure.*
       val messageId      = testSQSMessageIds.head

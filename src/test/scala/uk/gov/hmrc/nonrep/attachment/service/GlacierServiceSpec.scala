@@ -72,7 +72,7 @@ class GlacierServiceSpec extends BaseSpec {
 
         glacierService().eventuallyArchive(content, vaultName).futureValue match {
           case Left(error) =>
-            error.message  shouldBe s"Error uploading attachment $content to glacier $vaultName"
+            error.message  shouldBe s"Error uploading attachment ${content.mkLogString} to glacier $vaultName"
             error.severity shouldBe ERROR
           case Right(_)    =>
             fail("an error was expected")
@@ -86,7 +86,7 @@ class GlacierServiceSpec extends BaseSpec {
         glacierService().eventuallyArchive(content, vaultName).futureValue match {
           case Left(error) =>
             error.message  shouldBe
-              s"Vault $vaultName not found for attachment $content. The sign service should create the vault in due course."
+              s"Vault $vaultName not found for attachment ${content.mkLogString}. The sign service should create the vault in due course."
             error.severity shouldBe WARN
           case Right(_)    =>
             fail("an error was expected")
