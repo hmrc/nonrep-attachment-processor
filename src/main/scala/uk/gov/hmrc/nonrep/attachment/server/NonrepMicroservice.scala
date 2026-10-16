@@ -22,8 +22,7 @@ class NonrepMicroservice()(using val system: ActorSystem[?], val config: Service
       )
     }
 
-  lazy val processor = Processor(applicationSink)
-  lazy val attachmentsProcessor: Future[Done] = processor.execute.run()
+  lazy val attachmentsProcessor: Future[Done] = Processor(applicationSink).execute.run()
   lazy val routes: Routes = Routes(attachmentsProcessor)
   lazy val serverBinding: Future[Http.ServerBinding] = Http().newServerAt("0.0.0.0", config.port).bind(routes.serviceRoutes)
 

@@ -4,9 +4,9 @@ import org.apache.pekko.NotUsed
 import org.apache.pekko.actor.typed.ActorSystem
 import org.apache.pekko.stream.Attributes.LogLevels.{Error, Info}
 import org.apache.pekko.stream.Attributes.logLevels
-import org.apache.pekko.stream.{ClosedShape, KillSwitches, SharedKillSwitch}
+import org.apache.pekko.stream.ClosedShape
 import org.apache.pekko.stream.scaladsl.RunnableGraph.fromGraph
-import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, Keep, RestartSource, RunnableGraph, Sink, Source}
+import org.apache.pekko.stream.scaladsl.{Flow, GraphDSL, RestartSource, RunnableGraph, Sink, Source}
 import software.amazon.awssdk.services.sqs.model.Message
 import uk.gov.hmrc.nonrep.attachment.*
 import uk.gov.hmrc.nonrep.attachment.app.metrics.Prometheus.{attachmentProcessingDuration, attachmentSizeBucket}
@@ -36,8 +36,6 @@ trait Processor[A] {
   def deleteBundle: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed]
 
   def applicationSink: Sink[EitherErr[AttachmentInfo], A]
-
-  def killProcessor:Unit
 }
 
 object Processor {
@@ -124,11 +122,6 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
       }
     }
 
-  private val killSwitch:SharedKillSwitch = KillSwitches.shared("killBill")
-
-  def killProcessor: Unit = killSwitch.shutdown()
-
-
   val execute: RunnableGraph[A] = fromGraph(
     GraphDSL.createGraph(applicationSink)(implicit builder =>
       sink =>
@@ -145,7 +138,6 @@ class ProcessorService[A](val applicationSink: Sink[EitherErr[AttachmentInfo], A
           ~> deleteMessage
           ~> deleteBundle
           ~> recordProcessingTime
-          .via(killSwitch.flow)
           ~> sink
 
         ClosedShape

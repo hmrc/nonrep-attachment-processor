@@ -1,5 +1,6 @@
 package uk.gov.hmrc.nonrep.attachment
 
+import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.http.Fault
 import org.scalatest.time.Span
 import uk.gov.hmrc.nonrep.attachment.utils.TestNonrepMicroservice
@@ -42,16 +43,11 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
     super.beforeEach()
     testKit = ActorTestKit(actorSystemNameFrom(getClass), mockConfig.config)
     wireMockServer.resetAll()
+    WireMock.resetAllScenarios()
   }
-
-  var service: TestNonrepMicroservice = null
 
   override def afterEach(): Unit = {
     super.afterEach()
-    if( service != null) {
-      service.processor.killProcessor
-      service = null
-    }
     testKit.system.terminate()  // this will stop NonrepMicroservice in each test
   }
 
@@ -117,7 +113,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
     "Check a single message processed ok" in new StreamMessageJourney{
       createMessageJourney()
 
-      service = createNonrepMicroservice(testKit)
+      private val service = createNonrepMicroservice(testKit)
 
       waitForNMessages(1)(service)
 
@@ -135,7 +131,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       }
       createMessageJourney()
 
-      service = createNonrepMicroservice(testKit)
+      private val service = createNonrepMicroservice(testKit)
 
       waitForNMessages(2)(service)
 
@@ -144,7 +140,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
     }
   }
 
-  "getMessage (SQS)" ignore {
+  "getMessage (SQS)" should {
 
     // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ReceiveMessage.html
     "log common (4xx) error checks and recover on next message" should {
@@ -156,7 +152,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
             noSQSMessage(state = "no-msg", to = "no-msg")
           }
           createMessageJourney()
-          service = createNonrepMicroservice(testKit)
+          private val service = createNonrepMicroservice(testKit)
           waitForNMessages(2)(service)
 
           service.msgSuccessCount shouldBe 1 withClue ("incorrect successCount")
@@ -175,7 +171,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
             }
 
             createMessageJourney()
-            service = createNonrepMicroservice(testKit)
+            private val service = createNonrepMicroservice(testKit)
             waitForNMessages(1)(service)
 
             service.msgSuccessCount shouldBe 1 withClue ("incorrect successCount")
@@ -215,7 +211,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
             createMessageJourney()
 
-            service = createNonrepMicroservice(testKit)
+            private val service = createNonrepMicroservice(testKit)
 
             waitForNMessages(2)(service)
 
@@ -238,7 +234,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
         }
 
         createMessageJourney()
-        service = createNonrepMicroservice(testKit)
+        private val service = createNonrepMicroservice(testKit)
 
         eventually(timeout(40.seconds), interval(1.second)) {
           val count = service.msgCountTotal
@@ -257,7 +253,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
         createMessageJourney()
 
-        service = createNonrepMicroservice(testKit)
+        private val service = createNonrepMicroservice(testKit)
 
         waitForNMessages(1)(service)
         service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
@@ -314,7 +310,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
           createMessageJourney()
 
-          service = createNonrepMicroservice(testKit)
+          private val service = createNonrepMicroservice(testKit)
 
           waitForNMessages(1)(service)
 
@@ -331,7 +327,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
           createMessageJourney()
 
-         service = createNonrepMicroservice(testKit)
+          private val service = createNonrepMicroservice(testKit)
 
           waitForNMessages(1)(service)
 
@@ -348,7 +344,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
           createMessageJourney()
 
-          service = createNonrepMicroservice(testKit)
+          private val service = createNonrepMicroservice(testKit)
 
           waitForNMessages(1)(service)
 
@@ -370,7 +366,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       }
 
       createMessageJourney()
-      service = createNonrepMicroservice(testKit)
+      private val service = createNonrepMicroservice(testKit)
       waitForNMessages(1)(service)
       service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
 
@@ -383,7 +379,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       }
 
       createMessageJourney()
-      service = createNonrepMicroservice(testKit)
+      private val service = createNonrepMicroservice(testKit)
 
       waitForNMessages(1, 40.seconds)(service)
 
@@ -404,7 +400,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           }
 
           createMessageJourney()
-          service = createNonrepMicroservice(testKit)
+          private val service = createNonrepMicroservice(testKit)
           waitForNMessages(1)(service)
           service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
 
@@ -425,7 +421,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           }
 
           createMessageJourney()
-          service = createNonrepMicroservice(testKit)
+          private val service = createNonrepMicroservice(testKit)
           waitForNMessages(1)(service)
 
           service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
@@ -445,7 +441,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       }
 
       createMessageJourney()
-      service = createNonrepMicroservice(testKit)
+      private val service = createNonrepMicroservice(testKit)
       waitForNMessages(1, delay + 10.seconds)(service)
       service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
 
@@ -486,7 +482,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           }
 
           createMessageJourney()
-          service = createNonrepMicroservice(testKit)
+          private val service = createNonrepMicroservice(testKit)
           waitForNMessages(1)(service)
 
           service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
@@ -509,7 +505,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       }
 
       createMessageJourney()
-      service = createNonrepMicroservice(testKit)
+      private val service = createNonrepMicroservice(testKit)
       waitForNMessages(1)(service)
 
       service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
@@ -528,7 +524,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           }
 
           createMessageJourney()
-          service = createNonrepMicroservice(testKit)
+          private val service = createNonrepMicroservice(testKit)
           waitForNMessages(1)(service)
 
           service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
@@ -549,7 +545,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           }
 
           createMessageJourney()
-          service = createNonrepMicroservice(testKit)
+          private val service = createNonrepMicroservice(testKit)
           waitForNMessages(1)(service)
 
           service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
@@ -566,7 +562,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       }
 
       createMessageJourney()
-      service = createNonrepMicroservice(testKit)
+      private val service = createNonrepMicroservice(testKit)
       waitForNMessages(1, 35.seconds)(service)
 
       service.msgSuccessCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgFailedCount}")
@@ -588,7 +584,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       }
 
       createMessageJourney()
-      service = createNonrepMicroservice(testKit)
+      private val service = createNonrepMicroservice(testKit)
       Thread.sleep(10.seconds.millisPart)
       waitForNMessages(2, 70.seconds)(service)
 
@@ -605,7 +601,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       }
 
       createMessageJourney()
-      service = createNonrepMicroservice(testKit)
+      private val service = createNonrepMicroservice(testKit)
 
       waitForNMessages(1)(service)
       service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
@@ -620,7 +616,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       }
 
       createMessageJourney()
-      service = createNonrepMicroservice(testKit)
+      private val service = createNonrepMicroservice(testKit)
       waitForNMessages(1)(service)
 
       service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
@@ -644,7 +640,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           }
 
           createMessageJourney()
-          service = createNonrepMicroservice(testKit)
+          private val service = createNonrepMicroservice(testKit)
           waitForNMessages(1)(service)
 
           service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
@@ -680,7 +676,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           }
 
           createMessageJourney()
-          service = createNonrepMicroservice(testKit)
+          private val service = createNonrepMicroservice(testKit)
           waitForNMessages(1)(service)
 
           private val retryCount = if is5xx(statusCode) then 3 else 0
@@ -702,7 +698,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           }
 
           createMessageJourney()
-          service = createNonrepMicroservice(testKit)
+          private val service = createNonrepMicroservice(testKit)
           waitForNMessages(1)(service)
 
           private val retryCount: Int = if is5xx(statusCode) then 1 else 0
@@ -724,7 +720,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           }
 
           createMessageJourney()
-          service = createNonrepMicroservice(testKit)
+          private val service = createNonrepMicroservice(testKit)
           waitForNMessages(1)(service)
 
           verifySqsDeleteMessage(1)
