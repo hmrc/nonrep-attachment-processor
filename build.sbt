@@ -89,7 +89,7 @@ lazy val root = (project in file(".")).
     }
   )
 
-run / fork := false
+run / fork := true
 
 scalacOptions ++= Seq("-Wunused:imports")
 
@@ -98,7 +98,7 @@ Compile / scalacOptions ++= Seq(
   "-feature"
 )
 Test / testOptions += Tests.Argument("-oF")
-Test / fork := false
+Test / fork := true
 Test / envVars := Map("WORKING_DIR" -> "/tmp/unit-tests")
 
 lazy val it = (project in file("it"))
@@ -106,7 +106,7 @@ lazy val it = (project in file("it"))
   .settings(
     name := s"$projectName-it",
     publish / skip := true,
-    Test / fork := false,
+    Test / fork := true,
     Test / testOptions += Tests.Argument("-oF"),
     Test / envVars := Map("WORKING_DIR" -> "/tmp/integration-tests"),
     scalacOptions ++= Seq("-Wunused:imports"),
