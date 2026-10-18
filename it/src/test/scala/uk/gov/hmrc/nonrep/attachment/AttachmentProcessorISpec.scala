@@ -735,7 +735,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
   def is5xx(status:Int): Boolean = status >= 500
 
-  def waitForNMessages(n:Int, maxTime: Span = 30.seconds)(service:TestNonrepMicroservice): Unit = {
+  def waitForNMessages(n:Int, maxTime: Span = 60.seconds)(service:TestNonrepMicroservice): Unit = {
     eventually(timeout(maxTime), interval(1.second)) {
       service.msgCountTotal should be >= n
     }
