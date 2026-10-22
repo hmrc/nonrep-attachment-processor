@@ -48,7 +48,7 @@ class ServiceIntErrorISpec extends BaseSpec with Inside with BeforeAndAfterEach 
       server.addAttachmentsProcessorOnComplete()
       server.addCoordinatedShutdown()
 
-      whenReady(server.serverBinding) { _ => println(">>>>START") }
+      whenReady(server.serverBinding) { _ => println("Processor started") }
       
       import scala.jdk.FutureConverters.*
       server.attachmentsProcessor.asJava.toCompletableFuture.cancel(true)

@@ -121,9 +121,11 @@ object TestServices {
     }
 
     val queueService: Queue = new QueueService()(using config, typedSystem) {
+      // TODO NONPR-5114 Needs to handle .recover
       override def getMessages: Source[EitherErr[Message], NotUsed] =
         Source(testSQSMessageIds.map(id => testSQSMessage(this.config.env, id, testAttachmentId)))
 
+      // TODO NONPR-5114 Not handling errors (in main AttachmentInfo is unchanged on success)
       override def deleteMessage: Flow[EitherErr[AttachmentInfo], EitherErr[AttachmentInfo], NotUsed] =
         Flow[EitherErr[AttachmentInfo]].map {
           _.map(attachmentInfo =>
@@ -167,6 +169,7 @@ object TestServices {
         override val amountToAdd: Long  = 999
         override val unit: TemporalUnit = ChronoUnit.MILLIS
 
+        // TODO NONPR-5114 this is the same code as being overridden
         override val builder: RequestBuilder =
           SignRequest
             .builder[AwsCredentials](credentials)

@@ -2,6 +2,9 @@ package uk.gov.hmrc.nonrep.attachment.wiremockstubs
 
 import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, post, postRequestedFor, urlEqualTo}
 
+import java.io.File
+import java.nio.file.Files
+
 trait DynamoDBWireMockStubs {
   this: WireMockSupport =>
 
@@ -11,23 +14,10 @@ trait DynamoDBWireMockStubs {
         .willReturn(
           aResponse()
             .withStatus(200)
-            .withBody(""" {
-                        |    "ConsumedCapacity": {
-                        |        "CapacityUnits": 1,
-                        |        "TableName": "Thread"
-                        |    },
-                        |    "Item": {
-                        |        "Tags": {
-                        |            "SS": ["Update","Multiple Items","HelpMe"]
-                        |        },
-                        |        "LastPostDateTime": {
-                        |            "S": "201303190436"
-                        |        },
-                        |        "Message": {
-                        |            "S": "I want to update multiple items in a single call. What's the best way to do that?"
-                        |        }
-                        |    }
-                        |}""".stripMargin.getBytes())
+            .withHeader("Content-Type", "application/json")
+            .withBody{
+              Files.readAllBytes(new File(getClass.getClassLoader.getResource("dynamodb/successfulDynamoDB.json").getFile).toPath)
+            }
         )
     )
 
@@ -37,12 +27,10 @@ trait DynamoDBWireMockStubs {
         .willReturn(
           aResponse()
             .withStatus(200)
-            .withBody(""" {
-                        |    "ConsumedCapacity": {
-                        |        "CapacityUnits": 1,
-                        |        "TableName": "Thread"
-                        |    }
-                        |}""".stripMargin.getBytes())
+            .withHeader("Content-Type", "application/json")
+            .withBody(
+              Files.readAllBytes(new File(getClass.getClassLoader.getResource("dynamodb/successfulDynamoDB.json").getFile).toPath)
+            )
         )
     )
 

@@ -45,14 +45,18 @@ package object attachment {
     attachmentSize: Option[Long] = None
   )
 
+  // TODO change to toString, but this halts the PR build. (see NONPR-5138 )
   case class AttachmentContent(info: AttachmentInfo, content: ByteString) {
     val bytes: AttachmentBinary = content.toArray
     val length: Long            = bytes.length.toLong
+
+    def mkLogString:String = s"AttachmentContent(attachmentId:${info.attachmentId}, submissionId:${info.submissionId.getOrElse("")}, notableEvent:${info.notableEvent}, s3ObjectKey:${info.s3ObjectKey}, attachmentSize:${info.attachmentSize})"
   }
 
   case class ArchivedAttachment(info: AttachmentInfo, archiveId: String, vaultName: String)
 
   case class ZipContent(info: AttachmentInfo, attachment: AttachmentBinary, metadata: AttachmentBinary)
+
   case class SignedZipContent(
     info: AttachmentInfo,
     signedAttachment: AttachmentBinary,

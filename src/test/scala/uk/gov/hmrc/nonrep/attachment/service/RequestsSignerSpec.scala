@@ -17,6 +17,8 @@ class RequestsSignerSpec extends BaseSpec {
     import RequestsSigner.*
     import TestServices.*
 
+    // TODO NONPR-5114  create a request, NO call
+    // only testing AWS api
     "create signed http request" in {
 
       val accessKeyId  = "ASIAXXX"

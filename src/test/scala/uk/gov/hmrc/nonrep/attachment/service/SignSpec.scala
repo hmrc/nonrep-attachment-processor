@@ -48,6 +48,7 @@ class SignSpec extends BaseSpec {
       result.left.toOption.get.severity shouldBe ERROR
     }
 
+    // TODO NONPR-5114  only check for one error, no check for error message
     "return sign error messages with WARN severity" in {
       import TestServices.failure.*
       val messageId = UUID.randomUUID().toString
