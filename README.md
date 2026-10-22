@@ -1,4 +1,3 @@
-
 # nonrep-attachment-processor
 
 The **attachment-processor** service runs a streaming service that takes messages from SQS, 
