@@ -28,6 +28,8 @@ trait Glacier {
 class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) extends Glacier {
   private[service] lazy val client: GlacierAsyncClient = GlacierAsyncClient
     .builder()
+    .endpointOverride(java.net.URI(config.glacierUrl ))
+    .credentialsProvider(config.awsGlacierSettings.credentialsProvider)
     .region(EU_WEST_2)
     .httpClientBuilder(NettyNioAsyncHttpClient.builder())
     .build()
@@ -52,6 +54,9 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
           }
         case Left(e)                  =>
           Future successful Left(e)
+      }.recover{
+        case err: RuntimeException =>
+          Left(ErrorMessage(s"Glacier archive failed: ${err.getMessage}"))
       }
       .withAttributes(ActorAttributes.supervisionStrategy(restartingDecider))
 
@@ -71,14 +76,14 @@ class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) exte
           Future.successful(
             Left(
               ErrorMessage(
-                s"Vault $vaultName not found for attachment $content. The sign service should create the vault in due course.",
+                s"Vault $vaultName not found for attachment ${content.toString}. The sign service should create the vault in due course.",
                 Some(exception),
                 WARN
               )
             )
           )
         case exception                            =>
-          Future.successful(Left(ErrorMessage(s"Error uploading attachment $content to glacier $vaultName", Some(exception))))
+          Future.successful(Left(ErrorMessage(s"Error uploading attachment ${content.toString} to glacier $vaultName", Some(exception))))
       }
 
   private[service] def eventuallyUploadArchive(
