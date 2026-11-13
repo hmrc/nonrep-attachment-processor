@@ -5,7 +5,6 @@ The **attachment-processor** service runs a streaming service that takes message
 processing each one before submitting the bundle to Metastore.
 Processing involves taking each bundle and signing to attachments to create a zip file that can be stored in Metastore.
 
-
 ## Endpoints
 
 There are no endpoint to perform requests, once started the service listen to a SQS and handles requests.
@@ -13,7 +12,6 @@ The only _system_ endpoints are:
 
 *   [Ping](#ping)
 *   [Version](#version)
-
 
 #### Ping <a name="ping"></a>
 This endpoint can be used as a lightweight health check for the availability of the service
