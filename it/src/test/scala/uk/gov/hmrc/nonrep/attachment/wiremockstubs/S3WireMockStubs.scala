@@ -71,7 +71,7 @@ trait S3WireMockStubs {
 
   def successfulInitiateMultipartUpload(attachmentId: String): StubMapping =
     wireMockServer.stubFor(
-      post(urlPathEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip"))
+      post(urlPathEqualTo(s"/$attachmentId.zip"))
         .withQueryParam("uploads", equalTo(""))
         .willReturn(
           aResponse()
@@ -86,7 +86,7 @@ trait S3WireMockStubs {
 
   def failedInitiateMultipartUpload(attachmentId: String): StubMapping =
     wireMockServer.stubFor(
-      post(urlPathEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip"))
+      post(urlPathEqualTo(s"/$attachmentId.zip"))
         .withQueryParam("uploads", equalTo(""))
         .willReturn(
           aResponse()
@@ -98,11 +98,11 @@ trait S3WireMockStubs {
   def verifyInitiateMultipartUpload(attachmentId: String, times: Int): Unit =
     wireMockServer.verify(
       times,
-      postRequestedFor(urlPathEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip")).withQueryParam("uploads", equalTo("")))
+      postRequestedFor(urlPathEqualTo(s"/$attachmentId.zip")).withQueryParam("uploads", equalTo("")))
 
   def successfulUploadPart(attachmentId: String, partNumber: Int): StubMapping =
     wireMockServer.stubFor(
-      put(urlPathEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip"))
+      put(urlPathEqualTo(s"/$attachmentId.zip"))
         .withQueryParam("partNumber", equalTo(partNumber.toString))
         .willReturn(
           aResponse()
@@ -113,7 +113,7 @@ trait S3WireMockStubs {
 
   def failedUploadPart(attachmentId: String, partNumber: Int): StubMapping =
     wireMockServer.stubFor(
-      put(urlPathEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip"))
+      put(urlPathEqualTo(s"/$attachmentId.zip"))
         .withQueryParam("partNumber", equalTo(partNumber.toString))
         .willReturn(
           aResponse()
@@ -125,12 +125,12 @@ trait S3WireMockStubs {
   def verifyUploadPart(attachmentId: String, partNumber: Int, times: Int): Unit =
     wireMockServer.verify(
       times,
-      putRequestedFor(urlPathEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip"))
+      putRequestedFor(urlPathEqualTo(s"/$attachmentId.zip"))
         .withQueryParam("partNumber", equalTo(partNumber.toString)))
 
   def successfulCompleteMultipartUpload(attachmentId: String): StubMapping =
     wireMockServer.stubFor(
-      post(urlPathEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip"))
+      post(urlPathEqualTo(s"/$attachmentId.zip"))
         .willReturn(
           aResponse()
             .withHeader("content-type", "application/xml; charset=UTF-8")
@@ -153,7 +153,7 @@ trait S3WireMockStubs {
 
   def failedCompleteMultipartUpload(attachmentId: String): StubMapping =
     wireMockServer.stubFor(
-      post(urlPathEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip"))
+      post(urlPathEqualTo(s"/$attachmentId.zip"))
         .withQueryParam("uploads", WireMock.not(equalTo("")))
         .willReturn(
           aResponse()
@@ -166,7 +166,7 @@ trait S3WireMockStubs {
   def verifyCompleteMultipartUpload(attachmentId: String, times: Int): Unit =
     wireMockServer.verify(
       times,
-      postRequestedFor(urlPathEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip"))
+      postRequestedFor(urlPathEqualTo(s"/$attachmentId.zip"))
         .withQueryParam("uploads", WireMock.not(equalTo(""))))
 
   /*
@@ -174,7 +174,7 @@ trait S3WireMockStubs {
    */
   def successfulPing(): StubMapping =
     wireMockServer.stubFor(
-      put(urlMatching("/local-nonrep-attachment-data/.*/ping.txt"))
+      put(urlMatching("/.*/ping.txt"))
         .willReturn(
           aResponse()
             .withStatus(200)
@@ -183,7 +183,7 @@ trait S3WireMockStubs {
 
   def failedPing(): StubMapping =
     wireMockServer.stubFor(
-      put(urlMatching("/local-nonrep-attachment-data/.*/ping.txt"))
+      put(urlMatching("/.*/ping.txt"))
         .willReturn(
           aResponse()
             .withStatus(500)
@@ -191,11 +191,11 @@ trait S3WireMockStubs {
     )
 
   def verifyPing(times: Int): Unit =
-    wireMockServer.verify(times, putRequestedFor(urlMatching("/local-nonrep-attachment-data/.*/ping.txt")))
+    wireMockServer.verify(times, putRequestedFor(urlMatching("/.*/ping.txt")))
 
   def successfulGetAttachment(attachmentId: String): StubMapping =
     wireMockServer.stubFor(
-      get(urlEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip"))
+      get(urlEqualTo(s"/$attachmentId.zip"))
         .willReturn(
           aResponse()
             .withStatus(200)
@@ -207,7 +207,7 @@ trait S3WireMockStubs {
   // https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetObject.html#API_GetObject_Errors
   def failedGetAttachment(attachmentId: String): StubMapping =
     wireMockServer.stubFor(
-      get(urlEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip"))
+      get(urlEqualTo(s"/$attachmentId.zip"))
         .willReturn(
           aResponse()
             .withStatus(404)
@@ -222,7 +222,7 @@ trait S3WireMockStubs {
 
   def failedGetAttachmentTimeout(attachmentId: String, delay:Span): StubMapping =
     wireMockServer.stubFor(
-      get(urlEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip"))
+      get(urlEqualTo(s"/$attachmentId.zip"))
         .willReturn(
           aResponse()
             .withFixedDelay(delay.millisPart.toInt)
@@ -238,7 +238,7 @@ trait S3WireMockStubs {
 
   def failedErrorGetAttachment(attachmentId: String, statusCode:Int, error:String): StubMapping =
     wireMockServer.stubFor(
-      get(urlEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip"))
+      get(urlEqualTo(s"/$attachmentId.zip"))
         .willReturn(
           aResponse()
             .withStatus(statusCode)
@@ -252,11 +252,11 @@ trait S3WireMockStubs {
     )
 
   def verifyGetAttachment(attachmentId: String, times: Int): Unit =
-    wireMockServer.verify(times, getRequestedFor(urlEqualTo(s"/local-nonrep-attachment-data/$attachmentId.zip")))
+    wireMockServer.verify(times, getRequestedFor(urlEqualTo(s"/$attachmentId.zip")))
 
   def successfulListBucket(): StubMapping =
     wireMockServer.stubFor(
-      get(urlPathEqualTo(s"/local-nonrep-attachment-data"))
+      get(urlPathEqualTo(s"/"))
         .willReturn(
           aResponse()
             .withStatus(200)
@@ -280,7 +280,7 @@ trait S3WireMockStubs {
 
   def failedListBucket(error: Int): StubMapping =
     wireMockServer.stubFor(
-      get(urlPathEqualTo(s"/local-nonrep-attachment-data"))
+      get(urlPathEqualTo(s"/"))
         .willReturn(
           aResponse()
             .withStatus(error)
@@ -288,11 +288,11 @@ trait S3WireMockStubs {
     )
 
   def verifyListBucket(times: Int): Unit =
-    wireMockServer.verify(times, getRequestedFor(urlPathEqualTo(s"/local-nonrep-attachment-data")))
-  
-  def s3DeleteMessage( bucket:String, objKey:String, state: String = Scenario.STARTED, to:String = Scenario.STARTED) =
+    wireMockServer.verify(times, getRequestedFor(urlPathEqualTo(s"/")))
+
+  def s3DeleteMessage( objKey:String, state: String = Scenario.STARTED, to:String = Scenario.STARTED): StubMapping =
     wireMockServer.stubFor(
-      delete(urlPathEqualTo(s"/$bucket/$objKey"))
+      delete(urlPathEqualTo(s"/$objKey"))
         .inScenario(state)
         .whenScenarioStateIs(state)
         .willReturn(
@@ -303,9 +303,9 @@ trait S3WireMockStubs {
         .willSetStateTo(to)
     )
 
-  def s3ErrorDeleteMessage(statusCode:Int, errMsg:String,  bucket:String, objKey:String, state: String = Scenario.STARTED, to:String = Scenario.STARTED) =
+  def s3ErrorDeleteMessage(statusCode:Int, errMsg:String, objKey:String, state: String = Scenario.STARTED, to:String = Scenario.STARTED): StubMapping =
     wireMockServer.stubFor(
-      delete(urlPathEqualTo(s"/$bucket/$objKey"))
+      delete(urlPathEqualTo(s"/$objKey"))
         .inScenario(state)
         .whenScenarioStateIs(state)
         .willReturn(
@@ -316,7 +316,7 @@ trait S3WireMockStubs {
         .willSetStateTo(to)
     )
 
-  def verifyDeleteMessage(times: Int = 1, bucket:String, objKey:String): Unit =
-    wireMockServer.verify(times, deleteRequestedFor(urlPathEqualTo(s"/$bucket/$objKey")))
+  def verifyDeleteMessage(times: Int = 1, objKey:String): Unit =
+    wireMockServer.verify(times, deleteRequestedFor(urlPathEqualTo(s"/$objKey")))
 
 }

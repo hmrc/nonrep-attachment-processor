@@ -88,7 +88,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
     def archiveBundle(): Unit = {glacierStore("local-vat-registration-2026")}
     def updateMetastore(): Unit = {metastoreStoreMessage("vat-registration-attachments", attachmentId)}
     def deleteMessage(): Unit = {sqsDeleteMessage()}
-    def deleteBundle(): Unit = {s3DeleteMessage("local-nonrep-attachment-data", attachmentId+".zip")}
+    def deleteBundle(): Unit = {s3DeleteMessage(attachmentId+".zip")}
     def recordProcessingTime(): Unit = {}
 
     def createMessageJourney(): Unit = {
@@ -116,7 +116,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       waitForNMessages(1)(service)
 
       service.msgSuccessCount shouldBe 1 withClue ("incorrect successCount")
-      verifyDeleteMessage(1, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+      verifyDeleteMessage(1, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
       service.failedMsgList.length shouldBe 0
     }
@@ -134,7 +134,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       waitForNMessages(2)(service)
 
       service.msgSuccessCount shouldBe 2 withClue (s"incorrect successCount")
-      verifyDeleteMessage(2, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+      verifyDeleteMessage(2, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
     }
   }
 
@@ -215,7 +215,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
             service.msgSuccessCount shouldBe 1 withClue ("incorrect successCount")
             service.msgFailedCount shouldBe 1 withClue ("incorrect failedCount")
-            verifyDeleteMessage(1, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+            verifyDeleteMessage(1, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
             service.failedMsgMessages shouldBe List("Get SQS message failure: Service returned HTTP status code 400 (Service: Sqs, Status Code: 400, Request ID: null) (SDK Attempt Count: 1)")
           }
@@ -384,7 +384,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
 
       // s3DeleteMessage should NOT be called
-      verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+      verifyDeleteMessage(0, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
       service.failedMsgMessages shouldBe List("failed to download d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip attachment bundle from s3 local-nonrep-attachment-data")
     }
@@ -402,7 +402,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           waitForNMessages(1)(service)
           service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
 
-          verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+          verifyDeleteMessage(0, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
           service.failedMsgMessages shouldBe List("failed to download d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip attachment bundle from s3 local-nonrep-attachment-data")
         }
@@ -425,7 +425,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
 
           verifyGlacierStoreCheck(0, "local-vat-registration-2026")
-          verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+          verifyDeleteMessage(0, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
           service.failedMsgMessages shouldBe List(s"Response status $statusCode $statusCodeText from signatures service localhost")
         }
@@ -444,7 +444,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
 
       verifyGlacierStoreCheck(0, "local-vat-registration-2026")
-      verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+      verifyDeleteMessage(0, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
       service.failedMsgMessages shouldBe List("Failure connection to localhost with TCP idle-timeout encountered on connection to [localhost/<unresolved>:9008], no bytes passed in the last 60 seconds")
     }
@@ -488,7 +488,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           private val callCount = if is5xx(statusCode) then 4 else 1
           verifyGlacierStoreCheck(callCount, "local-vat-registration-2026")
           // s3DeleteMessage should NOT be called
-          verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+          verifyDeleteMessage(0, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
           service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, s3ObjectKey:d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip, attachmentSize:None) to glacier local-vat-registration-2026")
         }
@@ -509,7 +509,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
       verifyGlacierStoreCheck(1, "local-vat-registration-2026")
       // s3DeleteMessage should NOT be called
-      verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+      verifyDeleteMessage(0, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
       service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, s3ObjectKey:d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip, attachmentSize:None) to glacier local-vat-registration-2026")
     }
@@ -528,7 +528,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
           verifyGlacierStoreCheck(1, "local-vat-registration-2026")
           // s3DeleteMessage should NOT be called
-          verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+          verifyDeleteMessage(0, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
           service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, s3ObjectKey:d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip, attachmentSize:None) to glacier local-vat-registration-2026")
         }
@@ -547,7 +547,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
           waitForNMessages(1)(service)
 
           service.msgFailedCount shouldBe 1 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
-          verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+          verifyDeleteMessage(0, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
           service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, s3ObjectKey:d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip, attachmentSize:None) to glacier local-vat-registration-2026")
         }
@@ -567,7 +567,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       service.msgFailedCount shouldBe 0 withClue (s"incorrect failedCount  Success:${service.msgSuccessCount}")
 
       verifyGlacierStoreCheck(1, "local-vat-registration-2026")
-      verifyDeleteMessage(1, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+      verifyDeleteMessage(1, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
     }
 
     "Timeout on save, two msgs" in new StreamMessageJourney {
@@ -590,7 +590,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       service.msgSuccessCount shouldBe 2 withClue (s"incorrect successCount  Success:${service.msgFailedCount}")
 
       verifyGlacierStoreCheck(2, "local-vat-registration-2026")
-      verifyDeleteMessage(2, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+      verifyDeleteMessage(2, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
     }
 
     "Connection reset by peer" in new StreamMessageJourney {
@@ -622,7 +622,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
       // has 5 auto retries
       verifyGlacierStoreCheck(4, "local-vat-registration-2026")
       // s3DeleteMessage should NOT be called
-      verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+      verifyDeleteMessage(0, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
       service.failedMsgMessages shouldBe List("Error uploading attachment AttachmentContent(attachmentId:d9b3f2f3-32e1-4903-b812-a64c2a045c61, submissionId:eed095f9-7cd5-4a58-b74e-906c8d8807b5, notableEvent:vat-registration, s3ObjectKey:d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip, attachmentSize:None) to glacier local-vat-registration-2026")
     }
@@ -645,7 +645,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
           // check delete was NOT called
           verifySqsDeleteMessage(0)
-          verifyDeleteMessage(0, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+          verifyDeleteMessage(0, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
           service.failedMsgMessages shouldBe List(s"Response status $statusCode $statusCodeText from ES service localhost")
         }
@@ -714,7 +714,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
         s"${errMsg}(${statusCode}) delete SQS message" in new StreamMessageJourney {
 
           override def deleteBundle(): Unit = {
-            s3ErrorDeleteMessage(statusCode, errMsg, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+            s3ErrorDeleteMessage(statusCode, errMsg, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
           }
 
           createMessageJourney()
@@ -723,7 +723,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
 
           verifySqsDeleteMessage(1)
           private val retryCount = if is5xx(statusCode) then 3 else 0
-          verifyDeleteMessage(1 + retryCount, "local-nonrep-attachment-data", "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
+          verifyDeleteMessage(1 + retryCount, "d9b3f2f3-32e1-4903-b812-a64c2a045c61.zip")
 
           service.msgFailedCount shouldBe 1 withClue ("incorrect failedCount")
           service.msgSuccessCount shouldBe 0 withClue ("incorrect successCount")
