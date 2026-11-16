@@ -45,11 +45,7 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val elasticSearchHost: String              = elasticSearchUri.getHost
   val elasticSearchPort: Int              = findPort(elasticSearchUri.getPort, isElasticSearchProtocolSecure)
 
-  private val configFile = new java.io.File(s"/etc/config/CONFIG_FILE")
-
-  val config: Config =
-    if configFile.exists() then ConfigFactory.parseFile(configFile).resolve()
-    else ConfigFactory.load("application.conf")
+  val config: Config = ConfigFactory.load()
 
   val refreshPolicy: String = config.getConfig("metastore").getString("refresh_policy")
 
