@@ -2,6 +2,7 @@ package uk.gov.hmrc.nonrep.attachment.service
 
 import org.apache.pekko.NotUsed
 import org.apache.pekko.actor.typed.ActorSystem
+import org.apache.pekko.event.slf4j.Logger
 import org.apache.pekko.stream.ActorAttributes
 import org.apache.pekko.stream.Supervision.restartingDecider
 import org.apache.pekko.stream.scaladsl.Flow
@@ -26,13 +27,24 @@ trait Glacier {
 }
 
 class GlacierService()(using config: ServiceConfig, system: ActorSystem[?]) extends Glacier {
-  private[service] lazy val client: GlacierAsyncClient = GlacierAsyncClient
-    .builder()
-    .endpointOverride(java.net.URI(config.glacierUrl ))
-    .credentialsProvider(config.awsGlacierSettings.credentialsProvider)
-    .region(EU_WEST_2)
-    .httpClientBuilder(NettyNioAsyncHttpClient.builder())
-    .build()
+
+  private val logger = Logger(this.getClass.getName)
+
+  private[service] lazy val client: GlacierAsyncClient = {
+    val builder = GlacierAsyncClient
+      .builder()
+
+    config.glacierUrl.fold(logger.info("using defaulted glacier url")) {
+      url =>
+        logger.info(s"using overridden glacier url $url")
+        builder.endpointOverride(java.net.URI(url))
+    }
+    builder
+      .credentialsProvider(config.awsGlacierSettings.credentialsProvider)
+      .region(EU_WEST_2)
+      .httpClientBuilder(NettyNioAsyncHttpClient.builder())
+      .build()
+  }
 
   private val environmentalVaultNamePrefix = if config.isSandbox then s"${config.env}-" else ""
 

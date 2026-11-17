@@ -31,7 +31,7 @@ class AttachmentProcessorISpec extends AsyncBaseSpec, WireMockSupport, WireMockS
     override val isSignaturesServiceSecure: Boolean = false
     override val signaturesServiceHost: String = "localhost"
     override val signaturesServicePort: Int = wireMockPort
-    override val glacierUrl: String = s"http://localhost:$wireMockPort/glacier"
+    override val glacierUrl: Option[String] = Some(s"http://localhost:$wireMockPort/glacier")
     override val elasticSearchHost: String = "localhost"
     override val elasticSearchPort: Int = wireMockPort
   }

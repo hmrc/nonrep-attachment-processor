@@ -5,8 +5,10 @@ import java.net.URI
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.pekko.stream.RestartSettings
 import org.apache.pekko.stream.connectors.s3.S3Settings
+
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.Duration
+import scala.util.Try
 
 object ServiceConfig {
   val appName     = "attachment-processor"
@@ -66,10 +68,13 @@ class ServiceConfig(val servicePort: Int = 8000) {
   val awsSettings: S3Settings = S3Settings(config.getConfig(S3Settings.ConfigPath))
 
   private val glacierParams = config.getObject(s"$appName.glacier").toConfig
-  val awsGlacierSettings = awsSettings.withEndpointUrl(glacierParams.getString("glacier-url"))
-  val glacierUrl:String = awsGlacierSettings.endpointUrl.getOrElse(
-    throw new IllegalStateException(
-      "System property glacier-url is not set."))
+  val awsGlacierSettings = {
+    Try(glacierParams.getString("glacier-url")).toOption.fold(
+      awsSettings)(
+      _ => awsSettings.withEndpointUrl(glacierParams.getString("glacier-url"))
+    )
+  }
+  val glacierUrl: Option[String] = awsGlacierSettings.endpointUrl
 
   // see https://doc.akka.io/libraries/akka-core/current/stream/stream-error.html#delayed-restarts-with-a-backoff-operator
   private val sqsRestartConfig = config.getObject(s"$appName.sqs.restart_policy").toConfig
